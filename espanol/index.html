@@ -22,6 +22,7 @@ input{width:100%;font-size:20px;padding:12px;border:2px solid #ddd;border-radius
 ul{background:#fff;border-radius:14px;padding:12px 12px 12px 30px}li{margin:6px 0}
 .lab{font-size:13px;color:#777;margin-top:12px;text-align:left}.sel{display:flex;gap:6px;margin-top:4px}.sel button{flex:1;padding:10px 4px;font-size:15px}
 #res div{margin:3px 0}
+.spk{padding:4px 10px;font-size:18px;background:#f3ead9;vertical-align:middle}
 .big{font-size:40px;margin:6px 0}.col{display:flex;flex-direction:column;gap:8px;margin-top:14px}
 </style></head><body><div class="w">
 <h1>🇪🇸 スペイン語 単語クイズ</h1>
@@ -84,12 +85,12 @@ function show(){
  if(m=='list'){
   const ok=W.filter(w=>marks[w[0]]=='ok').length,ng=W.filter(w=>marks[w[0]]=='ng').length;
   $('app').innerHTML=`<p class=meta><span class=ok>○ 覚えた ${ok}</span>　<span class=ng>✕ まだ ${ng}</span>　未挑戦 ${W.length-ok-ng}</p><ul>`+
-  W.map(w=>`<li>${marks[w[0]]=='ok'?'<span class=ok>○</span>':marks[w[0]]=='ng'?'<span class=ng>✕</span>':'・'} <b>${w[3]}</b> → ${w[0]} <span class=pos>(${w[1]})</span></li>`).join('')+'</ul>';return}
+  W.map(w=>`<li>${spk(w[0])} ${marks[w[0]]=='ok'?'<span class=ok>○</span>':marks[w[0]]=='ng'?'<span class=ng>✕</span>':'・'} <b>${w[3]}</b> → ${w[0]} <span class=pos>(${w[1]})</span></li>`).join('')+'</ul>';return}
  if(i>=pool.length)return summary();
  const w=W[pool[i]];
  if(m=='card'){
-  $('app').innerHTML=bar()+`<div class=card onclick="rev=!rev;show()"><div class=q>${w[3]}</div><div class=en>${w[2]}</div>
-  ${rev?`<div class=a>${w[0]}</div><div class=pos>${w[1]}</div>`:'<div class=meta>タップで答え</div>'}</div>
+  $('app').innerHTML=bar()+`<div class=card onclick="rev=!rev;show();if(rev)say(W[pool[i]][0])"><div class=q>${w[3]}</div><div class=en>${w[2]}</div>
+  ${rev?`<div class=a>${w[0]} ${spk(w[0])}</div><div class=pos>${w[1]}</div>`:'<div class=meta>タップで答え</div>'}</div>
   <div class=row><button class=bad onclick="mark('ng')">✕ まだ</button><button class=good onclick="mark('ok')">○ 覚えた</button></div>`;return}
  $('app').innerHTML=bar()+`<div class=card><div class=q>${w[3]}</div><div class=en>${w[2]}</div>
  <input id=in autocomplete=off autocapitalize=off placeholder="スペイン語で入力" onkeydown="if(event.key=='Enter'){answered?nextT():check()}">
@@ -114,8 +115,13 @@ function check(){const w=W[pool[i]],v=$('in').value;
  lastOk=okW&&okP&&okG;answered=true;
  const line=(ok,label,ans)=>`<div class=${ok?'ok':'ng'}>${ok?'○':'✕'} ${label}：${ans}</div>`;
  $('res').innerHTML=`<p class=${lastOk?'ok':'ng'}>${lastOk?'⭕ 全部正解！':'❌ 惜しい'}</p>`+
-  line(okW,'単語',w[0]+(okW&&strip(v)!=strip(w[0])?'（アクセント記号に注意）':''))+line(okP,'品詞',f.p)+line(okG,'性',f.g);
- $('btn').textContent='次へ →'}
+  line(okW,'単語',spk(w[0])+' '+w[0]+(okW&&strip(v)!=strip(w[0])?'（アクセント記号に注意）':''))+line(okP,'品詞',f.p)+line(okG,'性',f.g);
+ $('btn').textContent='次へ →';say(w[0])}
 function nextT(){mark(lastOk?'ok':'ng')}
+// 発音（ブラウザの音声読み上げ・スペイン語）
+let ES=null;const pickV=()=>{const v=speechSynthesis.getVoices();ES=v.find(x=>x.lang=='es-ES')||v.find(x=>x.lang.startsWith('es'))||null};
+if(window.speechSynthesis){pickV();speechSynthesis.onvoiceschanged=pickV}
+function say(t){if(!window.speechSynthesis)return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='es-ES';if(ES)u.voice=ES;u.rate=0.85;speechSynthesis.speak(u)}
+const spk=t=>`<button class=spk onclick="event.stopPropagation();say('${t}')">🔊</button>`;
 start('all');
 </script></body></html>
