@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>スペイン語 単語クイズ</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,"Hiragino Sans",sans-serif;background:#fdf6ec;color:#222}
+.w{max-width:520px;margin:0 auto;padding:18px}
+h1{font-size:20px;margin:6px 0 12px}
+.tabs{display:flex;gap:6px;margin-bottom:12px}.tabs button{flex:1}
+button{font-size:16px;padding:12px;border:0;border-radius:12px;background:#e8dcc8;cursor:pointer}
+button.on,.main{background:#c0392b;color:#fff}
+.card{background:#fff;border-radius:18px;padding:28px 18px;text-align:center;box-shadow:0 3px 12px #0001;min-height:190px}
+.q{font-size:28px;font-weight:700;margin:10px 0}.en{color:#888;font-size:15px}
+.a{font-size:24px;color:#c0392b;font-weight:700;margin-top:14px}.pos{color:#888;font-size:14px}
+input{width:100%;font-size:20px;padding:12px;border:2px solid #ddd;border-radius:12px;margin-top:14px}
+.row{display:flex;gap:8px;margin-top:12px}.row button{flex:1}
+.ok{color:#27ae60;font-weight:700}.ng{color:#c0392b;font-weight:700}
+.meta{color:#777;font-size:14px;margin:10px 0;text-align:center}
+.acc{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}.acc button{padding:8px 12px;font-size:18px;flex:1}
+ul{background:#fff;border-radius:14px;padding:12px 12px 12px 30px}li{margin:6px 0}
+</style></head><body><div class="w">
+<h1>🇪🇸 スペイン語 単語クイズ</h1>
+<div class="tabs"><button id="t1" class="on" onclick="mode('card')">めくる</button><button id="t2" onclick="mode('type')">書いて答える</button><button id="t3" onclick="mode('list')">一覧</button></div>
+<div id="app"></div>
+<p class="meta">日本語を見てスペイン語を答えます ・ <a href="#" onclick="shuffle();show();return false">シャッフル</a></p>
+</div>
+<script>
+// 単語の追加はここ: [スペイン語, 品詞, 英語, 日本語]
+const W=[
+["Barcelona","固有名詞","Barcelona","バルセロナ"],
+["amor","名詞・男性","Love","愛"],
+["la nevera","名詞・女性","Fridge","冷蔵庫"],
+["la bolsa","名詞・女性","Stock market","株式市場"],
+["la acción","名詞・女性","Share, stock","株"],
+["invertir","動詞","To invest","投資する"],
+["ganar","動詞","To win, to earn","勝つ・稼ぐ"],
+["el café","名詞・男性","Coffee, café","コーヒー・カフェ"],
+["la cafetería","名詞・女性","Café","喫茶店"],
+["la publicidad","名詞・女性","Advertising","広告"],
+["el cartel","名詞・男性","Poster","ポスター"],
+["diseñar","動詞","To design","デザインする"],
+["el videojuego","名詞・男性","Video game","テレビゲーム"],
+["el barco","名詞・男性","Ship","船"],
+["el ordenador","名詞・男性","Computer","パソコン"],
+["la inteligencia artificial","名詞・女性","Artificial intelligence","人工知能"],
+["la universidad","名詞・女性","University","大学"],
+["la residencia","名詞・女性","Dormitory","寮"],
+["estudiar","動詞","To study","勉強する"],
+["aprender","動詞","To learn","学ぶ"],
+["gratis","形容詞","Free (of charge)","無料の"],
+["barato","形容詞・男性","Cheap","安い"],
+["rápido","形容詞・男性","Fast","速い"],
+["la canción","名詞・女性","Song","歌"],
+["viajar","動詞","To travel","旅行する"],
+];
+let order=[...W.keys()],i=0,m='card',rev=false,score=0,done=0;
+const $=id=>document.getElementById(id);
+function shuffle(){for(let k=order.length-1;k>0;k--){const j=Math.random()*(k+1)|0;[order[k],order[j]]=[order[j],order[k]]}i=0;score=0;done=0}
+const norm=s=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/^(el|la|los|las)\s+/,'').replace(/[^a-zñ ]/g,'').trim();
+function mode(x){m=x;['card','type','list'].forEach((k,n)=>$('t'+(n+1)).className=k==x?'on':'');rev=false;show()}
+function next(d=1){i=(i+d+order.length)%order.length;rev=false;show()}
+function show(){
+ const w=W[order[i]],n=`${i+1} / ${order.length}`;
+ if(m=='list'){$('app').innerHTML='<ul>'+W.map(w=>`<li><b>${w[3]}</b> → ${w[0]} <span class=pos>(${w[1]})</span></li>`).join('')+'</ul>';return}
+ if(m=='card'){
+  $('app').innerHTML=`<div class=card onclick="rev=!rev;show()"><div class=meta>${n}</div><div class=q>${w[3]}</div><div class=en>${w[2]}</div>
+  ${rev?`<div class=a>${w[0]}</div><div class=pos>${w[1]}</div>`:'<div class=meta>タップで答え</div>'}</div>
+  <div class=row><button onclick="next(-1)">← 前</button><button class=main onclick="next()">次 →</button></div>`;return}
+ $('app').innerHTML=`<div class=card><div class=meta>${n}　正解 ${score}/${done}</div><div class=q>${w[3]}</div><div class=en>${w[2]}</div>
+ <input id=in autocomplete=off autocapitalize=off placeholder="スペイン語で入力" onkeydown="if(event.key=='Enter')check()">
+ <div class=acc>${'áéíóúñ'.split('').map(c=>`<button onclick="ins('${c}')">${c}</button>`).join('')}</div>
+ <div id=res></div></div>
+ <div class=row><button onclick="check()" class=main>答え合わせ</button><button onclick="next()">次 →</button></div>`;
+ $('in').focus()}
+function ins(c){const e=$('in');e.value+=c;e.focus()}
+function check(){const w=W[order[i]],v=$('in').value;if(!v)return;
+ const ok=norm(v)==norm(w[0]),exact=v.trim().toLowerCase().replace(/^(el|la|los|las)\s+/,'')==w[0].toLowerCase().replace(/^(el|la|los|las)\s+/,'');
+ done++;if(ok)score++;
+ $('res').innerHTML=ok?`<p class=ok>⭕ 正解！ ${exact?'':'（アクセント記号に注意: '+w[0]+'）'}</p>`:`<p class=ng>❌ 正解は <b>${w[0]}</b></p>`;
+ $('res').innerHTML+=`<div class=pos>${w[1]}</div>`}
+shuffle();show();
+</script></body></html>
