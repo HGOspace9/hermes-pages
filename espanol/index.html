@@ -20,6 +20,8 @@ input{width:100%;font-size:20px;padding:12px;border:2px solid #ddd;border-radius
 .bar{display:flex;justify-content:space-between;font-size:15px;margin:0 4px 8px}
 .acc{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}.acc button{padding:8px 12px;font-size:18px;flex:1}
 ul{background:#fff;border-radius:14px;padding:12px 12px 12px 30px}li{margin:6px 0}
+.lab{font-size:13px;color:#777;margin-top:12px;text-align:left}.sel{display:flex;gap:6px;margin-top:4px}.sel button{flex:1;padding:10px 4px;font-size:15px}
+#res div{margin:3px 0}
 .big{font-size:40px;margin:6px 0}.col{display:flex;flex-direction:column;gap:8px;margin-top:14px}
 </style></head><body><div class="w">
 <h1>🇪🇸 スペイン語 単語クイズ</h1>
@@ -92,16 +94,27 @@ function show(){
  $('app').innerHTML=bar()+`<div class=card><div class=q>${w[3]}</div><div class=en>${w[2]}</div>
  <input id=in autocomplete=off autocapitalize=off placeholder="スペイン語で入力" onkeydown="if(event.key=='Enter'){answered?nextT():check()}">
  <div class=acc>${'áéíóúñ'.split('').map(c=>`<button onclick="ins('${c}')">${c}</button>`).join('')}</div>
+ <div class=lab>品詞</div><div class=sel id=sp>${POS.map(p=>`<button onclick="pick('p','${p}')">${p}</button>`).join('')}</div>
+ <div class=lab>性（男性・女性）</div><div class=sel id=sg>${GEN.map(g=>`<button onclick="pick('g','${g}')">${g}</button>`).join('')}</div>
  <div id=res></div></div>
  <div class=row><button id=btn class=main onclick="answered?nextT():check()">答え合わせ</button></div>`;
- $('in').focus()}
+ selP=selG=null;$('in').focus()}
+const POS=['名詞','動詞','形容詞','その他'],GEN=['男性','女性','なし'];
+let selP=null,selG=null;
+function info(w){const[p,g]=w[1].split('・');return{p:POS.includes(p)?p:'その他',g:g||'なし'}}
+function pick(t,v){if(answered)return;if(t=='p')selP=v;else selG=v;
+ [...$(t=='p'?'sp':'sg').children].forEach(b=>b.className=b.textContent==v?'on':'')}
 function ins(c){const e=$('in');e.value+=c;e.focus()}
 const strip=s=>s.trim().toLowerCase().replace(/^(el|la|los|las)\s+/,'');
 const norm=s=>strip(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z ]/g,'').trim();
 let lastOk=false;
-function check(){const w=W[pool[i]],v=$('in').value;if(!v)return;
- lastOk=norm(v)==norm(w[0]);answered=true;
- $('res').innerHTML=(lastOk?`<p class=ok>⭕ 正解！${strip(v)==strip(w[0])?'':'（アクセント記号に注意: '+w[0]+'）'}</p>`:`<p class=ng>❌ 正解は <b>${w[0]}</b></p>`)+`<div class=pos>${w[1]}</div>`;
+function check(){const w=W[pool[i]],v=$('in').value;
+ if(!v||!selP||!selG){$('res').innerHTML='<p class=meta>単語・品詞・性をすべて選んでください</p>';return}
+ const f=info(w),okW=norm(v)==norm(w[0]),okP=selP==f.p,okG=selG==f.g;
+ lastOk=okW&&okP&&okG;answered=true;
+ const line=(ok,label,ans)=>`<div class=${ok?'ok':'ng'}>${ok?'○':'✕'} ${label}：${ans}</div>`;
+ $('res').innerHTML=`<p class=${lastOk?'ok':'ng'}>${lastOk?'⭕ 全部正解！':'❌ 惜しい'}</p>`+
+  line(okW,'単語',w[0]+(okW&&strip(v)!=strip(w[0])?'（アクセント記号に注意）':''))+line(okP,'品詞',f.p)+line(okG,'性',f.g);
  $('btn').textContent='次へ →'}
 function nextT(){mark(lastOk?'ok':'ng')}
 start('all');
