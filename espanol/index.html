@@ -41,7 +41,7 @@ ul{background:#fff;border-radius:14px;padding:12px 12px 12px 30px}li{margin:6px 
 </div><div id="app"></div>
 <p class="meta">日本語を見てスペイン語を答えます</p>
 </div>
-<script src="words.js?v=1791966487"></script>
+<script src="words.js?v=1791967869"></script>
 <script>
 const $=id=>document.getElementById(id);
 const KEY='esp_int1_marks';
@@ -82,13 +82,16 @@ function start(which){$('now').textContent=label;$('ordb').textContent=ord?'🔢
  i=0;okR=[];ngR=[];rev=false;answered=false;show()}
 function mode(x){if(m=='home'&&x!='card')return;m=x;['card','type','list'].forEach((k,n)=>$('t'+(n+1)).className=k==x?'on':'');rev=false;answered=false;show()}
 function mark(r){const w=W[pool[i]];marks[w[0]]=r;save();(r=='ok'?okR:ngR).push(pool[i]);i++;rev=false;answered=false;show()}
+// 前の単語に戻る（その単語の今回の○✕を取り消して、もう一度答える）
+const backB=()=>i>0?'<button style="flex:0 0 auto" onclick="back()">← 前へ</button>':'';
+function back(){if(i<=0)return;i--;const k=pool[i];okR=okR.filter(x=>x!==k);ngR=ngR.filter(x=>x!==k);rev=false;answered=false;show()}
 function bar(){return `<div class=bar><span class=ng>✕ まだ ${ngR.length}</span><span>${Math.min(i+1,pool.length)} / ${pool.length}</span><span class=ok>○ 覚えた ${okR.length}</span></div>`}
 function summary(){
  const rest=W.filter((w,k)=>inCat(k)&&marks[w[0]]!='ok').length;
  $('app').innerHTML=`<div class=card><div class=big>${ngR.length?'💪':'🎉'}</div><div class=q>このラウンド終了</div>
  <p><span class=ok>○ 覚えた ${okR.length}</span>　<span class=ng>✕ まだ ${ngR.length}</span></p>
  ${ngR.length?'<ul style="text-align:left">'+ngR.map(k=>`<li>${W[k][3]} → <b>${W[k][0]}</b></li>`).join('')+'</ul>':''}
- <div class=col>${rest?`<button class=main onclick="start('ng')">まだの単語だけ復習（${rest}）</button>`:''}
+ <div class=col>${pool.length?'<button onclick="back()">← 前の単語に戻る</button>':''}${rest?`<button class=main onclick="start('ng')">まだの単語だけ復習（${rest}）</button>`:''}
  <button onclick="start('all')">全部もう一度</button>
  <button onclick="if(confirm('覚えた記録を全部消しますか？')){marks={};save();start('all')}">記録をリセット</button></div></div>`}
 const hasPG=w=>/^(名詞|動詞|形容詞|固有名詞)/.test(w[1]);
@@ -102,7 +105,7 @@ function show(){
  if(m=='card'){
   $('app').innerHTML=bar()+`<div class=card onclick="rev=!rev;show();if(rev)say(W[pool[i]][0])"><div class=q>${w[3]}</div><div class=en>${w[2]}</div>
   ${rev?`<div class=a>${w[0]} ${spk(w[0])}</div><div class=pos>${w[1]}</div>`:'<div class=meta>タップで答え</div>'}</div>
-  <div class=row><button class=bad onclick="mark('ng')">✕ まだ</button><button class=good onclick="mark('ok')">○ 覚えた</button></div>`;return}
+  <div class=row>${backB()}<button class=bad onclick="mark('ng')">✕ まだ</button><button class=good onclick="mark('ok')">○ 覚えた</button></div>`;return}
  const pg=hasPG(w);
  $('app').innerHTML=bar()+`<div class=card><div class=q>${w[3]}</div><div class=en>${w[2]}</div>
  <input id=in autocomplete=off autocapitalize=off placeholder="スペイン語で入力" onkeydown="if(event.key=='Enter'){answered?nextT():check()}">
@@ -110,7 +113,7 @@ function show(){
  ${pg?`<div class=lab>品詞</div><div class=sel id=sp>${POS.map(p=>`<button onclick="pick('p','${p}')">${p}</button>`).join('')}</div>
  <div class=lab>性（男性・女性）</div><div class=sel id=sg>${GEN.map(g=>`<button onclick="pick('g','${g}')">${g}</button>`).join('')}</div>`:''}
  <div id=res></div></div>
- <div class=row><button id=btn class=main onclick="answered?nextT():check()">答え合わせ</button></div>`;
+ <div class=row>${backB()}<button id=btn class=main onclick="answered?nextT():check()">答え合わせ</button></div>`;
  selP=selG=null;$('in').focus()}
 const POS=['名詞','動詞','形容詞','その他'],GEN=['男性','女性','なし'];
 let selP=null,selG=null;
