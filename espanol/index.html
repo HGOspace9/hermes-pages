@@ -53,6 +53,7 @@ const GROUPS=[
  ["👋 あいさつ・会話","あいさつ・別れの言葉と、名前・出身・年齢・仕事をたずねる質問と答え",["U0 あいさつ","U1 質問と答え"],"#e67e22","¡Hola! / ¿De dónde eres?"],
  ["📚 教科書の単語","教室のもの・職業・職場・国籍・個人情報・文化・週末にしたいこと",["U0 教室のもの","U1 職業","U1 職場","U1 国籍","U1 個人情報","U2 文化","U2 週末にしたいこと"],"#27ae60","la silla, el profesor"],
  ["🔁 動詞の活用","ser・tener・llamarse・querer を yo, tú, él… の人称ごとに",["U1 動詞の活用","U2 動詞の活用"],"#9b59b6","soy, eres, es…"],
+ ["🏷️ 冠詞 el・la・los・las","名詞の性（男性・女性）と数（1つ・複数）で冠詞を使い分ける。-o は男性、-a・-dad・-ción は女性が多い",["冠詞のルール","冠詞＋名詞（単数）","冠詞＋名詞（複数）"],"#e74c3c","el libro → los libros"],
 ];
 let cats=[],label='',ord=localStorage.getItem('esp_ord')!='0';
 const inCat=k=>cats.includes(W[k][4]);
@@ -123,7 +124,8 @@ let lastOk=false;
 function check(){const w=W[pool[i]],v=$('in').value,pg=hasPG(w);
  if(!v||(pg&&(!selP||!selG))){$('res').innerHTML='<p class=meta>'+(pg?'単語・品詞・性をすべて選んでください':'スペイン語を入力してください')+'</p>';return}
  const alts=w[0].split(' / ').concat([w[0]]);
- const okW=alts.some(a=>norm(v)==norm(a)),exact=alts.some(a=>strip(v)==strip(a));
+ const KA=w[4].startsWith('冠詞'),S=KA?(x=>x.trim().toLowerCase().replace(/[¿?¡!.,]/g,'').replace(/\s+/g,' ').trim()):strip,Nn=KA?(x=>S(x).normalize('NFD').replace(/[\u0300-\u036f]/g,'')):norm;
+ const okW=alts.some(a=>Nn(v)==Nn(a)),exact=alts.some(a=>S(v)==S(a));
  const f=info(w),okP=!pg||selP==f.p,okG=!pg||selG==f.g;
  lastOk=okW&&okP&&okG;answered=true;
  const line=(ok,label,ans)=>`<div class=${ok?'ok':'ng'}>${ok?'○':'✕'} ${label}：${ans}</div>`;
