@@ -26,12 +26,12 @@ ul{background:#fff;border-radius:14px;padding:12px 12px 12px 30px}li{margin:6px 
 .spk{padding:4px 10px;font-size:18px;background:#f3ead9;vertical-align:middle}
 .big{font-size:40px;margin:6px 0}.col{display:flex;flex-direction:column;gap:8px;margin-top:14px}
 .hero{background:#fff;border-radius:22px;padding:20px;margin-bottom:14px;box-shadow:0 3px 12px #0001}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 @media(max-width:360px){.grid{grid-template-columns:1fr}}
 .tile{background:#fff;border-radius:22px;padding:18px 16px;box-shadow:0 3px 12px #0001;border-top:6px solid var(--c);cursor:pointer;min-height:200px;display:flex;flex-direction:column;transition:transform .1s}
 .tile:active{transform:scale(.97)}
 .emo{font-size:34px}.tt{font-size:19px;font-weight:800;margin:6px 0 4px;color:var(--c)}
-.td{font-size:13px;color:#555;line-height:1.45;flex:1}.tx{font-size:12px;color:#999;margin-top:8px;font-style:italic}
+.td{font-size:13px;color:#555;line-height:1.45;flex:1}.tx{font-size:12px;overflow-wrap:anywhere;color:#999;margin-top:8px;font-style:italic}
 .pb{height:6px;background:#eee;border-radius:3px;margin-top:10px;overflow:hidden}.pb i{display:block;height:100%;background:var(--c)}
 .tc{font-size:12px;color:#777;margin-top:4px}
 </style></head><body><div class="w">
