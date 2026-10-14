@@ -25,9 +25,18 @@ ul{background:#fff;border-radius:14px;padding:12px 12px 12px 30px}li{margin:6px 
 #res div{margin:3px 0}
 .spk{padding:4px 10px;font-size:18px;background:#f3ead9;vertical-align:middle}
 .big{font-size:40px;margin:6px 0}.col{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.hero{background:#fff;border-radius:22px;padding:20px;margin-bottom:14px;box-shadow:0 3px 12px #0001}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:360px){.grid{grid-template-columns:1fr}}
+.tile{background:#fff;border-radius:22px;padding:18px 16px;box-shadow:0 3px 12px #0001;border-top:6px solid var(--c);cursor:pointer;min-height:200px;display:flex;flex-direction:column;transition:transform .1s}
+.tile:active{transform:scale(.97)}
+.emo{font-size:34px}.tt{font-size:19px;font-weight:800;margin:6px 0 4px;color:var(--c)}
+.td{font-size:13px;color:#555;line-height:1.45;flex:1}.tx{font-size:12px;color:#999;margin-top:8px;font-style:italic}
+.pb{height:6px;background:#eee;border-radius:3px;margin-top:10px;overflow:hidden}.pb i{display:block;height:100%;background:var(--c)}
+.tc{font-size:12px;color:#777;margin-top:4px}
 </style></head><body><div class="w">
-<h1>🇪🇸 スペイン語 単語クイズ</h1>
-<div id="top" style="display:none"><div class="row" style="margin:0 0 8px"><button onclick="home()">← 選び直す</button><button id="ordb" onclick="ord=!ord;localStorage.setItem('esp_ord',ord?1:0);start('all')"></button></div><div id="now" class="meta"></div>
+<h1 onclick="home()" style="cursor:pointer">🇪🇸 スペイン語 練習</h1>
+<div id="top" style="display:none"><div class="row" style="margin:0 0 8px"><button onclick="home()">← ホーム</button><button id="ordb" onclick="ord=!ord;localStorage.setItem('esp_ord',ord?1:0);start('all')"></button></div><div id="now" class="meta"></div>
 <div class="tabs"><button id="t1" class="on" onclick="mode('card')">めくる</button><button id="t2" onclick="mode('type')">書いて答える</button><button id="t3" onclick="mode('list')">一覧</button></div>
 </div><div id="app"></div>
 <p class="meta">日本語を見てスペイン語を答えます</p>
@@ -40,19 +49,28 @@ let marks=JSON.parse(localStorage.getItem(KEY)||'{}');
 let pool=[],i=0,m='card',rev=false,answered=false,okR=[],ngR=[];
 // グループ（規則性ごと）
 const GROUPS=[
- ["🔢 数字","0から100まで、順番に",["数字 0-100"]],
- ["👋 あいさつ・会話","あいさつ、教室で使う表現、自己紹介の質問と答え",["U0 あいさつ","U1 質問と答え"]],
- ["📚 教科書の単語","教室のもの・職業・職場・国籍・個人情報・文化・週末にしたいこと",["U0 教室のもの","U1 職業","U1 職場","U1 国籍","U1 個人情報","U2 文化","U2 週末にしたいこと"]],
- ["🔁 動詞の活用","ser・tener・llamarse・querer など、人称ごとに",["U1 動詞の活用","U2 動詞の活用"]],
+ ["🔢 数字","0〜100を順番に。16〜29や「treinta y uno」のような組み立ての規則をつかもう",["数字 0-100"],"#3498db","cero, uno, dos… veintiuno"],
+ ["👋 あいさつ・会話","あいさつ・別れの言葉と、名前・出身・年齢・仕事をたずねる質問と答え",["U0 あいさつ","U1 質問と答え"],"#e67e22","¡Hola! / ¿De dónde eres?"],
+ ["📚 教科書の単語","教室のもの・職業・職場・国籍・個人情報・文化・週末にしたいこと",["U0 教室のもの","U1 職業","U1 職場","U1 国籍","U1 個人情報","U2 文化","U2 週末にしたいこと"],"#27ae60","la silla, el profesor"],
+ ["🔁 動詞の活用","ser・tener・llamarse・querer を yo, tú, él… の人称ごとに",["U1 動詞の活用","U2 動詞の活用"],"#9b59b6","soy, eres, es…"],
 ];
 let cats=[],label='',ord=localStorage.getItem('esp_ord')!='0';
 const inCat=k=>cats.includes(W[k][4]);
 const cnt=cs=>W.filter(w=>cs.includes(w[4])).length;
 function home(){m='home';$('top').style.display='none';
- $('app').innerHTML=GROUPS.map((g,n)=>`<div class=card style="min-height:0;text-align:left;margin-bottom:12px">
- <div style="font-size:20px;font-weight:700">${g[0]} <span class=pos>${cnt(g[2])}問</span></div><div class=pos style="margin:4px 0 10px">${g[1]}</div>
- <div class=col style="margin:0"><button class=main onclick="go(${n},-1)">まとめて練習</button>
- ${g[2].length>1?'<div class=sel style="flex-wrap:wrap">'+g[2].map((c,j)=>`<button onclick="go(${n},${j})">${c.replace(/^U\d /,'')}（${cnt([c])}）</button>`).join('')+'</div>':''}</div></div>`).join('')}
+ $('app').innerHTML=`<div class=hero><div style="font-size:15px;color:#a0522d">Aula Internacional Plus 1 ・ Unidad 0〜2</div>
+ <div style="font-size:24px;font-weight:800;margin:4px 0">何を練習しますか？</div>
+ <div class=pos>グループごとに、規則のまとまりで覚えられます</div></div>
+ <div class=grid>`+GROUPS.map((g,n)=>{const L=W.filter(w=>g[2].includes(w[4])),ok=L.filter(w=>marks[w[0]]=='ok').length,pc=Math.round(ok*100/L.length);
+ return `<div class=tile style="--c:${g[3]}" onclick="group(${n})">
+ <div class=emo>${g[0].split(' ')[0]}</div><div class=tt>${g[0].split(' ').slice(1).join(' ')}</div>
+ <div class=td>${g[1]}</div><div class=tx>例：${g[4]}</div>
+ <div class=pb><i style="width:${pc}%"></i></div><div class=tc>${L.length}問 ・ 覚えた ${ok}</div></div>`}).join('')+`</div>`}
+function group(n){const g=GROUPS[n];m='home';$('top').style.display='none';
+ $('app').innerHTML=`<button onclick="home()" style="margin-bottom:12px">← ホーム</button>
+ <div class=tile style="--c:${g[3]};cursor:default"><div class=emo>${g[0].split(' ')[0]}</div><div class=tt>${g[0].split(' ').slice(1).join(' ')}</div><div class=td>${g[1]}</div></div>
+ <div class=col><button class=main style="font-size:18px;padding:16px" onclick="go(${n},-1)">まとめて練習（${cnt(g[2])}問）</button>
+ ${g[2].length>1?g[2].map((c,j)=>`<button onclick="go(${n},${j})">${c.replace(/^U\d /,'')}　<span class=pos>${cnt([c])}問</span></button>`).join(''):''}</div>`}
 function go(n,j){const g=GROUPS[n];cats=j<0?g[2]:[g[2][j]];label=g[0]+(j<0?'':' › '+g[2][j]);
  $('top').style.display='';mode('card');start('all')}
 const save=()=>localStorage.setItem(KEY,JSON.stringify(marks));
