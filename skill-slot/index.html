@@ -41,7 +41,7 @@ const ext=(sh,d,curve=10)=>new THREE.ExtrudeGeometry(sh,{depth:d,bevelEnabled:fa
 add(ext(prof(1),D*0.55),body,0,0,-D*0.55+D/2);          // 前半分：青
 add(ext(prof(1.03),D*0.5),dark,0,-0.03,-D/2);            // 後ろ半分：濃い色（写真の黒い部分）
 // 前面：上の飾り板（アーチ内）
-{const sh=new THREE.Shape();sh.moveTo(0.8,0);sh.absarc(0,0,0.8,0,Math.PI,false);sh.lineTo(0.8,0);add(ext(sh,0.06,10),light,0,H+0.25,D/2);}
+
 // 小さな横長パネル（写真の数字パネルの位置、無地）
 add(new THREE.BoxGeometry(1.6,0.28,0.08),dark,0,H+0.05,D/2+0.03);
 
