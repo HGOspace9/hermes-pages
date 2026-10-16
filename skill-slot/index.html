@@ -27,13 +27,13 @@ const stars=[];for(let n=0;n<40;n++)stars.push([r()*W|0,r()*105|0,r()<.2?'#8888c
 let last=0;
 function frame(now){requestAnimationFrame(frame);
  if(now-last<66)return;last=now; // 約15コマ/秒
- const t=now/1000,drift=Math.round(Math.sin(t*.25)*6),bob=Math.round(Math.sin(t*.4)*2);
+ const t=now/1000,drift=0,bob=0; // 全体の漂いはなし
  for(let y=0;y<H;y++){ // 行ごとの波
-  const dx=Math.round(Math.sin(y*.18+t*2.2)*1.5+Math.sin(y*.05-t*.9)*1)+drift;
+  const dx=Math.round(Math.sin(y*.08+t*1.2)*1); // 1つの波だけ、一定の速さでゆっくり
   const sy=Math.min(H-1,Math.max(0,y+bob));
   x.drawImage(base,0,sy,W,1,dx-W,y,W,1);x.drawImage(base,0,sy,W,1,dx,y,W,1);x.drawImage(base,0,sy,W,1,dx+W,y,W,1);}
- for(const [sx,sy,col,ph] of stars){if(Math.sin(t*3+ph)<-.6)continue; // ちらつく星
-  const wx=(sx+drift+Math.round(Math.sin(sy*.18+t*2.2)*1.5)+W)%W;x.fillStyle=col;x.fillRect(wx,sy-bob,1,1);}
+ for(const [sx,sy,col,ph] of stars){if(Math.sin(t*1.2+ph)<-.85)continue; // ちらつく星
+  const wx=(sx+drift+Math.round(Math.sin(sy*.08+t*1.2)*1)+W)%W;x.fillStyle=col;x.fillRect(wx,sy-bob,1,1);}
 }
 requestAnimationFrame(frame);})();
 </script>
