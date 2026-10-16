@@ -98,11 +98,13 @@ add(new THREE.BoxGeometry(1.7,0.9,0.1),deep,0,winY,D/2+0.0);
 add(new THREE.BoxGeometry(1.84,0.08,0.14),light,0,winY+0.49,D/2+0.03);
 add(new THREE.BoxGeometry(1.84,0.08,0.14),light,0,winY-0.49,D/2+0.03);
 for(const s of [-1,1]) add(new THREE.BoxGeometry(0.08,1.06,0.14),light,s*0.88,winY,D/2+0.03);
-// リール3本（多角柱、無地）
-const reels=[];
+// リール3本：12枚の板を輪にしたもの（色2種の交互で、回っているのが分かる。文字・絵なし）
+const reels=[],reelM2=M(0x4f70c8),SEG=12,STEP=Math.PI*2/SEG,PW=2*0.42*Math.tan(Math.PI/SEG);
 for(let i=-1;i<=1;i++){
-  const r=add(new THREE.CylinderGeometry(0.42,0.42,0.48,12),reelM,i*0.55,winY,D/2-0.3,0,0,Math.PI/2);
-  reels.push(r);
+  const g=new THREE.Group();g.position.set(i*0.55,winY,D/2-0.3);slot.add(g);
+  for(let k=0;k<SEG;k++){const an=k*STEP,m=new THREE.Mesh(new THREE.BoxGeometry(0.46,PW,0.04),k%2?reelM2:reelM);
+    m.position.set(0,Math.sin(an)*0.4,Math.cos(an)*0.4);m.rotation.x=-an;g.add(m);}
+  reels.push(g);
   if(i<1) add(new THREE.BoxGeometry(0.05,0.84,0.08),deep,i*0.55+0.275,winY,D/2+0.02);
 }
 // 窓の下の斜めの棚（写真の横縞の部分を形だけ）
@@ -124,7 +126,31 @@ lp(new THREE.BoxGeometry(0.14,0.5,0.14),deep,0.14,-0.05,0.12,0.4,0,0);       // 
 lp(new THREE.CylinderGeometry(0.06,0.06,1.1,6),deep,0.16,0.55,0);             // 棒
 lp(new THREE.DodecahedronGeometry(0.17,0),light,0.16,1.15,0);                 // 先の玉
 
+// ===== 動き：レバーを引く → リールが回る → 左から順に止まる =====
+const clock=new THREE.Clock();let spinning=false,pullT=-1,shake=0;
+const st=reels.map(()=>({done:true}));
+function pull(){if(spinning)return;spinning=true;pullT=0;const now=clock.elapsedTime;
+  st.forEach((s,i)=>Object.assign(s,{done:false,stopping:false,v:16,stopAt:now+1.1+i*0.55}));}
+window.pull=pull;
+const ray=new THREE.Raycaster(),ptr=new THREE.Vector2();let downXY=null;
+const hitLever=e=>{ptr.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1);ray.setFromCamera(ptr,camera);return ray.intersectObjects(lever.children).length>0;};
+renderer.domElement.addEventListener('pointerdown',e=>{downXY=[e.clientX,e.clientY];});
+renderer.domElement.addEventListener('pointerup',e=>{if(downXY&&Math.hypot(e.clientX-downXY[0],e.clientY-downXY[1])<6&&hitLever(e))pull();downXY=null;});
+renderer.domElement.addEventListener('pointermove',e=>{if(!e.buttons)renderer.domElement.style.cursor=hitLever(e)?'pointer':'grab';});
+addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='Enter'){e.preventDefault();pull();}});
+const easeBack=k=>{const c1=1.70158,c3=c1+1;return 1+c3*Math.pow(k-1,3)+c1*Math.pow(k-1,2);};
+function animate(){const dt=Math.min(clock.getDelta(),0.05),now=clock.elapsedTime;
+  if(pullT>=0){pullT+=dt;const q=pullT<0.22?pullT/0.22:Math.max(0,1-(pullT-0.22)/0.45);lever.rotation.x=q*1.05;if(pullT>0.67){pullT=-1;lever.rotation.x=0;}}
+  reels.forEach((g,i)=>{const s=st[i];if(s.done)return;
+    if(!s.stopping){g.rotation.x-=s.v*dt;
+      if(now>=s.stopAt){s.stopping=true;s.t0=now;s.from=g.rotation.x;s.fin=Math.floor(s.from/STEP)*STEP-STEP*3;}}
+    else{const k=Math.min(1,(now-s.t0)/0.5);g.rotation.x=s.from+(s.fin-s.from)*easeBack(k);
+      if(k>=1){s.done=true;s.result=((Math.round(-s.fin/STEP)%SEG)+SEG)%SEG;shake=0.15;}}});
+  if(shake>0){shake-=dt;slot.position.x=Math.sin(now*90)*0.012*(shake/0.15);}else slot.position.x=0;
+  if(spinning&&st.every(s=>s.done)){spinning=false;window.lastResult=st.map(s=>s.result); // 出目（0〜11）。結果カードは次のラウンドで
+    dispatchEvent(new CustomEvent('slotresult',{detail:window.lastResult}));}
+  controls.update();renderer.render(scene,camera);}
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
-renderer.setAnimationLoop(()=>{controls.update();renderer.render(scene,camera);});
+renderer.setAnimationLoop(animate);
 </script>
 </body></html>
