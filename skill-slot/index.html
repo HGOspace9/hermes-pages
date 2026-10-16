@@ -129,18 +129,20 @@ lp(new THREE.DodecahedronGeometry(0.17,0),light,0.16,1.15,0);                 //
 // ===== 動き：レバーを引く → リールが回る → 左から順に止まる =====
 const clock=new THREE.Clock();let spinning=false,pullT=-1;
 const st=reels.map(()=>({done:true}));
-function pull(auto){if(spinning)return;spinning=true;if(auto)pullT=0;const now=clock.elapsedTime;
-  st.forEach((s,i)=>Object.assign(s,{done:false,stopping:false,v:16,stopAt:now+1.1+i*0.55}));}
+function pull(auto){if(spinning)return false;spinning=true;if(auto)pullT=0;const now=clock.elapsedTime;
+  st.forEach((s,i)=>Object.assign(s,{done:false,stopping:false,v:16,stopAt:now+1.1+i*0.55}));return true;}
 window.pull=pull;
 window.leverXY=()=>{const v=new THREE.Vector3();lever.children[3].getWorldPosition(v);v.project(camera);return [(v.x+1)/2*innerWidth,(1-v.y)/2*innerHeight];}; // テスト用
 const ray=new THREE.Raycaster(),ptr=new THREE.Vector2();
 const hitLever=e=>{ptr.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1);ray.setFromCamera(ptr,camera);return ray.intersectObjects(lever.children).length>0;};
 // レバー：つかんで下へドラッグすると実際に下がる。下まで引くと回る。離すとバネで戻る
-let drag=null;const LMAX=1.05,cv=renderer.domElement;
+let drag=null;const LMAX=1.55,cv=renderer.domElement;
 cv.addEventListener('pointerdown',e=>{if(!hitLever(e))return;drag={y:e.clientY,q:0,fired:false};controls.enabled=false;pullT=-1;cv.setPointerCapture(e.pointerId);cv.style.cursor='grabbing';},true);
 cv.addEventListener('pointermove',e=>{
-  if(drag){const q=Math.max(0,Math.min(1,(e.clientY-drag.y)/150));drag.q=q;lever.rotation.x=q*LMAX;
-    if(q>=0.95&&!drag.fired){drag.fired=true;pull(false);}return;}
+  if(drag){const q=Math.max(0,Math.min(1,(e.clientY-drag.y)/220));drag.q=q;lever.rotation.x=q*LMAX;
+    if(q>=0.95&&!drag.fired)drag.fired=pull(false); // 回せた時だけ「引いた」扱い（回転中なら次の引きを待つ）
+    if(q<=0.3)drag.fired=false; // 持ったまま上に戻したら、もう一度引ける
+    return;}
   if(!e.buttons)cv.style.cursor=hitLever(e)?'grab':'default';});
 const endDrag=()=>{if(!drag)return;drag=null;controls.enabled=true;cv.style.cursor='grab';};
 cv.addEventListener('pointerup',endDrag);cv.addEventListener('pointercancel',endDrag);
