@@ -36,7 +36,7 @@ const add=(geo,mat,x,y,z,rx=0,ry=0,rz=0)=>{const m=new THREE.Mesh(geo,mat);m.pos
 const W=2,D=1.5,H=2.2; // 本体
 // 本体：正面の形（四角＋上がアーチ）を奥へ押し出す
 const prof=(sc=1)=>{const sh=new THREE.Shape();const w=W/2*sc;
-  sh.moveTo(-w,0.2);sh.lineTo(w,0.2);sh.lineTo(w,H+0.2);sh.absarc(0,H+0.2,w,0,Math.PI,false);sh.lineTo(-w,0.2);return sh;};
+  sh.moveTo(-w,0.2);sh.lineTo(w,0.2);sh.lineTo(w,H+0.35);sh.lineTo(-w,H+0.35);sh.lineTo(-w,0.2);return sh;};
 const ext=(sh,d,curve=10)=>new THREE.ExtrudeGeometry(sh,{depth:d,bevelEnabled:false,curveSegments:curve});
 add(ext(prof(1),D*0.55),body,0,0,-D*0.55+D/2);          // 前半分：青
 add(ext(prof(1.03),D*0.5),dark,0,-0.03,-D/2);            // 後ろ半分：濃い色（写真の黒い部分）
