@@ -68,9 +68,9 @@ controls.target.set(0,1.6,0);controls.enableDamping=true;controls.enablePan=fals
 controls.minDistance=4;controls.maxDistance=12;
 
 // 光：ポリゴンの面が見えるように強めの方向光
-scene.add(new THREE.HemisphereLight(0x9fb8ff,0x0a1030,0.9));
-const key=new THREE.DirectionalLight(0xffffff,2.2);key.position.set(4,6,5);scene.add(key);
-const rim=new THREE.DirectionalLight(0x6f8cff,1.0);rim.position.set(-5,3,-4);scene.add(rim);
+scene.add(new THREE.HemisphereLight(0x9fb8ff,0x1a2050,1.5));
+const key=new THREE.DirectionalLight(0xffffff,3.3);key.position.set(4,6,5);scene.add(key);
+const rim=new THREE.DirectionalLight(0x8fa8ff,2.0);rim.position.set(-5,3,-4);scene.add(rim);
 
 // 濃い青の色バリエーション（文字・絵なし、濃淡だけ）
 const M=c=>new THREE.MeshStandardMaterial({color:c,flatShading:true,metalness:0.35,roughness:0.45});
