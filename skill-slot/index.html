@@ -181,9 +181,9 @@ function gemMesh(c){const g=new THREE.Group(),m=GM[c];let o;
   else{o=new THREE.Mesh(new THREE.DodecahedronGeometry(0.07,0),m);o.scale.set(1.15,0.8,0.6);o.rotation.set(0.4,0.3,0.2);g.add(o);}
   return g;}
 // 平らな宝石：3Dの宝石の形と「面の向き（光の当たり方）」はそのまま、奥行きだけつぶす → キラキラは残り、飛び出さない
-const GMs={};for(const k in GEMC)GMs[k]=new THREE.MeshPhongMaterial({color:GEMC[k],emissive:GEMC[k],emissiveIntensity:k==='X'?0.03:0.12,specular:k==='X'?0x222222:0xffffff,shininess:k==='X'?8:90}); // 面ごとに光って白くキラッと反射
-// リール窓の前に小さな光を置き、ゆっくり左右に動かす → 宝石の面に光が走ってキラッと光る（画面は揺れない）
-const gemLight=new THREE.PointLight(0xffffff,1.6,1.1,2);gemLight.position.set(0,winY+0.2,D/2+0.4);slot.add(gemLight);
+const GMs={};for(const k in GEMC)GMs[k]=new THREE.MeshPhongMaterial({color:GEMC[k],emissive:GEMC[k],emissiveIntensity:k==='X'?0.03:0.12,specular:k==='X'?0x222222:0x8a8a8a,shininess:k==='X'?8:60}); // 面ごとに光って白くキラッと反射
+// リール窓の前に小さな光を1つ（固定）。宝石の面に控えめなツヤを出す
+const gemLight=new THREE.PointLight(0xffffff,0.7,1.1,2);gemLight.position.set(-0.35,winY+0.3,D/2+0.4); /* 止まった小さな光（動かさない・まぶしくない） */slot.add(gemLight);
 function gemFlat(c){const src=gemMesh(c),out=new THREE.Group();src.updateMatrixWorld(true);
   src.traverse(o=>{if(!o.isMesh)return;const g=o.geometry.clone().toNonIndexed();g.applyMatrix4(o.matrixWorld);g.computeVertexNormals();
     const pa=g.attributes.position;for(let i=0;i<pa.count;i++)pa.setZ(i,pa.getZ(i)*0.08);pa.needsUpdate=true; // 面の向きは元のまま
@@ -333,7 +333,7 @@ function animate(){const dt=Math.min(clock.getDelta(),0.05),now=clock.elapsedTim
       if(k>=1){s.done=true;clack(200,.04,.12);s.result=LAYOUT[((Math.round(s.fin/STEP)%SEG)+SEG)%SEG];}}});
   if(spinning&&st.every(s=>s.done)){spinning=false;window.lastResult=st.map(s=>s.result); // 出目（0〜11）。結果カードは次のラウンドで
     dispatchEvent(new CustomEvent('slotresult',{detail:window.lastResult}));celebrate(outcome.tier,window.lastResult);setTimeout(()=>showCard(outcome.tier),350+(CEL[outcome.tier].lv>=4?500:0));}
-  gemLight.position.x=Math.sin(now*0.9)*0.75;gemLight.position.y=winY+0.15+Math.sin(now*0.55)*0.15;celeStep(now);camK+=(camGoal-camK)*Math.min(1,dt*3.5);applyShift();controls.update();renderer.render(scene,camera);}
+  celeStep(now);camK+=(camGoal-camK)*Math.min(1,dt*3.5);applyShift();controls.update();renderer.render(scene,camera);}
 // 画面の形に合わせて見え方を変える。ふだんはスロットが真ん中。
 // カードが出たときだけカメラを横（スマホは上）へずらし、カードを閉じる/もう一回引くと真ん中へ戻る
 let camK=0,camGoal=0;
