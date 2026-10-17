@@ -41,7 +41,10 @@ window.setLang=l=>{LANG=l;localStorage.setItem('slotLang',l);applyLang();};
 canvas.gl{touch-action:none}
 #hint{max-width:calc(100% - 150px);text-align:center}
 @media (min-aspect-ratio:1/1) and (min-width:820px){#card{left:auto;right:11vw;top:50%;bottom:auto;width:min(360px,32vw);transform:translate(30px,-50%)}#card.on{transform:translate(0,-50%)}}
-@media (max-aspect-ratio:1/1){#card{bottom:2vh;max-height:38vh;overflow:auto;font-size:13px;padding:10px 12px}#card .nm{font-size:18px}}
+@media (max-aspect-ratio:1/1){#card{bottom:2vh;max-height:44vh;display:flex;flex-direction:column;font-size:13px;padding:10px 12px}#card .nm{font-size:18px}#card .det{max-height:none;flex:1;min-height:0;overflow:auto}}
+@media (min-aspect-ratio:1/1) and (min-width:820px) and (max-height:520px){
+ #card{right:2vw;width:300px;top:68px;bottom:8px;max-height:none;display:flex;flex-direction:column;font-size:12px;padding:10px 12px;transform:translate(30px,0)}
+ #card.on{transform:none}#card:not(.open){bottom:auto}#card .nm{font-size:17px}#card .det{max-height:none;flex:1;min-height:0;overflow:auto}}
 </style>
 <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
 </head><body>
@@ -269,7 +272,7 @@ function animate(){const dt=Math.min(clock.getDelta(),0.05),now=clock.elapsedTim
 let camK=0,camGoal=0;
 function applyShift(){const w=innerWidth,h=innerHeight,k=camK*camK*(3-2*camK);
   if(k<0.001){camera.clearViewOffset();return;}
-  if(w/h>=1&&w>=820)camera.setViewOffset(w,h,w*0.14*k,0,w,h);   // 横長：スロットを左へ、右にカード
+  if(w/h>=1&&w>=820)camera.setViewOffset(w,h,w*(h<=520?0.2:0.14)*k,0,w,h);   // 横長：スロットを左へ、右にカード
   else camera.setViewOffset(w,h,0,h*0.2*k,w,h);                // 縦長：スロットを上へ、下にカード
 }
 function fitView(){const asp=innerWidth/innerHeight;camera.aspect=asp;
