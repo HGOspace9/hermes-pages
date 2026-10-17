@@ -125,13 +125,16 @@ lp(new THREE.CylinderGeometry(0.22,0.22,0.16,8),dark,0.04,0,0,0,0,Math.PI/2); //
 lp(new THREE.BoxGeometry(0.14,0.5,0.14),deep,0.14,-0.05,0.12,0.4,0,0);       // 下のフック
 lp(new THREE.CylinderGeometry(0.06,0.06,1.1,6),deep,0.16,0.55,0);             // 棒
 lp(new THREE.DodecahedronGeometry(0.17,0),light,0.16,1.15,0);                 // 先の玉
+// レバーの当たり判定（見えない箱）：棒と玉のまわりを広く、本体とのすき間まで覆う
+const leverHit=new THREE.Mesh(new THREE.BoxGeometry(0.62,1.75,0.7),new THREE.MeshBasicMaterial());
+leverHit.position.set(0.12,0.5,0);leverHit.visible=false;lever.add(leverHit);
 
 // ===== 動き：レバーを引く → リールが回る → 左から順に止まる =====
 const clock=new THREE.Clock();let spinning=false,pullT=-1;
 const st=reels.map(()=>({done:true}));
 function pull(auto){if(spinning)return false;spinning=true;if(auto)pullT=0;const now=clock.elapsedTime;
   st.forEach((s,i)=>Object.assign(s,{done:false,stopping:false,v:16,stopAt:now+1.1+i*0.55}));return true;}
-window.pull=pull;
+window.pull=pull;window.hitTest=(x,y)=>hitLever({clientX:x,clientY:y});
 window.leverXY=()=>{const v=new THREE.Vector3();lever.children[3].getWorldPosition(v);v.project(camera);return [(v.x+1)/2*innerWidth,(1-v.y)/2*innerHeight];}; // テスト用
 const ray=new THREE.Raycaster(),ptr=new THREE.Vector2();
 const hitLever=e=>{ptr.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1);ray.setFromCamera(ptr,camera);return ray.intersectObjects(lever.children).length>0;};
