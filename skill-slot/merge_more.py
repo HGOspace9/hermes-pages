@@ -24,3 +24,10 @@ data["tiers"] = {t: allr[a:b] for t, a, b in CUT}
 data["tiers"]["new"] = new
 js.write_text("window.SKILLS=" + json.dumps(data, ensure_ascii=False, separators=(",", ":")) + ";\n")
 print("merged", {k: len(v) for k, v in data["tiers"].items()}, "total", sum(len(v) for v in data["tiers"].values()))
+
+# index.html の skills.js?v=… を中身のハッシュに更新（古いデータがブラウザに残って出目とずれるのを防ぐ）
+import hashlib, re
+hsh = hashlib.sha1(js.read_bytes()).hexdigest()[:10]
+ix = here / "index.html"
+ix.write_text(re.sub(r'skills\.js\?v=[^"]*"', f'skills.js?v={hsh}"', ix.read_text()))
+print("skills.js version", hsh)

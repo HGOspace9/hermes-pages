@@ -3,7 +3,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0">
 <title>Skill Slot</title>
-<script src="skills.js?v=20261017e"></script>
+<script src="skills.js?v=39b2536282"></script>
 <script>
 // ===== 言語（初期は英語。設定で日本語に。選んだ言語は保存される） =====
 window.I18N={
@@ -291,7 +291,7 @@ function detHTML(k,t){const e=LANG==='ja'?k.j:k.e;if(!e)return `<p>${t.detTodo}<
   return `<h4>${t.hWhat}</h4><p>${esc(e.w)}</p><h4>${t.hWhen}</h4><p>${esc(e.u)}</p><h4>${t.hEx}</h4><p>${esc(e.x)}</p>`;}
 window.toggleDet=()=>{card.classList.toggle('open');renderCard();};
 window.rerenderCard=()=>{renderCard();if(document.getElementById('savedPanel').classList.contains('on'))renderSaved();};document.getElementById('savedCount').textContent=saved.length;window.showCard=(...a)=>showCard(...a);
-function showCard(tier){const list=(window.SKILLS&&SKILLS.tiers[tier])||[];if(!list.length)return;
+function showCard(tier){let list=(window.SKILLS&&SKILLS.tiers[tier])||[];if(!list.length)list=(window.SKILLS&&(SKILLS.tiers.low||SKILLS.tiers.new))||[];if(!list.length)return; // 万一その段のデータが無くても必ず何か出す
   const k=list[Math.floor(Math.random()*list.length)];cur={tier,k};renderCard();
   card.classList.remove('open');card.classList.add('on');camGoal=1;window.lastCard={tier,name:k.n};}
 function hideCard(){card.classList.remove('on');camGoal=0;}window.hideCard=hideCard;
