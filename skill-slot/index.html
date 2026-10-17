@@ -200,14 +200,14 @@ const card=document.getElementById('card');let cur=null;
 function renderCard(){if(!cur)return;const {tier,k}=cur,t=T(),col=TC[tier];
   const desc=(LANG==='ja'&&k.dj)||k.d; // 日本語訳(dj)はdで追加予定。なければ英語の説明
   card.style.setProperty('--c',col);
-  card.innerHTML=`<span class="x" title="${t.close}" onclick="this.parentNode.classList.remove('on')">×</span><div class="tier">${t.tiers[tier]}</div>
+  card.innerHTML=`<span class="x" title="${t.close}" onclick="hideCard()">×</span><div class="tier">${t.tiers[tier]}</div>
    <div class="nm">${esc(k.n)}</div><div class="meta">${k.rank?'#'+k.rank+t.sep:''}${fmt(k.i)} ${t.installs}${t.sep}${esc(k.src)}</div>
    <div class="ds">${esc(desc||t.noDesc)}${k.dx?`<div class="dx">${t.dxNote}</div>`:''}</div><a href="https://skills.sh/${esc(k.src)}/${esc(k.n)}" target="_blank" rel="noopener">${t.view}</a>`;}
 window.rerenderCard=renderCard;window.showCard=(...a)=>showCard(...a);
 function showCard(tier){const list=(window.SKILLS&&SKILLS.tiers[tier])||[];if(!list.length)return;
   const k=list[Math.floor(Math.random()*list.length)];cur={tier,k};renderCard();
-  card.classList.add('on');window.lastCard={tier,name:k.n};}
-function hideCard(){card.classList.remove('on');}
+  card.classList.add('on');camGoal=1;window.lastCard={tier,name:k.n};}
+function hideCard(){card.classList.remove('on');camGoal=0;}window.hideCard=hideCard;
 // ===== 動き：レバーを引く → リールが回る → 左から順に止まる =====
 const clock=new THREE.Clock();let spinning=false,pullT=-1,outcome=null;
 const st=reels.map(()=>({done:true}));
@@ -256,13 +256,18 @@ function animate(){const dt=Math.min(clock.getDelta(),0.05),now=clock.elapsedTim
       if(k>=1){s.done=true;clack(200,.04,.12);s.result=LAYOUT[((Math.round(s.fin/STEP)%SEG)+SEG)%SEG];}}});
   if(spinning&&st.every(s=>s.done)){spinning=false;window.lastResult=st.map(s=>s.result); // 出目（0〜11）。結果カードは次のラウンドで
     dispatchEvent(new CustomEvent('slotresult',{detail:window.lastResult}));setTimeout(()=>showCard(outcome.tier),350);}
-  controls.update();renderer.render(scene,camera);}
-// 画面の形に合わせて見え方を変える：横長＝少し左に寄せてカードを右へ／縦長（スマホ）＝引いて上に寄せ、下にカード
+  camK+=(camGoal-camK)*Math.min(1,dt*3.5);applyShift();controls.update();renderer.render(scene,camera);}
+// 画面の形に合わせて見え方を変える。ふだんはスロットが真ん中。
+// カードが出たときだけカメラを横（スマホは上）へずらし、カードを閉じる/もう一回引くと真ん中へ戻る
+let camK=0,camGoal=0;
+function applyShift(){const w=innerWidth,h=innerHeight,k=camK*camK*(3-2*camK);
+  if(k<0.001){camera.clearViewOffset();return;}
+  if(w/h>=1&&w>=820)camera.setViewOffset(w,h,w*0.2*k,0,w,h);   // 横長：スロットを左へ、右にカード
+  else camera.setViewOffset(w,h,0,h*0.2*k,w,h);                // 縦長：スロットを上へ、下にカード
+}
 function fitView(){const asp=innerWidth/innerHeight;camera.aspect=asp;
-  if(asp<1){camera.fov=35+ (1-asp)*38;controls.target.set(0,0.75,0);}
-  else if(innerWidth>=820){camera.fov=35;controls.target.set(0.9,1.6,0);}
-  else{camera.fov=35;controls.target.set(0,1.6,0);}
-  camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);}
+  camera.fov=asp<1?35+(1-asp)*38:35;controls.target.set(0,1.6,0);
+  camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);applyShift();}
 fitView();addEventListener('resize',fitView);
 renderer.setAnimationLoop(animate);
 </script>
