@@ -9,10 +9,10 @@
 window.I18N={
  en:{hint:'Pull the lever down to draw a skill (or press Space)',settings:'Settings',language:'Language',close:'Close',
   tiers:{gold:'★★★ Top 10 most popular',silver:'★★ Popular: #11–50',bronze:'★ Popular: #51–200',blue:'Rank #201–400',low:'Two of a kind: a hidden gem',new:'No match: brand-new skill'},
-  installs:'installs',sep:' • ',noDesc:'(no description)',dxNote:'* No official description — summarized from the skill’s contents.',view:'View on skills.sh →',title:'Skill Slot'},
+  installs:'installs',sep:' • ',noDesc:'(no description)',dxNote:'* No official description — summarized from the skill’s contents.',view:'View on skills.sh →',more:'Details ▼',less:'Close details ▲',hWhat:'What it does',hWhen:'When it helps',hEx:'Example',detTodo:'Beginner-friendly explanation coming soon.',title:'Skill Slot'},
  ja:{hint:'レバーを下に引いてスキルを引こう（スペースキーでもOK）',settings:'設定',language:'言語',close:'閉じる',
   tiers:{gold:'★★★ 人気トップ10',silver:'★★ 人気 11〜50位',bronze:'★ 人気 51〜200位',blue:'人気 201〜400位',low:'2つ揃い：まだ知る人ぞ知る',new:'バラバラ：出てきたばかりの新着'},
-  installs:'インストール',sep:' ・ ',noDesc:'（説明なし）',dxNote:'※公式の説明がないため、スキルの中身を読んでまとめた説明です',view:'skills.sh で見る →',title:'スキルスロット'}};
+  installs:'インストール',sep:' ・ ',noDesc:'（説明なし）',dxNote:'※公式の説明がないため、スキルの中身を読んでまとめた説明です',view:'skills.sh で見る →',more:'詳細 ▼',less:'詳細を閉じる ▲',hWhat:'何をするスキル？',hWhen:'こんな時に便利',hEx:'たとえば',detTodo:'初心者向けのやさしい説明は準備中です。',title:'スキルスロット'}};
 window.LANG=localStorage.getItem('slotLang')||'en';
 window.T=()=>I18N[LANG];
 window.applyLang=()=>{const t=T();document.documentElement.lang=LANG;document.title=t.title;
@@ -29,7 +29,8 @@ window.setLang=l=>{LANG=l;localStorage.setItem('slotLang',l);applyLang();};
  background:#0a1238;border:3px solid var(--c);box-shadow:0 0 0 3px #000,0 0 24px var(--c);color:#e8ecff;font:14px/1.5 "Courier New",monospace;padding:14px 16px;image-rendering:pixelated}
 #card.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
 #card .tier{color:var(--c);font-weight:bold;letter-spacing:1px}#card .nm{font-size:22px;font-weight:bold;margin:4px 0 2px;word-break:break-all}
-#card .meta{color:#9aa6d8;font-size:12px}#card .ds{margin:8px 0;color:#cdd4f5}#card .dx{margin-top:4px;color:#7f89b8;font-size:11px}#card a{color:var(--c)}#card .x{position:absolute;right:8px;top:4px;cursor:pointer;color:#9aa6d8}
+#card .meta{color:#9aa6d8;font-size:12px}#card .ds{margin:8px 0;color:#cdd4f5}#card .dx{margin-top:4px;color:#7f89b8;font-size:11px}#card a{color:var(--c)}#card .x{position:absolute;right:6px;top:6px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#1a2460;border:2px solid #c8d0ff;color:#fff;font:bold 22px/1 sans-serif;box-shadow:0 0 0 2px #000}#card .x:hover{background:#c8d0ff;color:#0a1238}
+#card .tier{padding-right:44px}#card .btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px}#card .more{font:bold 14px "Courier New",monospace;background:var(--c);color:#0a1238;border:2px solid #000;padding:6px 12px;cursor:pointer}#card .det{display:none;margin:10px 0 4px;padding:10px;background:#060c2a;border:2px dashed #4a5490;max-height:34vh;overflow:auto}#card.open .det{display:block}#card .det h4{margin:8px 0 2px;color:var(--c);font-size:13px}#card .det h4:first-child{margin-top:0}#card .det p{margin:0;color:#dfe4ff}
 #hint{position:fixed;left:50%;top:3vh;transform:translateX(-50%);z-index:4;color:#9aa6d8;font:12px "Courier New",monospace;pointer-events:none}
 #gearBtn{position:fixed;right:16px;top:14px;z-index:6;width:46px;height:46px;border:3px solid #c8d0ff;background:#0a1238;box-shadow:0 0 0 3px #000;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
 #gearBtn svg{fill:#e8ecff;transition:transform .4s}#gearBtn:hover svg{transform:rotate(45deg)}#gearBtn:hover{border-color:#fff}
@@ -202,11 +203,17 @@ function renderCard(){if(!cur)return;const {tier,k}=cur,t=T(),col=TC[tier];
   card.style.setProperty('--c',col);
   card.innerHTML=`<span class="x" title="${t.close}" onclick="hideCard()">×</span><div class="tier">${t.tiers[tier]}</div>
    <div class="nm">${esc(k.n)}</div><div class="meta">${k.rank?'#'+k.rank+t.sep:''}${fmt(k.i)} ${t.installs}${t.sep}${esc(k.src)}</div>
-   <div class="ds">${esc(desc||t.noDesc)}${k.dx?`<div class="dx">${t.dxNote}</div>`:''}</div><a href="https://skills.sh/${esc(k.src)}/${esc(k.n)}" target="_blank" rel="noopener">${t.view}</a>`;}
+   <div class="ds">${esc(desc||t.noDesc)}${k.dx?`<div class="dx">${t.dxNote}</div>`:''}</div><div class="det">${detHTML(k,t)}</div>
+   <div class="btns"><button class="more" onclick="toggleDet()">${card.classList.contains('open')?t.less:t.more}</button>
+   <a href="https://skills.sh/${esc(k.src)}/${esc(k.n)}" target="_blank" rel="noopener">${t.view}</a></div>`;}
+// 詳細：初心者向けのやさしい説明（k.e=英語 k.j=日本語。各 {w:何をする, u:こんな時, x:たとえば}）
+function detHTML(k,t){const e=LANG==='ja'?k.j:k.e;if(!e)return `<p>${t.detTodo}</p>`;
+  return `<h4>${t.hWhat}</h4><p>${esc(e.w)}</p><h4>${t.hWhen}</h4><p>${esc(e.u)}</p><h4>${t.hEx}</h4><p>${esc(e.x)}</p>`;}
+window.toggleDet=()=>{card.classList.toggle('open');renderCard();};
 window.rerenderCard=renderCard;window.showCard=(...a)=>showCard(...a);
 function showCard(tier){const list=(window.SKILLS&&SKILLS.tiers[tier])||[];if(!list.length)return;
   const k=list[Math.floor(Math.random()*list.length)];cur={tier,k};renderCard();
-  card.classList.add('on');camGoal=1;window.lastCard={tier,name:k.n};}
+  card.classList.remove('open');card.classList.add('on');camGoal=1;window.lastCard={tier,name:k.n};}
 function hideCard(){card.classList.remove('on');camGoal=0;}window.hideCard=hideCard;
 // ===== 動き：レバーを引く → リールが回る → 左から順に止まる =====
 const clock=new THREE.Clock();let spinning=false,pullT=-1,outcome=null;
