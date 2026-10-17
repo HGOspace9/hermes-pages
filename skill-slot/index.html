@@ -7,11 +7,11 @@
 <script>
 // ===== 言語（初期は英語。設定で日本語に。選んだ言語は保存される） =====
 window.I18N={
- en:{hint:'Pull the lever down to draw a skill (or press Space)',miss:'All different… no skill this time. Pull again!',settings:'Settings',language:'Language',close:'Close',
-  tiers:{gold:'RED · Ruby ×3 — Top 10 most popular',silver:'YELLOW · Star ×3 — Popular #11–50',bronze:'PURPLE · Crystal ×3 — Popular #51–200',blue:'BLUE · Drop ×3 — Rank #201–1000',low:'GREEN · Hexagon ×3 — A hidden gem (#1001+)',new:'GRAY · Pebble ×3 — Brand-new skill'},
+ en:{hint:'Pull the lever down to draw a skill (or press Space)',settings:'Settings',language:'Language',close:'Close',
+  tiers:{gold:'RED · Ruby ×3 — Top 10 most popular',silver:'YELLOW · Star ×3 — Popular #11–50',bronze:'PURPLE · Crystal ×3 — Popular #51–200',blue:'BLUE · Drop ×3 — Rank #201–1000',low:'GREEN · Hexagon ×3 — A hidden gem (#1001–2500)',mix:'ALL DIFFERENT — Barely known yet (#2501+)',new:'GRAY · Pebble ×3 — Brand-new skill'},
   installs:'installs',sep:' • ',noDesc:'(no description)',dxNote:'* No official description — summarized from the skill’s contents.',view:'View on skills.sh →',save:'☆ Save',saved:'★ Saved',savedList:'Saved skills',savedEmpty:'Nothing saved yet. Press ☆ Save on a card.',remove:'Remove',exp:'Copy backup',imp:'Restore backup',impAsk:'Paste the backup text:',expDone:'Backup text copied. Keep it somewhere safe (e.g. a note).',impDone:n=>`Restored: ${n} skills.`,impBad:'That text could not be read.',savedNote:'Saved in this browser. Clearing browser data erases it — use “Copy backup”.',more:'Details ▼',less:'Close details ▲',hWhat:'What it does',hWhen:'When it helps',hEx:'Example',detTodo:'Beginner-friendly explanation coming soon.',title:'Skill Slot'},
- ja:{hint:'レバーを下に引いてスキルを引こう（スペースキーでもOK）',miss:'バラバラ… ハズレ！ もう一回引こう',settings:'設定',language:'言語',close:'閉じる',
-  tiers:{gold:'赤・ルビー3つ ― 人気トップ10',silver:'黄・星3つ ― 人気 11〜50位',bronze:'紫・結晶3つ ― 人気 51〜200位',blue:'青・しずく3つ ― 人気 201〜1000位',low:'緑・六角形3つ ― 知る人ぞ知る（1001位〜）',new:'グレー・石ころ3つ ― 出てきたばかりの新着'},
+ ja:{hint:'レバーを下に引いてスキルを引こう（スペースキーでもOK）',settings:'設定',language:'言語',close:'閉じる',
+  tiers:{gold:'赤・ルビー3つ ― 人気トップ10',silver:'黄・星3つ ― 人気 11〜50位',bronze:'紫・結晶3つ ― 人気 51〜200位',blue:'青・しずく3つ ― 人気 201〜1000位',low:'緑・六角形3つ ― 知る人ぞ知る（1001〜2500位）',mix:'バラバラ ― まだほとんど知られていない（2501位〜）',new:'グレー・石ころ3つ ― 出てきたばかりの新着'},
   installs:'インストール',sep:' ・ ',noDesc:'（説明なし）',dxNote:'※公式の説明がないため、スキルの中身を読んでまとめた説明です',view:'skills.sh で見る →',save:'☆ 保存',saved:'★ 保存済み',savedList:'保存したスキル',savedEmpty:'まだありません。カードの「☆ 保存」を押すとここに入ります。',remove:'外す',exp:'控えをコピー',imp:'控えから戻す',impAsk:'控えの文字を貼り付けてください：',expDone:'控えの文字をコピーしました。メモ帳などにとっておいてください。',impDone:n=>`${n}件を戻しました。`,impBad:'読み取れない文字でした。',savedNote:'このブラウザに保存されます。履歴を全部消すと消えるので、「控えをコピー」で残せます。',more:'詳細 ▼',less:'詳細を閉じる ▲',hWhat:'何をするスキル？',hWhen:'こんな時に便利',hEx:'たとえば',detTodo:'初心者向けのやさしい説明は準備中です。',title:'スキルスロット'}};
 window.LANG=localStorage.getItem('slotLang')||'en';
 window.T=()=>I18N[LANG];
@@ -57,8 +57,6 @@ canvas.gl{touch-action:none}
 #savedPanel .it .n{flex:1;cursor:pointer;word-break:break-all}#savedPanel .it .n:hover{color:#fff;text-decoration:underline}
 #savedPanel .it button,#savedPanel .ops button{font:12px "Courier New",monospace;background:#1a2460;color:#c8d0ff;border:1px solid #4a5490;padding:3px 6px;cursor:pointer}
 #savedPanel .ops{display:flex;gap:6px;margin-top:10px}#savedPanel .note{color:#7f89b8;font-size:11px;margin-top:8px}
-#missMsg{position:fixed;left:50%;top:62%;transform:translate(-50%,0);z-index:5;color:#c8d0ff;background:#0a1238cc;border:2px solid #4a5490;padding:8px 16px;font:bold 16px "Courier New",monospace;pointer-events:none;opacity:0;transition:opacity .3s}
-#missMsg.on{opacity:1}
 </style>
 <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
 </head><body>
@@ -216,15 +214,15 @@ for(let i=-1;i<=1;i++){
   if(i<1) add(new THREE.BoxGeometry(0.05,0.84,0.08),deep,i*0.55+0.275,winY,D/2+0.02);
 }
 // ===== 出目の決め方：先に結果を抽選し、その宝石でリールを止める（揃い方ルール②） =====
-// 赤3つ=人気トップ10 / 黄3つ=11〜50位 / 紫3つ=51〜200位 / 青3つ=201〜1000位 / 緑3つ=1001位〜 / 石ころ3つ=新着
+// 赤3つ=人気トップ10 / 黄3つ=11〜50位 / 紫3つ=51〜200位 / 青3つ=201〜1000位 / 緑3つ=1001〜2500位 / バラバラ=2501位〜 / 石ころ3つ=新着
 // ※中のキー名 gold/silver/bronze/blue/low/new はデータと共通なのでそのまま
-const ODDS=[['gold',2],['silver',5],['bronze',9],['blue',13],['low',17],['new',24],['miss',30]]; // miss=バラバラ（ハズレ・カードなし）
+const ODDS=[['gold',2],['silver',5],['bronze',9],['blue',13],['low',17],['new',24],['mix',30]]; // mix=バラバラ（3つとも違う宝石）→いちばん不人気なスキル（2501位〜）
 const TIER2C={gold:'R',silver:'Y',bronze:'P',blue:'B',low:'G',new:'X'}; // 6段階すべて「同じ宝石が3つ揃う」で区別
 const idxOf=c=>{const l=[];LAYOUT.forEach((x,k)=>{if(x===c)l.push(k)});return l[Math.floor(Math.random()*l.length)];};
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 function drawOutcome(){let r=Math.random()*100,tier='new';for(const [t,w] of ODDS){if(r<w){tier=t;break;}r-=w;}
   const ALL=['R','Y','P','B','G','X'];let cols;
-  if(tier==='miss'){const a=[...ALL];cols=[];for(let i=0;i<3;i++)cols.push(a.splice(Math.floor(Math.random()*a.length),1)[0]);} // 3つとも違う宝石
+  if(tier==='mix'){const a=[...ALL];cols=[];for(let i=0;i<3;i++)cols.push(a.splice(Math.floor(Math.random()*a.length),1)[0]);} // 3つとも違う宝石
   else cols=[TIER2C[tier],TIER2C[tier],TIER2C[tier]];
   return {tier,targets:cols.map(idxOf)};}
 // 窓の下の斜めの棚（写真の横縞の部分を形だけ）
@@ -251,7 +249,7 @@ leverHit.position.set(0.12,0.5,0);leverHit.visible=false;lever.add(leverHit);
 
 
 // ===== 結果カード =====
-const TC={gold:'#ff4a52',silver:'#ffd23a',bronze:'#b47cff',blue:'#4a9cff',low:'#4fdc7a',new:'#9aa0ab'}; /* 赤>黄>紫>青>緑>グレー（リールの宝石と同じ色） */
+const TC={gold:'#ff4a52',silver:'#ffd23a',bronze:'#b47cff',blue:'#4a9cff',low:'#4fdc7a',new:'#9aa0ab',mix:'#6e7485'}; /* 赤>黄>紫>青>緑>グレー（リールの宝石と同じ色） */
 const fmt=n=>LANG==='ja'?(n>=10000?(n/10000).toFixed(n>=100000?0:1)+'万':n.toLocaleString()):(n>=1e6?(n/1e6).toFixed(1)+'M':n>=1000?(n/1000).toFixed(n>=1e5?0:1)+'K':String(n));
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const card=document.getElementById('card');let cur=null;
@@ -296,13 +294,11 @@ window.rerenderCard=()=>{renderCard();if(document.getElementById('savedPanel').c
 function showCard(tier){const list=(window.SKILLS&&SKILLS.tiers[tier])||[];if(!list.length)return;
   const k=list[Math.floor(Math.random()*list.length)];cur={tier,k};renderCard();
   card.classList.remove('open');card.classList.add('on');camGoal=1;window.lastCard={tier,name:k.n};}
-function missMsg(){let m=document.getElementById('missMsg');if(!m){m=document.createElement('div');m.id='missMsg';document.body.appendChild(m);}
-  m.textContent=T().miss;m.classList.remove('on');void m.offsetWidth;m.classList.add('on');clearTimeout(m._t);m._t=setTimeout(()=>m.classList.remove('on'),3500);}
 function hideCard(){card.classList.remove('on');camGoal=0;}window.hideCard=hideCard;
 // ===== 動き：レバーを引く → リールが回る → 左から順に止まる =====
 const clock=new THREE.Clock();let spinning=false,pullT=-1,outcome=null;
 const st=reels.map(()=>({done:true}));
-function pull(auto){if(spinning)return false;spinning=true;if(auto)pullT=0;const now=clock.elapsedTime;hideCard();document.getElementById('missMsg')?.classList.remove('on');outcome=drawOutcome();
+function pull(auto){if(spinning)return false;spinning=true;if(auto)pullT=0;const now=clock.elapsedTime;hideCard();outcome=drawOutcome();
   st.forEach((s,i)=>Object.assign(s,{done:false,stopping:false,v:16,stopAt:now+1.1+i*0.55}));return true;}
 window.pull=pull;window.hitTest=(x,y)=>hitLever({clientX:x,clientY:y});
 window.leverXY=()=>{const v=new THREE.Vector3();lever.children[3].getWorldPosition(v);v.project(camera);return [(v.x+1)/2*innerWidth,(1-v.y)/2*innerHeight];}; // テスト用
@@ -321,7 +317,7 @@ const CEL={gold:{lv:5,c:'#ff3a44',c1:'#ffb0b0',c2:'#e03040',n:26,notes:[523,659,
   silver:{lv:4,c:'#ffd23a',c1:'#fff0a0',c2:'#e0b020',n:14,notes:[523,659,784,1047]},
   bronze:{lv:3,c:'#b47cff',c1:'#e0c8ff',c2:'#9050e0',n:7,notes:[440,554,659]},
   blue:{lv:2,c:'#4a9cff',c1:'#b8d8ff',c2:'#3070e0',n:3,notes:[440,587]},
-  low:{lv:1,c:'#4fdc7a',notes:[523]},new:{lv:0},miss:{lv:0}};
+  low:{lv:1,c:'#4fdc7a',notes:[523]},new:{lv:0},mix:{lv:0}};
 let cele=null;
 const tone=(f,t,dur=.14,vol=.12,type='square')=>{try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();const o=actx.createOscillator(),g=actx.createGain(),at=actx.currentTime+t;
   o.type=type;o.frequency.setValueAtTime(f,at);g.gain.setValueAtTime(0.0001,at);g.gain.exponentialRampToValueAtTime(vol,at+.01);g.gain.exponentialRampToValueAtTime(.0001,at+dur);o.connect(g).connect(actx.destination);o.start(at);o.stop(at+dur+.02);}catch(_){}};
@@ -373,7 +369,7 @@ function animate(){const dt=Math.min(clock.getDelta(),0.05),now=clock.elapsedTim
     else{const k=Math.min(1,(now-s.t0)/0.5);g.rotation.x=s.from+(s.fin-s.from)*easeBack(k);
       if(k>=1){s.done=true;clack(200,.04,.12);s.result=LAYOUT[((Math.round(s.fin/STEP)%SEG)+SEG)%SEG];}}});
   if(spinning&&st.every(s=>s.done)){spinning=false;window.lastResult=st.map(s=>s.result); // 出目（0〜11）。結果カードは次のラウンドで
-    dispatchEvent(new CustomEvent('slotresult',{detail:window.lastResult}));celebrate(outcome.tier,window.lastResult);if(outcome.tier==='miss'){window.lastCard={tier:'miss',name:null};missMsg();}else setTimeout(()=>showCard(outcome.tier),350+(CEL[outcome.tier].lv>=4?500:0));}
+    dispatchEvent(new CustomEvent('slotresult',{detail:window.lastResult}));celebrate(outcome.tier,window.lastResult);setTimeout(()=>showCard(outcome.tier),350+(CEL[outcome.tier].lv>=4?500:0));}
   celeStep(now);camK+=(camGoal-camK)*Math.min(1,dt*3.5);applyShift();controls.update();renderer.render(scene,camera);}
 // 画面の形に合わせて見え方を変える。ふだんはスロットが真ん中。
 // カードが出たときだけカメラを横（スマホは上）へずらし、カードを閉じる/もう一回引くと真ん中へ戻る
