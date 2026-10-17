@@ -37,6 +37,10 @@ window.setLang=l=>{LANG=l;localStorage.setItem('slotLang',l);applyLang();};
 #settings.on{display:block}#settings h3{margin:0 0 8px;font-size:15px;letter-spacing:1px}#settings .row{display:flex;justify-content:space-between;align-items:center;margin:6px 0}
 #langSel button{font:13px "Courier New",monospace;background:#0a1238;color:#c8d0ff;border:2px solid #4a5490;padding:3px 8px;margin-left:4px;cursor:pointer}#langSel button.sel{background:#c8d0ff;color:#0a1238;border-color:#fff;font-weight:bold}
 #settings .x{position:absolute;right:8px;top:4px;cursor:pointer;color:#9aa6d8}
+canvas.gl{touch-action:none}
+#hint{max-width:calc(100% - 150px);text-align:center}
+@media (min-aspect-ratio:1/1) and (min-width:820px){#card{left:auto;right:4vw;top:50%;bottom:auto;width:min(360px,32vw);transform:translate(30px,-50%)}#card.on{transform:translate(0,-50%)}}
+@media (max-aspect-ratio:1/1){#card{bottom:2vh;max-height:38vh;overflow:auto;font-size:13px;padding:10px 12px}#card .nm{font-size:18px}}
 </style>
 <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
 </head><body>
@@ -253,8 +257,14 @@ function animate(){const dt=Math.min(clock.getDelta(),0.05),now=clock.elapsedTim
   if(spinning&&st.every(s=>s.done)){spinning=false;window.lastResult=st.map(s=>s.result); // 出目（0〜11）。結果カードは次のラウンドで
     dispatchEvent(new CustomEvent('slotresult',{detail:window.lastResult}));setTimeout(()=>showCard(outcome.tier),350);}
   controls.update();renderer.render(scene,camera);}
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+// 画面の形に合わせて見え方を変える：横長＝少し左に寄せてカードを右へ／縦長（スマホ）＝引いて上に寄せ、下にカード
+function fitView(){const asp=innerWidth/innerHeight;camera.aspect=asp;
+  if(asp<1){camera.fov=35+ (1-asp)*38;controls.target.set(0,0.75,0);}
+  else if(innerWidth>=820){camera.fov=35;controls.target.set(0.9,1.6,0);}
+  else{camera.fov=35;controls.target.set(0,1.6,0);}
+  camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);}
+fitView();addEventListener('resize',fitView);
 renderer.setAnimationLoop(animate);
 </script>
-<script>applyLang();</script>
+<script>applyLang();/* 撮影テスト用：?shot でページを開くと自動で1回まわす */if(/[?&]shot/.test(location.search))addEventListener('load',()=>setTimeout(()=>window.pull&&pull(true),300));</script>
 </body></html>
