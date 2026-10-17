@@ -35,6 +35,7 @@ with cf.ThreadPoolExecutor(16) as ex:
     list(ex.map(desc, top + new))
 
 # 公式の説明がないスキル用に、中身(SKILL.md)を読んで書いた説明。英語d・日本語dj。新しく説明なしが出たら追記する
+EASY = json.loads(pathlib.Path(__file__).with_name("desc_easy.json").read_text())
 JA = json.loads(pathlib.Path(__file__).with_name("desc_ja.json").read_text())
 EXTRA = json.loads(pathlib.Path(__file__).with_name("desc_extra.json").read_text())
 
@@ -43,6 +44,7 @@ def slim(s, extra=()):
     if not d["d"] and s["name"] in EXTRA: d.update(EXTRA[s["name"]]); d["dx"] = 1
     k = s["source"] + "/" + s["name"]
     if "dj" not in d and k in JA: d["dj"] = JA[k]  # 日本語訳（新しいスキルは未訳→英語で表示）
+    if k in EASY: d["e"], d["j"] = EASY[k]["e"], EASY[k]["j"]  # 初心者向けの詳細説明（なければ「準備中」）
     for k in extra: d[k] = s[k]
     return d
 
