@@ -8,10 +8,10 @@
 // ===== 言語（初期は英語。設定で日本語に。選んだ言語は保存される） =====
 window.I18N={
  en:{hint:'Pull the lever down to draw a skill (or press Space)',settings:'Settings',language:'Language',close:'Close',
-  tiers:{gold:'★★★ Top 10 most popular',silver:'★★ Popular: #11–50',bronze:'★ Popular: #51–200',blue:'Rank #201–400',low:'Two of a kind: a hidden gem',new:'No match: brand-new skill'},
+  tiers:{gold:'RED · Ruby ×3 — Top 10 most popular',silver:'YELLOW · Star ×3 — Popular #11–50',bronze:'PURPLE · Crystal ×3 — Popular #51–200',blue:'BLUE · Drop ×3 — Rank #201–400',low:'GREEN · Hexagon ×2 — A hidden gem (#401–600)',new:'GRAY · Pebble — Brand-new skill'},
   installs:'installs',sep:' • ',noDesc:'(no description)',dxNote:'* No official description — summarized from the skill’s contents.',view:'View on skills.sh →',more:'Details ▼',less:'Close details ▲',hWhat:'What it does',hWhen:'When it helps',hEx:'Example',detTodo:'Beginner-friendly explanation coming soon.',title:'Skill Slot'},
  ja:{hint:'レバーを下に引いてスキルを引こう（スペースキーでもOK）',settings:'設定',language:'言語',close:'閉じる',
-  tiers:{gold:'★★★ 人気トップ10',silver:'★★ 人気 11〜50位',bronze:'★ 人気 51〜200位',blue:'人気 201〜400位',low:'2つ揃い：まだ知る人ぞ知る',new:'バラバラ：出てきたばかりの新着'},
+  tiers:{gold:'赤・ルビー3つ ― 人気トップ10',silver:'黄・星3つ ― 人気 11〜50位',bronze:'紫・結晶3つ ― 人気 51〜200位',blue:'青・しずく3つ ― 人気 201〜400位',low:'緑・六角形2つ ― 知る人ぞ知る（401〜600位）',new:'グレー・石ころ ― 出てきたばかりの新着'},
   installs:'インストール',sep:' ・ ',noDesc:'（説明なし）',dxNote:'※公式の説明がないため、スキルの中身を読んでまとめた説明です',view:'skills.sh で見る →',more:'詳細 ▼',less:'詳細を閉じる ▲',hWhat:'何をするスキル？',hWhen:'こんな時に便利',hEx:'たとえば',detTodo:'初心者向けのやさしい説明は準備中です。',title:'スキルスロット'}};
 window.LANG=localStorage.getItem('slotLang')||'en';
 window.T=()=>I18N[LANG];
@@ -220,7 +220,7 @@ leverHit.position.set(0.12,0.5,0);leverHit.visible=false;lever.add(leverHit);
 
 
 // ===== 結果カード =====
-const TC={gold:'#f2c14e',silver:'#c8d0e0',bronze:'#e09050',blue:'#3fc8e0',low:'#8a90c0',new:'#b080ff'};
+const TC={gold:'#ff4a52',silver:'#ffd23a',bronze:'#b47cff',blue:'#4a9cff',low:'#4fdc7a',new:'#9aa0ab'}; /* 赤>黄>紫>青>緑>グレー（リールの宝石と同じ色） */
 const fmt=n=>LANG==='ja'?(n>=10000?(n/10000).toFixed(n>=100000?0:1)+'万':n.toLocaleString()):(n>=1e6?(n/1e6).toFixed(1)+'M':n>=1000?(n/1000).toFixed(n>=1e5?0:1)+'K':String(n));
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const card=document.getElementById('card');let cur=null;
@@ -228,7 +228,7 @@ function renderCard(){if(!cur)return;const {tier,k}=cur,t=T(),col=TC[tier];
   const desc=(LANG==='ja'&&k.dj)||k.d; // 日本語訳(dj)はdで追加予定。なければ英語の説明
   card.style.setProperty('--c',col);
   card.innerHTML=`<span class="x" title="${t.close}" onclick="hideCard()">×</span><div class="tier">${t.tiers[tier]}</div>
-   <div class="nm">${esc(k.n)}</div><div class="meta">${k.rank?'#'+k.rank+t.sep:''}${fmt(k.i)} ${t.installs}${t.sep}${esc(k.src)}</div>
+   <div class="nm" style="${k.n.length>20?`font-size:${Math.max(13,Math.round(22*20/k.n.length))}px`:''}">${esc(k.n)}</div><div class="meta">${k.rank?'#'+k.rank+t.sep:''}${fmt(k.i)} ${t.installs}${t.sep}${esc(k.src)}</div>
    <div class="ds">${esc(desc||t.noDesc)}${k.dx?`<div class="dx">${t.dxNote}</div>`:''}</div><div class="det">${detHTML(k,t)}</div>
    <div class="btns"><button class="more" onclick="toggleDet()">${card.classList.contains('open')?t.less:t.more}</button>
    <a href="https://skills.sh/${esc(k.src)}/${esc(k.n)}" target="_blank" rel="noopener">${t.view}</a></div>`;}
