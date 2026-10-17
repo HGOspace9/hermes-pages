@@ -34,8 +34,12 @@ new = [s for s in board("hot") if s["yesterday"] == 0 and s["id"] not in topids]
 with cf.ThreadPoolExecutor(16) as ex:
     list(ex.map(desc, top + new))
 
+# 公式の説明がないスキル用に、中身(SKILL.md)を読んで書いた説明。英語d・日本語dj。新しく説明なしが出たら追記する
+EXTRA = json.loads(pathlib.Path(__file__).with_name("desc_extra.json").read_text())
+
 def slim(s, extra=()):
     d = {"n": s["name"], "src": s["source"], "i": s["installs"], "d": s["desc"][:160]}
+    if not d["d"] and s["name"] in EXTRA: d.update(EXTRA[s["name"]]); d["dx"] = 1
     for k in extra: d[k] = s[k]
     return d
 
@@ -52,4 +56,4 @@ data = {
 }
 out = pathlib.Path(__file__).with_name("skills.js")
 out.write_text("window.SKILLS=" + json.dumps(data, ensure_ascii=False, separators=(",", ":")) + ";\n")
-print("wrote", out, {k: len(v) for k, v in data["tiers"].items()}, "no-desc:", sum(1 for s in top + new if not s["desc"]))
+print("wrote", out, {k: len(v) for k, v in data["tiers"].items()}, "still-no-desc:", [s["name"] for s in top + new if not s["desc"] and s["name"] not in EXTRA])

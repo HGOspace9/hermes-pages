@@ -1,0 +1,126 @@
+{
+ "lark-doc": {
+  "d": "Read, summarize, create and edit Lark (Feishu) Docs from your AI agent via lark-cli.",
+  "dj": "Lark（飛書）のドキュメントを、AIが lark-cli で読む・要約する・作る・編集する。"
+ },
+ "lark-base": {
+  "d": "Work with Lark Base (multi-dimensional tables): tables, records, dashboards and workflows.",
+  "dj": "Lark の多次元表（Base）を操作する。表・レコード・ダッシュボード・ワークフローなど。"
+ },
+ "lark-drive": {
+  "d": "Manage files in Lark cloud drive: upload, import Excel/CSV, copy and organize documents.",
+  "dj": "Lark のクラウドドライブのファイルを管理する。アップロード、Excel/CSVの取り込み、文書のコピーや整理。"
+ },
+ "lark-shared": {
+  "d": "Shared base rules for all lark-* skills: login, user/bot identity, permissions and risky-action safety.",
+  "dj": "lark-* 系スキル全部の土台。ログイン、ユーザー/ボットの身分、権限、危ない操作の安全ルール。"
+ },
+ "lark-im": {
+  "d": "Send and read Lark chat messages, threads, reactions and group chats.",
+  "dj": "Lark のチャットで、メッセージやスレッド、リアクション、グループを送ったり読んだりする。"
+ },
+ "lark-calendar": {
+  "d": "View and manage Lark Calendar events, book meetings and meeting rooms.",
+  "dj": "Lark カレンダーの予定を見る・管理する。会議や会議室の予約も。"
+ },
+ "lark-approval": {
+  "d": "Handle Lark approval workflows: approve, reject, transfer, withdraw and check pending requests.",
+  "dj": "Lark の承認（稟議）を扱う。承認・却下・転送・取り下げ、未処理の確認。"
+ },
+ "lark-sheets": {
+  "d": "Read and edit Lark Sheets spreadsheets, including formulas and styles.",
+  "dj": "Lark のスプレッドシートを読む・編集する。数式や書式も扱える。"
+ },
+ "lark-wiki": {
+  "d": "Manage Lark Wiki knowledge spaces, pages (nodes) and members.",
+  "dj": "Lark Wiki（ナレッジスペース）のページやメンバーを管理する。"
+ },
+ "lark-contact": {
+  "d": "Look up Lark coworkers and bots by name or email and get their profiles.",
+  "dj": "Lark の同僚やボットを名前・メールで探し、プロフィールを取得する。"
+ },
+ "lark-task": {
+  "d": "Create, update and track tasks in Lark Tasks.",
+  "dj": "Lark タスクで、タスクを作る・更新する・進み具合を追う。"
+ },
+ "lark-slides": {
+  "d": "Create and edit Lark Slides presentations from your AI agent.",
+  "dj": "Lark のスライド（プレゼン資料）を、AIが作成・編集する。"
+ },
+ "lark-mail": {
+  "d": "Read, draft and send Lark Mail; manage threads, folders, labels and rules. Sends are saved as drafts unless confirmed.",
+  "dj": "Lark メールを読む・下書き・送信する。スレッドやフォルダ、ラベル、振り分けルールも管理。送信は確認するまで下書き保存。"
+ },
+ "lark-whiteboard": {
+  "d": "View, export and draw on Lark whiteboards.",
+  "dj": "Lark のホワイトボードを見る・書き出す・描き込む。"
+ },
+ "lark-event": {
+  "d": "Subscribe to Lark events and stream them in real time (e.g. new messages) via lark-cli.",
+  "dj": "Lark の出来事（新着メッセージなど）を購読し、リアルタイムで受け取る。"
+ },
+ "lark-openapi-explorer": {
+  "d": "Dig through Lark's official OpenAPI docs to find and call APIs that no other skill covers.",
+  "dj": "ほかのスキルにない機能のために、Lark 公式APIの説明書を掘って探し、直接呼び出す。"
+ },
+ "lark-attendance": {
+  "d": "Check Lark attendance records (clock-in/out) for employees.",
+  "dj": "Lark の勤怠（出勤・退勤の記録）を確認する。"
+ },
+ "lark-minutes": {
+  "d": "Old-name alias that forwards to lark-meeting (meeting records and Lark Minutes).",
+  "dj": "古い名前の入口。中身は lark-meeting（会議記録・議事録）に転送される。"
+ },
+ "lark-skill-maker": {
+  "d": "Helps you build new skills on top of lark-cli: research the API, then write the SKILL.md.",
+  "dj": "lark-cli を使う新しいスキル作りを手伝う。APIを調べてから SKILL.md を書く。"
+ },
+ "lark-workflow-meeting-summary": {
+  "d": "Collect and summarize your recent Lark meetings into a weekly report or summary doc.",
+  "dj": "最近の Lark 会議の議事録を集めて要約し、週報やまとめ文書にする。"
+ },
+ "lark-workflow-standup-report": {
+  "d": "Morning briefing: today's (or this week's) Lark calendar events and open tasks in one summary.",
+  "dj": "朝の報告：今日（今週）の Lark の予定と未完了タスクを1つにまとめる。"
+ },
+ "lark-vc": {
+  "d": "Old-name alias that forwards to lark-meeting (Lark video conferencing).",
+  "dj": "古い名前の入口。中身は lark-meeting（Lark ビデオ会議）に転送される。"
+ },
+ "lark-okr": {
+  "d": "View and manage OKRs (objectives and key results) in Lark.",
+  "dj": "Lark の OKR（目標と成果指標）を見る・管理する。"
+ },
+ "lark-markdown": {
+  "d": "Create, read, overwrite and diff native Markdown (.md) files in Lark Drive.",
+  "dj": "Lark ドライブの Markdown（.md）ファイルを作る・読む・上書きする・差分を見る。"
+ },
+ "lark-vc-agent": {
+  "d": "Old-name alias that forwards to lark-meeting (meeting agent features).",
+  "dj": "古い名前の入口。中身は lark-meeting（会議エージェント機能）に転送される。"
+ },
+ "lark-apps": {
+  "d": "Build and manage Lark Miaoda apps, either locally from source or with Miaoda's cloud AI.",
+  "dj": "Lark の「妙搭」アプリを作る・管理する。手元でソースから作るか、クラウドのAIに作らせる。"
+ },
+ "ui-taste": {
+  "d": "Stops 'AI slop' UI: a workflow with 8 design playbooks for web and iOS to fix layout, visual hierarchy and polish.",
+  "dj": "AIっぽい平凡な見た目を防ぐ。Web/iOS向けの8つのデザイン手順で、レイアウト・強弱・細部を磨く。"
+ },
+ "lark-note": {
+  "d": "Old-name alias that forwards to lark-meeting (meeting notes).",
+  "dj": "古い名前の入口。中身は lark-meeting（会議メモ）に転送される。"
+ },
+ "ios-design": {
+  "d": "Design and review iPhone UI with native iOS patterns: navigation, forms, keyboard and text-size checks. Works with SwiftUI, UIKit or React Native.",
+  "dj": "iPhoneらしい画面を設計・点検する。画面遷移・フォーム・キーボードや文字サイズの確認。SwiftUI/UIKit/React Native対応。"
+ },
+ "lark-meeting": {
+  "d": "One entry point for Lark video meetings: meeting history, live meeting actions, Minutes and smart notes.",
+  "dj": "Lark ビデオ会議の総合入口。会議の履歴、会議中の操作、議事録やAIメモの閲覧。"
+ },
+ "agently-mail": {
+  "d": "Operate email via Tencent's agently-cli (QQ Mail for agents), with admin at agent.qq.com.",
+  "dj": "テンセントの agently-cli でメールを操作する（AI向けQQメール）。管理は agent.qq.com。"
+ }
+}
