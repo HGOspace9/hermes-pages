@@ -182,8 +182,7 @@ function gemMesh(c){const g=new THREE.Group(),m=GM[c];let o;
   return g;}
 // 平らな宝石：3Dの宝石の形と「面の向き（光の当たり方）」はそのまま、奥行きだけつぶす → キラキラは残り、飛び出さない
 const GMs={};for(const k in GEMC)GMs[k]=new THREE.MeshPhongMaterial({color:GEMC[k],emissive:GEMC[k],emissiveIntensity:k==='X'?0.03:0.12,specular:k==='X'?0x222222:0x8a8a8a,shininess:k==='X'?8:60}); // 面ごとに光って白くキラッと反射
-// リール窓の前に小さな光を1つ（固定）。宝石の面に控えめなツヤを出す
-const gemLight=new THREE.PointLight(0xffffff,0.7,1.1,2);gemLight.position.set(-0.35,winY+0.3,D/2+0.4); /* 止まった小さな光（動かさない・まぶしくない） */slot.add(gemLight);
+/* 宝石用の追加の光はなし：いつもの光（全体・正面・後ろ）だけで照らす */
 function gemFlat(c){const src=gemMesh(c),out=new THREE.Group();src.updateMatrixWorld(true);
   src.traverse(o=>{if(!o.isMesh)return;const g=o.geometry.clone().toNonIndexed();g.applyMatrix4(o.matrixWorld);g.computeVertexNormals();
     const pa=g.attributes.position;for(let i=0;i<pa.count;i++)pa.setZ(i,pa.getZ(i)*0.08);pa.needsUpdate=true; // 面の向きは元のまま
