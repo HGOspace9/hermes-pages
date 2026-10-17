@@ -3,10 +3,17 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0">
 <title>Skill Slot</title>
-<style>html,body{margin:0;height:100%;overflow:hidden;background:#081040}#bg{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;image-rendering:pixelated;image-rendering:crisp-edges;z-index:0}#scan{position:fixed;inset:0;z-index:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.22) 0 1px,transparent 1px 3px)}canvas.gl{position:fixed;inset:0;z-index:1}canvas{display:block;cursor:grab}canvas:active{cursor:grabbing}</style>
+<script src="skills.js?v=20261017"></script>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#081040}#bg{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;image-rendering:pixelated;image-rendering:crisp-edges;z-index:0}#scan{position:fixed;inset:0;z-index:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.22) 0 1px,transparent 1px 3px)}canvas.gl{position:fixed;inset:0;z-index:1}canvas{display:block;cursor:grab}canvas:active{cursor:grabbing}#card{position:fixed;left:50%;bottom:4vh;transform:translate(-50%,30px);width:min(440px,90vw);z-index:5;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;
+ background:#0a1238;border:3px solid var(--c);box-shadow:0 0 0 3px #000,0 0 24px var(--c);color:#e8ecff;font:14px/1.5 "Courier New",monospace;padding:14px 16px;image-rendering:pixelated}
+#card.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+#card .tier{color:var(--c);font-weight:bold;letter-spacing:1px}#card .nm{font-size:22px;font-weight:bold;margin:4px 0 2px;word-break:break-all}
+#card .meta{color:#9aa6d8;font-size:12px}#card .ds{margin:8px 0;color:#cdd4f5}#card a{color:var(--c)}#card .x{position:absolute;right:8px;top:4px;cursor:pointer;color:#9aa6d8}
+#hint{position:fixed;left:50%;top:3vh;transform:translateX(-50%);z-index:4;color:#9aa6d8;font:12px "Courier New",monospace;pointer-events:none}
+</style>
 <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
 </head><body>
-<canvas id="bg" width="160" height="120"></canvas><div id="scan"></div>
+<canvas id="bg" width="160" height="120"></canvas><div id="scan"></div><div id="hint">レバーを下に引いてスキルを引こう（スペースキーでもOK）</div><div id="card"></div>
 <script>
 // 昔のゲーム風の背景：160x120の粗い画面に描いて、ぼかさず引き伸ばす（ドットが見える）
 // 夜空：背景は止めたまま、星がたまにチカチカ、ときどき流れ星
@@ -98,15 +105,30 @@ add(new THREE.BoxGeometry(1.7,0.9,0.1),deep,0,winY,D/2+0.0);
 add(new THREE.BoxGeometry(1.84,0.08,0.14),light,0,winY+0.49,D/2+0.03);
 add(new THREE.BoxGeometry(1.84,0.08,0.14),light,0,winY-0.49,D/2+0.03);
 for(const s of [-1,1]) add(new THREE.BoxGeometry(0.08,1.06,0.14),light,s*0.88,winY,D/2+0.03);
-// リール3本：12枚の板を輪にしたもの（色2種の交互で、回っているのが分かる。文字・絵なし）
-const reels=[],reelM2=M(0x4f70c8),SEG=12,STEP=Math.PI*2/SEG,PW=2*0.42*Math.tan(Math.PI/SEG);
+// リール3本：12枚の板を輪に。板の色＝出目（金・銀・銅・水色）。文字・絵なし
+const TIERC={G:0xf2c14e,S:0xc8d0e0,B:0xc07a3a,C:0x3fc8e0};
+const TM={};for(const k in TIERC)TM[k]=new THREE.MeshStandardMaterial({color:TIERC[k],flatShading:true,metalness:k==='C'?0.2:0.6,roughness:0.35});
+const LAYOUT=['G','C','B','S','C','B','S','C','B','S','C','B'];
+const reels=[],SEG=12,STEP=Math.PI*2/SEG,PW=2*0.42*Math.tan(Math.PI/SEG);
 for(let i=-1;i<=1;i++){
   const g=new THREE.Group();g.position.set(i*0.55,winY,D/2-0.3);slot.add(g);
-  for(let k=0;k<SEG;k++){const an=k*STEP,m=new THREE.Mesh(new THREE.BoxGeometry(0.46,PW,0.04),k%2?reelM2:reelM);
-    m.position.set(0,Math.sin(an)*0.4,Math.cos(an)*0.4);m.rotation.x=-an;g.add(m);}
+  for(let k=0;k<SEG;k++){const an=k*STEP,m=new THREE.Mesh(new THREE.BoxGeometry(0.46,PW*0.92,0.04),TM[LAYOUT[k]]);
+    m.position.set(0,Math.sin(an)*0.4,Math.cos(an)*0.4);m.rotation.x=-an;g.add(m);
+    const back=new THREE.Mesh(new THREE.BoxGeometry(0.44,PW,0.03),deep);back.position.copy(m.position).multiplyScalar(0.93);back.rotation.x=-an;g.add(back);}
   reels.push(g);
   if(i<1) add(new THREE.BoxGeometry(0.05,0.84,0.08),deep,i*0.55+0.275,winY,D/2+0.02);
 }
+// ===== 出目の決め方：先に結果を抽選し、その色でリールを止める =====
+// 金3つ=人気トップ10 / 銀3つ=11〜50位 / 銅3つ=51〜200位 / 水色3つ=201〜400位 / 2つ揃い=人気が低め / バラバラ=新着
+const ODDS=[['gold',3],['silver',7],['bronze',12],['blue',18],['low',25],['new',35]];
+const TIER2C={gold:'G',silver:'S',bronze:'B',blue:'C'};
+const idxOf=c=>{const l=[];LAYOUT.forEach((x,k)=>{if(x===c)l.push(k)});return l[Math.floor(Math.random()*l.length)];};
+function drawOutcome(){let r=Math.random()*100,tier='new';for(const [t,w] of ODDS){if(r<w){tier=t;break;}r-=w;}
+  const C=['G','S','B','C'];let cols;
+  if(TIER2C[tier])cols=[TIER2C[tier],TIER2C[tier],TIER2C[tier]];
+  else if(tier==='low'){const a=C[Math.floor(Math.random()*4)],o=C.filter(x=>x!==a),b=o[Math.floor(Math.random()*3)];cols=[a,a,b];cols.sort(()=>Math.random()-.5);}
+  else{cols=[...C].sort(()=>Math.random()-.5).slice(0,3);}
+  return {tier,targets:cols.map(idxOf)};}
 // 窓の下の斜めの棚（写真の横縞の部分を形だけ）
 add(new THREE.BoxGeometry(1.84,0.12,0.4),light,0,1.305,D/2+0.12,-0.5,0,0);
 for(let k=0;k<3;k++) add(new THREE.BoxGeometry(1.7,0.04,0.06),dark,0,1.185-k*0.08,D/2+0.03);
@@ -129,10 +151,25 @@ lp(new THREE.DodecahedronGeometry(0.17,0),light,0.16,1.15,0);                 //
 const leverHit=new THREE.Mesh(new THREE.BoxGeometry(0.62,1.75,0.7),new THREE.MeshBasicMaterial());
 leverHit.position.set(0.12,0.5,0);leverHit.visible=false;lever.add(leverHit);
 
+
+// ===== 結果カード =====
+const TL={gold:['★★★ 人気トップ10','#f2c14e'],silver:['★★ 人気 11〜50位','#c8d0e0'],bronze:['★ 人気 51〜200位','#e09050'],
+  blue:['人気 201〜400位','#3fc8e0'],low:['2つ揃い：まだ知る人ぞ知る','#8a90c0'],new:['バラバラ：出てきたばかりの新着','#b080ff']};
+const fmt=n=>n>=10000?(n/10000).toFixed(n>=100000?0:1)+'万':n.toLocaleString();
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const card=document.getElementById('card');
+function showCard(tier){const list=(window.SKILLS&&SKILLS.tiers[tier])||[];if(!list.length)return;
+  const k=list[Math.floor(Math.random()*list.length)],[label,col]=TL[tier];
+  card.style.setProperty('--c',col);
+  card.innerHTML=`<span class="x" onclick="this.parentNode.classList.remove('on')">×</span><div class="tier">${label}</div>
+   <div class="nm">${esc(k.n)}</div><div class="meta">${k.rank?'#'+k.rank+' ・ ':''}${fmt(k.i)} インストール ・ ${esc(k.src)}</div>
+   <div class="ds">${esc(k.d||'（説明なし）')}</div><a href="https://skills.sh/${esc(k.src)}/${esc(k.n)}" target="_blank" rel="noopener">skills.sh で見る →</a>`;
+  card.classList.add('on');window.lastCard={tier,name:k.n};}
+function hideCard(){card.classList.remove('on');}
 // ===== 動き：レバーを引く → リールが回る → 左から順に止まる =====
-const clock=new THREE.Clock();let spinning=false,pullT=-1;
+const clock=new THREE.Clock();let spinning=false,pullT=-1,outcome=null;
 const st=reels.map(()=>({done:true}));
-function pull(auto){if(spinning)return false;spinning=true;if(auto)pullT=0;const now=clock.elapsedTime;
+function pull(auto){if(spinning)return false;spinning=true;if(auto)pullT=0;const now=clock.elapsedTime;hideCard();outcome=drawOutcome();
   st.forEach((s,i)=>Object.assign(s,{done:false,stopping:false,v:16,stopAt:now+1.1+i*0.55}));return true;}
 window.pull=pull;window.hitTest=(x,y)=>hitLever({clientX:x,clientY:y});
 window.leverXY=()=>{const v=new THREE.Vector3();lever.children[3].getWorldPosition(v);v.project(camera);return [(v.x+1)/2*innerWidth,(1-v.y)/2*innerHeight];}; // テスト用
@@ -172,11 +209,11 @@ function animate(){const dt=Math.min(clock.getDelta(),0.05),now=clock.elapsedTim
     lever.rotation.x=lq*LMAX;}
   reels.forEach((g,i)=>{const s=st[i];if(s.done)return;
     if(!s.stopping){g.rotation.x-=s.v*dt;
-      if(now>=s.stopAt){s.stopping=true;s.t0=now;s.from=g.rotation.x;s.fin=Math.floor(s.from/STEP)*STEP-STEP*(3+Math.floor(Math.random()*SEG));/* 止まる位置はランダム */}}
+      if(now>=s.stopAt){s.stopping=true;s.t0=now;s.from=g.rotation.x;{const base=Math.floor(s.from/STEP)-3,t=outcome.targets[i];s.fin=(base-(((base-t)%SEG)+SEG)%SEG)*STEP;}/* 抽選した色の板で止める */}}
     else{const k=Math.min(1,(now-s.t0)/0.5);g.rotation.x=s.from+(s.fin-s.from)*easeBack(k);
-      if(k>=1){s.done=true;clack(200,.04,.12);s.result=((Math.round(-s.fin/STEP)%SEG)+SEG)%SEG;}}});
+      if(k>=1){s.done=true;clack(200,.04,.12);s.result=LAYOUT[((Math.round(s.fin/STEP)%SEG)+SEG)%SEG];}}});
   if(spinning&&st.every(s=>s.done)){spinning=false;window.lastResult=st.map(s=>s.result); // 出目（0〜11）。結果カードは次のラウンドで
-    dispatchEvent(new CustomEvent('slotresult',{detail:window.lastResult}));}
+    dispatchEvent(new CustomEvent('slotresult',{detail:window.lastResult}));setTimeout(()=>showCard(outcome.tier),350);}
   controls.update();renderer.render(scene,camera);}
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
 renderer.setAnimationLoop(animate);
