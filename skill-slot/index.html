@@ -180,24 +180,6 @@ function gemMesh(c){const g=new THREE.Group(),m=GM[c];let o;
   else if(c==='G'){o=new THREE.Mesh(new THREE.CylinderGeometry(0.085,0.085,0.045,6),m);o.rotation.x=Math.PI/2;o.rotation.y=Math.PI/6;g.add(o);}
   else{o=new THREE.Mesh(new THREE.DodecahedronGeometry(0.07,0),m);o.scale.set(1.15,0.8,0.6);o.rotation.set(0.4,0.3,0.2);g.add(o);}
   return g;}
-// ===== 2Dの宝石（リールの板に貼る平らな絵）。カクカクした面で塗り分けたローポリ風 =====
-const GEM2D={R:{c:'#e8323c',pts:[[-.95,-.15],[-.95,-.7],[-.55,-.35],[0,-.95],[.55,-.35],[.95,-.7],[.95,-.15],[0,.95]],cx:[0,-.1]},
-  Y:{c:'#ffd23a',pts:[...Array(10)].map((_,i)=>{const r=i%2?.45:1,a=-Math.PI/2+i*Math.PI/5;return [Math.cos(a)*r,Math.sin(a)*r];}),cx:[0,0]},
-  P:{c:'#a05cf0',pts:[[0,-1],[.62,0],[0,1],[-.62,0]],cx:[0,0]},
-  B:{c:'#3a8cff',pts:[[0,-1],...[...Array(9)].map((_,i)=>{const a=-Math.PI/3+i*(Math.PI*5/3)/8;return [Math.cos(a)*.6,.35+Math.sin(a)*.6];})],cx:[0,.3]},
-  G:{c:'#3fd06a',pts:[...Array(6)].map((_,i)=>{const a=i*Math.PI/3;return [Math.cos(a)*.92,Math.sin(a)*.92];}),cx:[0,0]},
-  X:{c:'#8a8f9a',pts:[[-.8,.1],[-.5,-.5],[.1,-.65],[.7,-.35],[.85,.2],[.4,.6],[-.4,.6]],cx:[0,0]}};
-function shade(hex,f){const n=parseInt(hex.slice(1),16),r=n>>16,g=n>>8&255,b=n&255,m=v=>Math.max(0,Math.min(255,Math.round(f>1?v+(255-v)*(f-1):v*f)));return `rgb(${m(r)},${m(g)},${m(b)})`;}
-const FLAT={},planeG=new THREE.PlaneGeometry(0.46,2*0.42*Math.tan(Math.PI/12)*0.92);
-for(const c in GEM2D){const cv=document.createElement('canvas');cv.width=100;cv.height=45;const x=cv.getContext('2d'),G=GEM2D[c],S=19,ox=50,oy=22.5;
-  const P=G.pts.map(([a,b])=>[ox+a*S,oy+b*S]),C=[ox+G.cx[0]*S,oy+G.cx[1]*S];
-  for(let i=0;i<P.length;i++){const a=P[i],b=P[(i+1)%P.length],mx=(a[0]+b[0])/2-C[0],my=(a[1]+b[1])/2-C[1];
-    const f=c==='X'?0.85+0.25*Math.cos(Math.atan2(my,mx)+2.36):0.8+0.5*Math.cos(Math.atan2(my,mx)+2.36); // 左上が明るい
-    x.fillStyle=shade(G.c,f);x.beginPath();x.moveTo(C[0],C[1]);x.lineTo(a[0],a[1]);x.lineTo(b[0],b[1]);x.closePath();x.fill();}
-  x.strokeStyle='rgba(0,0,10,.85)';x.lineWidth=2;x.beginPath();P.forEach((q,i)=>i?x.lineTo(q[0],q[1]):x.moveTo(q[0],q[1]));x.closePath();x.stroke();
-  if(c!=='X'){x.fillStyle='rgba(255,255,255,.85)';x.fillRect(Math.round(ox-S*.35),Math.round(oy-S*.3),2,2);} // キラッ
-  const tx=new THREE.CanvasTexture(cv);tx.magFilter=THREE.NearestFilter;tx.minFilter=THREE.NearestFilter;tx.colorSpace=THREE.SRGBColorSpace;
-  FLAT[c]=new THREE.MeshBasicMaterial({map:tx,transparent:true});}
 // 12枚の並び：赤1・黄2・紫2・青2・緑2・グレー3（どのリールも同じ並び）
 const LAYOUT=['R','X','B','P','G','Y','X','B','G','P','X','Y'];
 const reelGems=[],reels=[],SEG=12,STEP=Math.PI*2/SEG,PW=2*0.42*Math.tan(Math.PI/SEG);
@@ -205,8 +187,7 @@ for(let i=-1;i<=1;i++){
   const g=new THREE.Group();g.position.set(i*0.55,winY,D/2-0.3);slot.add(g);
   for(let k=0;k<SEG;k++){const an=k*STEP,m=new THREE.Mesh(new THREE.BoxGeometry(0.46,PW*0.92,0.04),panelM);
     m.position.set(0,Math.sin(an)*0.4,Math.cos(an)*0.4);m.rotation.x=-an;g.add(m);
-    const pl=new THREE.Mesh(planeG,FLAT[LAYOUT[k]]);pl.position.z=0.021;m.add(pl); /* ふだんは2Dの絵 */
-    const gem=gemMesh(LAYOUT[k]);gem.position.z=0.05;gem.scale.setScalar(1.25);gem.visible=false;m.add(gem); /* 3Dは当たりの時だけ */(reelGems[i+1]=reelGems[i+1]||[])[k]=gem;
+    const gem=gemMesh(LAYOUT[k]);gem.position.z=0.024;gem.scale.set(1.25,1.25,0.08);m.add(gem); /* 3Dの宝石を奥行きだけ押しつぶして2Dに（飛び出さない）。当たりで元の厚みに戻る */(reelGems[i+1]=reelGems[i+1]||[])[k]=gem;
     const back=new THREE.Mesh(new THREE.BoxGeometry(0.44,PW,0.03),deep);back.position.copy(m.position).multiplyScalar(0.93);back.rotation.x=-an;g.add(back);}
   reels.push(g);
   if(i<1) add(new THREE.BoxGeometry(0.05,0.84,0.08),deep,i*0.55+0.275,winY,D/2+0.02);
@@ -304,9 +285,9 @@ function celebrate(tier,res){const c=CEL[tier];if(!c||!c.lv)return;
     fl.style.setProperty('--fd',(0.6+c.lv*0.35)+'s');fl.classList.remove('go');void fl.offsetWidth;fl.classList.add('go');}
   if(c.n&&window.meteorShower)meteorShower(c.n,c.c1,c.c2);}
 function celeStep(now){if(!cele)return;const k=(now-cele.t0)/cele.dur;
-  cele.gems.forEach(g=>{if(k>=1){g.visible=false;g.scale.setScalar(1.25);g.rotation.y=0;g.position.z=0.05;return;}
-    g.visible=true;const pop=Math.sin(k*Math.PI); // 3Dで浮き出て回り、また2Dに戻る
-    g.scale.setScalar(1.25*(0.4+0.8*pop));g.position.z=0.05+0.12*pop;g.rotation.y=k*Math.PI*2*(cele.lv>=3?2:1);});
+  cele.gems.forEach(g=>{if(k>=1){g.scale.set(1.25,1.25,0.08);g.rotation.y=0;g.position.z=0.024;return;}
+    const pop=Math.sin(k*Math.PI); // 同じ宝石がふくらんで3Dになって浮き出て回り、また平らに戻る（後ろに絵は残らない）
+    const xy=1.25*(1+0.35*pop);g.scale.set(xy,xy,0.08+(1.25-0.08)*Math.min(1,pop*1.6));g.position.z=0.024+0.13*pop;g.rotation.y=k*Math.PI*2*(cele.lv>=3?2:1);});
   if(k>=1)cele=null;}
 const handToQ=raw=>raw<.88?raw*.96:.8448+(raw-.88)/.12*.1552; // 終わり12%だけ少し固い
 cv.addEventListener('pointerdown',e=>{if(!hitLever(e))return;drag={y:e.clientY,t:0,fired:false};controls.enabled=false;pullT=-1;cv.setPointerCapture(e.pointerId);cv.style.cursor='grabbing';},true);
