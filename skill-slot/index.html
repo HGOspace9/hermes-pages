@@ -45,10 +45,12 @@ canvas.gl{touch-action:none}
 @media (min-aspect-ratio:1/1) and (min-width:820px) and (max-height:520px){
  #card{right:2vw;width:300px;top:68px;bottom:8px;max-height:none;display:flex;flex-direction:column;font-size:12px;padding:10px 12px;transform:translate(30px,0)}
  #card.on{transform:none}#card:not(.open){bottom:auto}#card .nm{font-size:17px}#card .det{max-height:none;flex:1;min-height:0;overflow:auto}}
+#flash{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 45%,var(--fc) 0%,transparent 65%);mix-blend-mode:screen}
+#flash.go{animation:fl var(--fd) ease-out}@keyframes fl{0%{opacity:0}12%{opacity:var(--fo)}100%{opacity:0}}
 </style>
 <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
 </head><body>
-<canvas id="bg" width="160" height="120"></canvas><div id="scan"></div><div id="hint"></div><div id="card"></div>
+<canvas id="bg" width="160" height="120"></canvas><div id="scan"></div><div id="hint"></div><div id="flash"></div><div id="card"></div>
 <button id="gearBtn" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path fill-rule="evenodd" d="M19.26,9.75 L22.05,10.27 L22.05,13.73 L19.26,14.25 L18.72,15.55 L20.33,17.89 L17.89,20.33 L15.55,18.72 L14.25,19.26 L13.73,22.05 L10.27,22.05 L9.75,19.26 L8.45,18.72 L6.11,20.33 L3.67,17.89 L5.28,15.55 L4.74,14.25 L1.95,13.73 L1.95,10.27 L4.74,9.75 L5.28,8.45 L3.67,6.11 L6.11,3.67 L8.45,5.28 L9.75,4.74 L10.27,1.95 L13.73,1.95 L14.25,4.74 L15.55,5.28 L17.89,3.67 L20.33,6.11 L18.72,8.45 Z M12,8.6 A3.4,3.4 0 1,0 12,15.4 A3.4,3.4 0 1,0 12,8.6 Z"/></svg></button>
 <div id="settings"><span class="x" id="setClose">×</span><h3 id="setTitle">Settings</h3>
 <div class="row"><span id="setLangLabel">Language</span><span id="langSel"><button data-l="en" onclick="setLang('en')">English</button><button data-l="ja" onclick="setLang('ja')">日本語</button></span></div></div>
@@ -82,7 +84,8 @@ for(let n=0;n<4;n++){bx.fillStyle='rgba(48,64,160,.25)';const gx=r()*W|0,gy=r()*
 // 星：ふだんは静か。ときどき1つずつチカッと明るくなる
 const stars=[];for(let n=0;n<70;n++)stars.push({x:r()*W|0,y:r()*110|0,b:r()<.2?2:r()<.5?1:0,tw:0});
 const COL=['#28306c','#4840a0','#8888c8','#d8d8ff'];
-let shoot=null,nextShoot=performance.now()+2500,last=0;
+let shoot=null,nextShoot=performance.now()+2500,last=0;const extra=[];
+window.meteorShower=(n,c1,c2)=>{for(let i=0;i<n;i++)extra.push({x:60+Math.random()*130,y:-10+Math.random()*40,life:0,sp:2.5+Math.random()*2,delay:Math.floor(Math.random()*n*1.5),c1,c2});};
 function frame(now){requestAnimationFrame(frame);
  if(now-last<50)return;last=now; // 約20コマ/秒（昔っぽいカクつき）
  x.drawImage(base,0,0);
@@ -94,6 +97,12 @@ function frame(now){requestAnimationFrame(frame);
   x.fillStyle=COL[lv];x.fillRect(st.x,st.y,1,1);}
  // 流れ星：数秒〜十数秒に1本、右上から左下へ
  if(!shoot&&now>nextShoot)shoot={x:40+Math.random()*120,y:Math.random()*35,len:0,life:0};
+ // お祝いの流れ星（当たりのときだけ。色つき・たくさん）
+ for(let i=extra.length-1;i>=0;i--){const s=extra[i];if(s.delay>0){s.delay--;continue;}s.life++;
+  const hx=s.x-s.life*s.sp,hy=s.y+s.life*s.sp*.53;
+  for(let k=0;k<14;k++){const px=Math.round(hx+k*s.sp*.55),py=Math.round(hy-k*s.sp*.53*.55);
+   x.fillStyle=k===0?'#ffffff':k<4?s.c1:k<9?s.c2:'#303880';x.fillRect(px,py,1,1);}
+  if(hx<-20||hy>H+5)extra.splice(i,1);}
  if(shoot){const s=shoot;s.life++;
   const hx=s.x-s.life*3,hy=s.y+s.life*1.6;
   for(let k=0;k<12;k++){const px=Math.round(hx+k*3*.55),py=Math.round(hy-k*1.6*.55);
@@ -173,12 +182,12 @@ function gemMesh(c){const g=new THREE.Group(),m=GM[c];let o;
   return g;}
 // 12枚の並び：赤1・黄2・紫2・青2・緑2・グレー3（どのリールも同じ並び）
 const LAYOUT=['R','X','B','P','G','Y','X','B','G','P','X','Y'];
-const reels=[],SEG=12,STEP=Math.PI*2/SEG,PW=2*0.42*Math.tan(Math.PI/SEG);
+const reelGems=[],reels=[],SEG=12,STEP=Math.PI*2/SEG,PW=2*0.42*Math.tan(Math.PI/SEG);
 for(let i=-1;i<=1;i++){
   const g=new THREE.Group();g.position.set(i*0.55,winY,D/2-0.3);slot.add(g);
   for(let k=0;k<SEG;k++){const an=k*STEP,m=new THREE.Mesh(new THREE.BoxGeometry(0.46,PW*0.92,0.04),panelM);
     m.position.set(0,Math.sin(an)*0.4,Math.cos(an)*0.4);m.rotation.x=-an;g.add(m);
-    const gem=gemMesh(LAYOUT[k]);gem.position.z=0.05;gem.scale.setScalar(1.25);m.add(gem);
+    const gem=gemMesh(LAYOUT[k]);gem.position.z=0.05;gem.scale.setScalar(1.25);m.add(gem);(reelGems[i+1]=reelGems[i+1]||[])[k]=gem;
     const back=new THREE.Mesh(new THREE.BoxGeometry(0.44,PW,0.03),deep);back.position.copy(m.position).multiplyScalar(0.93);back.rotation.x=-an;g.add(back);}
   reels.push(g);
   if(i<1) add(new THREE.BoxGeometry(0.05,0.84,0.08),deep,i*0.55+0.275,winY,D/2+0.02);
@@ -257,6 +266,29 @@ let lq=0,lv=0,locked=false,actx=null;
 const clack=(f=90,dur=.09,vol=.35)=>{try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();const o=actx.createOscillator(),g=actx.createGain();
   o.type='square';o.frequency.setValueAtTime(f,actx.currentTime);o.frequency.exponentialRampToValueAtTime(f*.5,actx.currentTime+dur);
   g.gain.setValueAtTime(vol,actx.currentTime);g.gain.exponentialRampToValueAtTime(.001,actx.currentTime+dur);o.connect(g).connect(actx.destination);o.start();o.stop(actx.currentTime+dur);}catch(_){}};
+// ===== 当たりの演出：レア度が高いほど派手（揺れはなし） =====
+// 段階: gold(赤)=5 silver(黄)=4 bronze(紫)=3 blue(青)=2 low(緑)=1 new(グレー)=0
+const CEL={gold:{lv:5,c:'#ff3a44',c1:'#ffb0b0',c2:'#e03040',n:26,notes:[523,659,784,1047,784,1047,1319]},
+  silver:{lv:4,c:'#ffd23a',c1:'#fff0a0',c2:'#e0b020',n:14,notes:[523,659,784,1047]},
+  bronze:{lv:3,c:'#b47cff',c1:'#e0c8ff',c2:'#9050e0',n:7,notes:[440,554,659]},
+  blue:{lv:2,c:'#4a9cff',c1:'#b8d8ff',c2:'#3070e0',n:3,notes:[440,587]},
+  low:{lv:1,c:'#4fdc7a',notes:[523]},new:{lv:0}};
+let cele=null;
+const tone=(f,t,dur=.14,vol=.12,type='square')=>{try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();const o=actx.createOscillator(),g=actx.createGain(),at=actx.currentTime+t;
+  o.type=type;o.frequency.setValueAtTime(f,at);g.gain.setValueAtTime(0.0001,at);g.gain.exponentialRampToValueAtTime(vol,at+.01);g.gain.exponentialRampToValueAtTime(.0001,at+dur);o.connect(g).connect(actx.destination);o.start(at);o.stop(at+dur+.02);}catch(_){}};
+function celebrate(tier,res){const c=CEL[tier];if(!c||!c.lv)return;
+  // 光らせる宝石：揃った宝石（緑は2つ）
+  const want=tier==='low'?'G':res[0],gems=[];res.forEach((r,i)=>{if(r===want)gems.push(reelGems[i][outcome.targets[i]]);});
+  cele={t0:clock.elapsedTime,gems,lv:c.lv,dur:0.8+c.lv*0.5};
+  c.notes.forEach((f,i)=>tone(f,i*(c.lv>=4?.09:.12),i===c.notes.length-1?.4:.14,c.lv>=4?.13:.1));
+  if(c.lv>=2){const fl=document.getElementById('flash');fl.style.setProperty('--fc',c.c);fl.style.setProperty('--fo',[0,0,.25,.35,.5,.7][c.lv]);
+    fl.style.setProperty('--fd',(0.6+c.lv*0.35)+'s');fl.classList.remove('go');void fl.offsetWidth;fl.classList.add('go');}
+  if(c.n&&window.meteorShower)meteorShower(c.n,c.c1,c.c2);}
+function celeStep(now){if(!cele)return;const k=(now-cele.t0)/cele.dur;
+  cele.gems.forEach(g=>{if(k>=1){g.scale.setScalar(1.25);g.rotation.y=0;return;}
+    const pulse=1+Math.sin(k*Math.PI*(2+cele.lv))*0.12*(1-k)+0.15*Math.sin(k*Math.PI);
+    g.scale.setScalar(1.25*pulse);g.rotation.y=k*Math.PI*2*(cele.lv>=3?2:1);});
+  if(k>=1)cele=null;}
 const handToQ=raw=>raw<.88?raw*.96:.8448+(raw-.88)/.12*.1552; // 終わり12%だけ少し固い
 cv.addEventListener('pointerdown',e=>{if(!hitLever(e))return;drag={y:e.clientY,t:0,fired:false};controls.enabled=false;pullT=-1;cv.setPointerCapture(e.pointerId);cv.style.cursor='grabbing';},true);
 cv.addEventListener('pointermove',e=>{
@@ -288,8 +320,8 @@ function animate(){const dt=Math.min(clock.getDelta(),0.05),now=clock.elapsedTim
     else{const k=Math.min(1,(now-s.t0)/0.5);g.rotation.x=s.from+(s.fin-s.from)*easeBack(k);
       if(k>=1){s.done=true;clack(200,.04,.12);s.result=LAYOUT[((Math.round(s.fin/STEP)%SEG)+SEG)%SEG];}}});
   if(spinning&&st.every(s=>s.done)){spinning=false;window.lastResult=st.map(s=>s.result); // 出目（0〜11）。結果カードは次のラウンドで
-    dispatchEvent(new CustomEvent('slotresult',{detail:window.lastResult}));setTimeout(()=>showCard(outcome.tier),350);}
-  camK+=(camGoal-camK)*Math.min(1,dt*3.5);applyShift();controls.update();renderer.render(scene,camera);}
+    dispatchEvent(new CustomEvent('slotresult',{detail:window.lastResult}));celebrate(outcome.tier,window.lastResult);setTimeout(()=>showCard(outcome.tier),350+(CEL[outcome.tier].lv>=4?500:0));}
+  celeStep(now);camK+=(camGoal-camK)*Math.min(1,dt*3.5);applyShift();controls.update();renderer.render(scene,camera);}
 // 画面の形に合わせて見え方を変える。ふだんはスロットが真ん中。
 // カードが出たときだけカメラを横（スマホは上）へずらし、カードを閉じる/もう一回引くと真ん中へ戻る
 let camK=0,camGoal=0;
