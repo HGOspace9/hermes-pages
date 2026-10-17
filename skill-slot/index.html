@@ -10,10 +10,24 @@
 #card .tier{color:var(--c);font-weight:bold;letter-spacing:1px}#card .nm{font-size:22px;font-weight:bold;margin:4px 0 2px;word-break:break-all}
 #card .meta{color:#9aa6d8;font-size:12px}#card .ds{margin:8px 0;color:#cdd4f5}#card a{color:var(--c)}#card .x{position:absolute;right:8px;top:4px;cursor:pointer;color:#9aa6d8}
 #hint{position:fixed;left:50%;top:3vh;transform:translateX(-50%);z-index:4;color:#9aa6d8;font:12px "Courier New",monospace;pointer-events:none}
+#gearBtn{position:fixed;right:16px;top:14px;z-index:6;width:46px;height:46px;border:3px solid #c8d0ff;background:#0a1238;box-shadow:0 0 0 3px #000;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+#gearBtn svg{fill:#e8ecff;transition:transform .4s}#gearBtn:hover svg{transform:rotate(45deg)}#gearBtn:hover{border-color:#fff}
+#settings{position:fixed;right:16px;top:72px;z-index:6;width:min(300px,86vw);background:#0a1238;border:3px solid #c8d0ff;box-shadow:0 0 0 3px #000,0 6px 24px #0008;color:#e8ecff;font:14px/1.6 "Courier New",monospace;padding:12px 14px;display:none}
+#settings.on{display:block}#settings h3{margin:0 0 8px;font-size:15px;letter-spacing:1px}#settings .row{display:flex;justify-content:space-between;align-items:center;margin:6px 0}
+#settings .x{position:absolute;right:8px;top:4px;cursor:pointer;color:#9aa6d8}
 </style>
 <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
 </head><body>
 <canvas id="bg" width="160" height="120"></canvas><div id="scan"></div><div id="hint">レバーを下に引いてスキルを引こう（スペースキーでもOK）</div><div id="card"></div>
+<button id="gearBtn" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path fill-rule="evenodd" d="M19.26,9.75 L22.05,10.27 L22.05,13.73 L19.26,14.25 L18.72,15.55 L20.33,17.89 L17.89,20.33 L15.55,18.72 L14.25,19.26 L13.73,22.05 L10.27,22.05 L9.75,19.26 L8.45,18.72 L6.11,20.33 L3.67,17.89 L5.28,15.55 L4.74,14.25 L1.95,13.73 L1.95,10.27 L4.74,9.75 L5.28,8.45 L3.67,6.11 L6.11,3.67 L8.45,5.28 L9.75,4.74 L10.27,1.95 L13.73,1.95 L14.25,4.74 L15.55,5.28 L17.89,3.67 L20.33,6.11 L18.72,8.45 Z M12,8.6 A3.4,3.4 0 1,0 12,15.4 A3.4,3.4 0 1,0 12,8.6 Z"/></svg></button>
+<div id="settings"><span class="x" id="setClose">×</span><h3 id="setTitle">Settings</h3>
+<div class="row"><span id="setLangLabel">Language</span><span id="setLangSlot" style="color:#9aa6d8">(next step)</span></div></div>
+<script>
+(()=>{const b=document.getElementById('gearBtn'),pnl=document.getElementById('settings');
+b.onclick=e=>{e.stopPropagation();pnl.classList.toggle('on');};document.getElementById('setClose').onclick=()=>pnl.classList.remove('on');
+addEventListener('pointerdown',e=>{if(pnl.classList.contains('on')&&!pnl.contains(e.target)&&!b.contains(e.target))pnl.classList.remove('on');});})();
+</script>
+
 <script>
 // 昔のゲーム風の背景：160x120の粗い画面に描いて、ぼかさず引き伸ばす（ドットが見える）
 // 夜空：背景は止めたまま、星がたまにチカチカ、ときどき流れ星
