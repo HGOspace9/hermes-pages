@@ -62,3 +62,5 @@ data = {
 out = pathlib.Path(__file__).with_name("skills.js")
 out.write_text("window.SKILLS=" + json.dumps(data, ensure_ascii=False, separators=(",", ":")) + ";\n")
 print("wrote", out, {k: len(v) for k, v in data["tiers"].items()}, "still-no-desc:", [s["name"] for s in top + new if not s["desc"] and s["name"] not in EXTRA])
+# 検索で集めた追加スキル（desc_more.json）を混ぜてレア度を振り直す
+import runpy; runpy.run_path(str(pathlib.Path(__file__).with_name("merge_more.py")))
