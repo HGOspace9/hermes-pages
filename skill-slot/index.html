@@ -8,10 +8,10 @@
 // ===== 言語（初期は英語。設定で日本語に。選んだ言語は保存される） =====
 window.I18N={
  en:{hint:'Pull the lever down to draw a skill (or press Space)',settings:'Settings',language:'Language',close:'Close',
-  tiers:{gold:'RED · Ruby ×3 — Top 10 most popular',silver:'YELLOW · Star ×3 — Popular #11–50',bronze:'PURPLE · Crystal ×3 — Popular #51–200',blue:'BLUE · Drop ×3 — Rank #201–400',low:'GREEN · Hexagon ×2 — A hidden gem (#401–600)',new:'GRAY · Pebble — Brand-new skill'},
+  tiers:{gold:'RED · Ruby ×3 — Top 10 most popular',silver:'YELLOW · Star ×3 — Popular #11–50',bronze:'PURPLE · Crystal ×3 — Popular #51–200',blue:'BLUE · Drop ×3 — Rank #201–400',low:'GREEN · Hexagon ×3 — A hidden gem (#401–600)',new:'GRAY · Pebble ×3 — Brand-new skill'},
   installs:'installs',sep:' • ',noDesc:'(no description)',dxNote:'* No official description — summarized from the skill’s contents.',view:'View on skills.sh →',save:'☆ Save',saved:'★ Saved',savedList:'Saved skills',savedEmpty:'Nothing saved yet. Press ☆ Save on a card.',remove:'Remove',exp:'Copy backup',imp:'Restore backup',impAsk:'Paste the backup text:',expDone:'Backup text copied. Keep it somewhere safe (e.g. a note).',impDone:n=>`Restored: ${n} skills.`,impBad:'That text could not be read.',savedNote:'Saved in this browser. Clearing browser data erases it — use “Copy backup”.',more:'Details ▼',less:'Close details ▲',hWhat:'What it does',hWhen:'When it helps',hEx:'Example',detTodo:'Beginner-friendly explanation coming soon.',title:'Skill Slot'},
  ja:{hint:'レバーを下に引いてスキルを引こう（スペースキーでもOK）',settings:'設定',language:'言語',close:'閉じる',
-  tiers:{gold:'赤・ルビー3つ ― 人気トップ10',silver:'黄・星3つ ― 人気 11〜50位',bronze:'紫・結晶3つ ― 人気 51〜200位',blue:'青・しずく3つ ― 人気 201〜400位',low:'緑・六角形2つ ― 知る人ぞ知る（401〜600位）',new:'グレー・石ころ ― 出てきたばかりの新着'},
+  tiers:{gold:'赤・ルビー3つ ― 人気トップ10',silver:'黄・星3つ ― 人気 11〜50位',bronze:'紫・結晶3つ ― 人気 51〜200位',blue:'青・しずく3つ ― 人気 201〜400位',low:'緑・六角形3つ ― 知る人ぞ知る（401〜600位）',new:'グレー・石ころ3つ ― 出てきたばかりの新着'},
   installs:'インストール',sep:' ・ ',noDesc:'（説明なし）',dxNote:'※公式の説明がないため、スキルの中身を読んでまとめた説明です',view:'skills.sh で見る →',save:'☆ 保存',saved:'★ 保存済み',savedList:'保存したスキル',savedEmpty:'まだありません。カードの「☆ 保存」を押すとここに入ります。',remove:'外す',exp:'控えをコピー',imp:'控えから戻す',impAsk:'控えの文字を貼り付けてください：',expDone:'控えの文字をコピーしました。メモ帳などにとっておいてください。',impDone:n=>`${n}件を戻しました。`,impBad:'読み取れない文字でした。',savedNote:'このブラウザに保存されます。履歴を全部消すと消えるので、「控えをコピー」で残せます。',more:'詳細 ▼',less:'詳細を閉じる ▲',hWhat:'何をするスキル？',hWhen:'こんな時に便利',hEx:'たとえば',detTodo:'初心者向けのやさしい説明は準備中です。',title:'スキルスロット'}};
 window.LANG=localStorage.getItem('slotLang')||'en';
 window.T=()=>I18N[LANG];
@@ -214,17 +214,15 @@ for(let i=-1;i<=1;i++){
   if(i<1) add(new THREE.BoxGeometry(0.05,0.84,0.08),deep,i*0.55+0.275,winY,D/2+0.02);
 }
 // ===== 出目の決め方：先に結果を抽選し、その宝石でリールを止める（揃い方ルール②） =====
-// 赤3つ=人気トップ10 / 黄3つ=11〜50位 / 紫3つ=51〜200位 / 青3つ=201〜400位 / 2つ揃い(緑)=401〜600位 / バラバラ(グレー)=新着
+// 赤3つ=人気トップ10 / 黄3つ=11〜50位 / 紫3つ=51〜200位 / 青3つ=201〜400位 / 緑3つ=401〜600位 / 石ころ3つ=新着
 // ※中のキー名 gold/silver/bronze/blue/low/new はデータと共通なのでそのまま
 const ODDS=[['gold',3],['silver',7],['bronze',12],['blue',18],['low',25],['new',35]];
-const TIER2C={gold:'R',silver:'Y',bronze:'P',blue:'B'};
+const TIER2C={gold:'R',silver:'Y',bronze:'P',blue:'B',low:'G',new:'X'}; // 6段階すべて「同じ宝石が3つ揃う」で区別
 const idxOf=c=>{const l=[];LAYOUT.forEach((x,k)=>{if(x===c)l.push(k)});return l[Math.floor(Math.random()*l.length)];};
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 function drawOutcome(){let r=Math.random()*100,tier='new';for(const [t,w] of ODDS){if(r<w){tier=t;break;}r-=w;}
   const ALL=['R','Y','P','B','G','X'];let cols;
-  if(TIER2C[tier])cols=[TIER2C[tier],TIER2C[tier],TIER2C[tier]];
-  else if(tier==='low'){const b=pick(ALL.filter(x=>x!=='G'));cols=['G','G',b].sort(()=>Math.random()-.5);} // 緑が2つ揃い
-  else{cols=[...ALL].sort(()=>Math.random()-.5).slice(0,3);if(!cols.includes('X'))cols[Math.floor(Math.random()*3)]='X';} // バラバラ（グレーの石ころが必ず入る）
+  cols=[TIER2C[tier],TIER2C[tier],TIER2C[tier]];
   return {tier,targets:cols.map(idxOf)};}
 // 窓の下の斜めの棚（写真の横縞の部分を形だけ）
 add(new THREE.BoxGeometry(1.84,0.12,0.4),light,0,1.305,D/2+0.12,-0.5,0,0);
@@ -324,7 +322,7 @@ const tone=(f,t,dur=.14,vol=.12,type='square')=>{try{actx=actx||new (window.Audi
   o.type=type;o.frequency.setValueAtTime(f,at);g.gain.setValueAtTime(0.0001,at);g.gain.exponentialRampToValueAtTime(vol,at+.01);g.gain.exponentialRampToValueAtTime(.0001,at+dur);o.connect(g).connect(actx.destination);o.start(at);o.stop(at+dur+.02);}catch(_){}};
 function celebrate(tier,res){const c=CEL[tier];if(!c||!c.lv)return;
   // 光らせる宝石：揃った宝石（緑は2つ）
-  const want=tier==='low'?'G':res[0],gems=[];res.forEach((r,i)=>{if(r===want)gems.push(reelGems[i][outcome.targets[i]]);});
+  const want=res[0],gems=[];res.forEach((r,i)=>{if(r===want)gems.push(reelGems[i][outcome.targets[i]]);});
   cele={t0:clock.elapsedTime,gems,lv:c.lv,dur:0.8+c.lv*0.5};
   c.notes.forEach((f,i)=>tone(f,i*(c.lv>=4?.09:.12),i===c.notes.length-1?.4:.14,c.lv>=4?.13:.1));
   if(c.lv>=2){const fl=document.getElementById('flash');fl.style.setProperty('--fc',c.c);fl.style.setProperty('--fo',[0,0,.25,.35,.5,.7][c.lv]);
