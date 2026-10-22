@@ -116,14 +116,14 @@ const key=new THREE.DirectionalLight('#fff4e6',2.4);key.position.set(span*.9,spa
 key.shadow.mapSize.set(4096,4096);const sc=key.shadow.camera;sc.left=sc.bottom=-span;sc.right=sc.top=span;sc.near=1;sc.far=span*5;key.shadow.radius=4;key.shadow.bias=-.0004;key.shadow.normalBias=.02;scene.add(key);
 const rim=new THREE.DirectionalLight('#9fc4ff',1.6);rim.position.set(-span,span*.6,-span*1.1);scene.add(rim);
 // ---------- camera + turntable
-const cam=new THREE.PerspectiveCamera(32,innerWidth/innerHeight,.1,span*20);window.cam=cam;
+let tgt=null,tgtT=0;const cam=new THREE.PerspectiveCamera(32,innerWidth/innerHeight,.1,span*20);window.cam=cam;
 const H=INFO.size[1];cam.position.set(span*1.25,H*1.1+span*.25,span*1.35);
 const ctl=new OrbitControls(cam,ren.domElement);ctl.target.set(0,H*.38,0);ctl.enableDamping=true;ctl.enablePan=false;
 ctl.minDistance=span*.6;ctl.maxDistance=span*4;ctl.maxPolarAngle=Math.PI*.49;ctl.autoRotate=!location.search.includes('still');ctl.autoRotateSpeed=.6;
-ctl.addEventListener('start',()=>{ctl.autoRotate=false;});ctl.update();window.ctl=ctl;
+ctl.addEventListener('start',()=>{ctl.autoRotate=false;tgt=null;});ctl.update();window.ctl=ctl;
 addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();ren.setSize(innerWidth,innerHeight);});
-const VIEWS={q:[1.25,.9,1.35],f:[0,.35,2.1],s:[2.1,.3,0],r:[-.4,.5,-2],t:[.01,2.4,.3]};let tgt=null;
+const VIEWS={q:[1.25,.9,1.35],f:[0,.35,2.1],s:[2.1,.3,0],r:[-.4,.5,-2],t:[.01,2.4,.3]};
 document.querySelectorAll('#views button').forEach(b=>b.onclick=()=>{const v=b.dataset.v;if(v=='spin'){ctl.autoRotate=!ctl.autoRotate;return;}
- ctl.autoRotate=false;const k=VIEWS[v];tgt=new THREE.Vector3(k[0]*span,H*.38+k[1]*span,k[2]*span);});
-(function loop(){requestAnimationFrame(loop);if(tgt){cam.position.lerp(tgt,.08);if(cam.position.distanceTo(tgt)<.05)tgt=null;}ctl.update();ren.render(scene,cam);})();
+ ctl.autoRotate=false;const k=VIEWS[v];tgt=new THREE.Vector3(k[0]*span,H*.38+k[1]*span,k[2]*span);tgtT=performance.now();});
+(function loop(){requestAnimationFrame(loop);if(tgt){cam.position.lerp(tgt,.08);if(cam.position.distanceTo(tgt)<.3||performance.now()-tgtT>1500)tgt=null;}ctl.update();ren.render(scene,cam);})();
 </script></body></html>
