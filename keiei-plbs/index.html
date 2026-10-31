@@ -1,0 +1,106 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>企業経営 PL・BS 単語帳</title>
+<style>
+body{font-family:-apple-system,"Hiragino Sans",sans-serif;margin:0;background:#f4f6f9;color:#222}
+.wrap{max-width:560px;margin:auto;padding:14px}
+h1{font-size:20px;margin:6px 0 12px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tabs button,.btn{border:0;border-radius:10px;padding:10px 12px;font-size:15px;background:#dde3ec;cursor:pointer}
+.tabs button.on{background:#2b5fd9;color:#fff}
+.card{background:#fff;border-radius:14px;padding:22px;min-height:150px;box-shadow:0 2px 6px #0001;text-align:center;cursor:pointer}
+.q{font-size:22px;font-weight:bold}.a{margin-top:14px;font-size:16px;color:#2b5fd9;white-space:pre-line}
+.tag{font-size:12px;color:#888;margin-bottom:8px}
+.row{display:flex;gap:8px;margin-top:12px}.row .btn{flex:1}
+.ok{background:#c8f0d0!important}.ng{background:#f8d0d0!important}
+.sheet{background:#fff;border-radius:14px;padding:14px;box-shadow:0 2px 6px #0001}
+.ln{display:flex;align-items:center;gap:6px;margin:4px 0}
+.ln input{flex:1;font-size:15px;padding:7px;border:1px solid #bbb;border-radius:8px}
+.ln .op{width:2.4em;text-align:right;color:#888;font-size:13px}
+.h{font-weight:bold;margin:12px 0 4px;color:#2b5fd9}
+.res{margin-top:10px;font-weight:bold}
+.list td{padding:5px;border-bottom:1px solid #eee;font-size:14px;vertical-align:top}
+select{font-size:15px;padding:6px;border-radius:8px}
+.prog{font-size:13px;color:#666;margin:8px 0}
+</style></head><body><div class="wrap">
+<h1>📒 企業経営 PL・BS 単語帳</h1>
+<div class="tabs">
+<button id="t1" onclick="tab(1)">🃏 カード</button>
+<button id="t2" onclick="tab(2)">✍️ PLを書く</button>
+<button id="t3" onclick="tab(3)">✍️ BSを書く</button>
+<button id="t4" onclick="tab(4)">📋 一覧</button>
+</div>
+<div id="v"></div>
+</div>
+<script>
+// [用語, 説明, 範囲]  出典: D-2 企業財務入門 / 教科書 岩田康成「社長になる人のための経理の本」
+const W=[
+["損益計算書（P/L）","一定期間（1年など）の儲けの経過記録＝「フル動画」。Income Statement（I/S）ともいう","しくみ"],
+["貸借対照表（B/S）","ある時点のお金の残り＝「スナップ写真・レントゲン」。左＝お金の使い途（運用）、右＝お金の集め方（調達）","しくみ"],
+["トップライン","P/Lのいちばん上＝売上高","しくみ"],
+["ボトムライン","P/Lのいちばん下＝当期純利益（最終利益）","しくみ"],
+["P/LとB/Sのつながり","B/Sの利益剰余金に入る当期純利益が、どう作られたかを説明したものがP/L","しくみ"],
+["売上高","商品・サービスを売って入ったお金（P/Lの出発点）","P/L"],
+["売上原価","売った商品を仕入れる・作るのにかかった費用","P/L"],
+["売上総利益","売上高 − 売上原価。別名「粗利益（粗利）」","P/L"],
+["販売費及び一般管理費（販管費）","売るための費用と会社を動かす費用（人件費・広告費・家賃など）","P/L"],
+["営業利益","売上総利益 − 販管費。「本業の実力利益」","P/L"],
+["営業外収益","本業以外の収益。例：受取利息、受取配当金","P/L"],
+["営業外費用","本業以外の費用。例：支払利息","P/L"],
+["経常利益","営業利益 ＋ 営業外収益 − 営業外費用。いつもの（経常的な）実力＝「期間利益」","P/L"],
+["特別利益","その期だけの臨時の利益（例：土地を売った儲け）","P/L"],
+["特別損失","その期だけの臨時の損失（例：災害・リストラ費用）","P/L"],
+["税引前当期純利益","経常利益 ＋ 特別利益 − 特別損失。「税引前利益」","P/L"],
+["法人税、住民税及び事業税","利益にかかる税金（＋法人税等調整額）","P/L"],
+["当期純利益","税引前当期純利益 − 税金。「最終利益」＝ボトムライン","P/L"],
+["減価償却","固定資産の購入費用を、使える期間にわたって分けて費用にすること。実際には現金は出ていかない","P/L"],
+["資産の部","B/Sの左側。お金の使い途（運用）。流動資産＋固定資産","B/S"],
+["負債の部","B/Sの右上。他人から借りたお金（他人資本）。流動負債＋固定負債","B/S"],
+["純資産の部","B/Sの右下。自分のお金＝元手（自己資本）。資産 − 負債 ＝ 純資産。昔は「資本」と呼んだ","B/S"],
+["流動資産","1年以内に現金になる資産（現金・預金、受取手形・売掛金、棚卸資産など）","B/S"],
+["固定資産","長く使う資産。有形固定資産・無形固定資産・投資その他の資産の3つ","B/S"],
+["現金・預金","手元のお金と銀行預金","B/S"],
+["受取手形・売掛金","商品を売ったがまだもらっていないお金＝会社の「カケ」（売上債権）","B/S"],
+["棚卸資産","在庫（商品・製品・原材料など）","B/S"],
+["有形固定資産","形のある長期資産（建物・機械装置・土地・建設仮勘定）","B/S"],
+["無形固定資産","形のない長期資産（ソフトウエアなど）","B/S"],
+["投資その他の資産","投資有価証券・関係会社株式など","B/S"],
+["流動負債","1年以内に払う負債（支払手形・買掛金、短期借入金など）","B/S"],
+["固定負債","1年より先に払う負債（社債、長期借入金など）","B/S"],
+["支払手形・買掛金","仕入れたがまだ払っていないお金＝会社の「ツケ」","B/S"],
+["短期借入金","1年以内に返す借金","B/S"],
+["社債","会社が発行する債券で集めた借金","B/S"],
+["長期借入金","返済まで1年を超える借金","B/S"],
+["株主資本","資本金＋資本剰余金＋利益剰余金−自己株式","B/S"],
+["資本金","株主が出した元手","B/S"],
+["資本剰余金","追加の資本金（株主からの払込のうち資本金にしなかった分）","B/S"],
+["利益剰余金","これまでの利益を貯めたもの（内部留保）","B/S"],
+["自己株式","会社が買い戻した自社の株（株主資本からマイナス）","B/S"],
+["貸倒引当金","売掛金などが回収できなくなる分の見積もり（資産からマイナス）","B/S"],
+["1年基準（ワン・イヤー・ルール）","1年以内に現金化・支払いなら「流動」、それより先なら「固定」","ルール"],
+["正常営業循環基準","現金→棚卸資産→売上債権→現金の営業サイクルの中にあるものは「流動」。実務はこれが主で、1年基準で補う","ルール"],
+["債務超過","資産より負債が多い状態（純資産がマイナス）。実質破綻","ルール"],
+["P/Lマネジメント（条件①）","毎年黒字にする。「出ずるを制し、入るを計る」","ルール"],
+["B/Sマネジメント（条件②）","債務超過にならない。有利子負債を減らす","ルール"],
+["資金ショート","手元の現金がなくなること。黒字でも事業は破綻する","ルール"]
+];
+// 書く練習: [記号, 正解(複数可 | 区切り)] 記号が "#" なら見出し
+const PL=[["","売上高"],["−","売上原価"],["＝","売上総利益|粗利益|粗利"],["−","販売費及び一般管理費|販管費|販売費および一般管理費"],["＝","営業利益"],["＋","営業外収益"],["−","営業外費用"],["＝","経常利益"],["＋","特別利益"],["−","特別損失"],["＝","税引前当期純利益|税引前利益"],["−","法人税、住民税及び事業税|法人税等|税金|法人税住民税及び事業税"],["＝","当期純利益|純利益|最終利益"]];
+const BS=[["#","左：資産の部"],["","流動資産"],["・","現金・預金|現金預金|現金及び預金"],["・","受取手形・売掛金|売掛金|受取手形売掛金|売上債権"],["・","棚卸資産|在庫"],["","固定資産"],["・","有形固定資産"],["・","無形固定資産"],["・","投資その他の資産"],["#","右上：負債の部"],["","流動負債"],["・","支払手形・買掛金|買掛金|支払手形買掛金"],["・","短期借入金"],["","固定負債"],["・","社債"],["・","長期借入金"],["#","右下：純資産の部"],["","株主資本"],["・","資本金"],["・","資本剰余金"],["・","利益剰余金"],["・","自己株式"],["","評価・換算差額等|評価換算差額等"],["","新株予約権"]];
+const norm=s=>s.replace(/[\s・、，,（）()及びおよ]/g,"");
+let cur=1,deck=[],i=0,show=false,rng="すべて";
+const mk=()=>JSON.parse(localStorage.plbs||"{}");
+function tab(n){cur=n;document.querySelectorAll(".tabs button").forEach((b,k)=>b.className=k+1==n?"on":"");[0,card,()=>sheet(PL,"PL（損益計算書）を上から順に"),()=>sheet(BS,"BS（貸借対照表）の箱を順に"),list][n]();}
+function start(onlyNg){const m=mk();deck=W.filter(w=>(rng=="すべて"||w[2]==rng)&&(!onlyNg||m[w[0]]!==1));i=0;show=false;card(true);}
+function card(keep){if(keep!==true)start();const m=mk();const v=document.getElementById("v");
+ const sel=`<select onchange="rng=this.value;start()">${["すべて","しくみ","P/L","B/S","ルール"].map(r=>`<option ${r==rng?"selected":""}>${r}</option>`).join("")}</select>`;
+ const done=W.filter(w=>m[w[0]]===1).length;
+ if(i>=deck.length){const ng=deck.filter(w=>m[w[0]]!==1).length;v.innerHTML=`${sel}<div class="card"><div class="q">おわり！</div><div class="a">まだ：${ng}枚</div></div><div class="row"><button class="btn" onclick="start(true)">まだの単語だけ</button><button class="btn" onclick="start()">最初から</button></div><div class="row"><button class="btn" onclick="if(confirm('記録を消しますか？')){localStorage.plbs='{}';start()}">記録リセット</button></div>`;return;}
+ const w=deck[i];v.innerHTML=`${sel}<div class="prog">${i+1}/${deck.length}　覚えた ${done}/${W.length}</div><div class="card" onclick="show=!show;card(true)"><div class="tag">${w[2]}</div><div class="q">${w[0]}</div>${show?`<div class="a">${w[1]}</div>`:`<div class="a" style="color:#aaa">タップで答え</div>`}</div><div class="row"><button class="btn ng" onclick="mark(0)">✕ まだ</button><button class="btn ok" onclick="mark(1)">○ 覚えた</button></div>`;}
+function mark(x){const m=mk();m[deck[i][0]]=x;localStorage.plbs=JSON.stringify(m);i++;show=false;card(true);}
+let S=[];
+function sheet(arr,title){S=arr;document.getElementById("v").innerHTML=`<div class="sheet"><div class="prog">${title}。空らんに書いて「採点」。</div>${arr.map((r,k)=>r[0]=="#"?`<div class="h">${r[1]}</div>`:`<div class="ln"><span class="op">${r[0]}</span><input id="s${k}" autocomplete="off"></div>`).join("")}<div class="row"><button class="btn" onclick="grade()">採点</button><button class="btn" onclick="reveal()">答えを見る</button><button class="btn" onclick="tab(cur)">消す</button></div><div class="res" id="res"></div></div>`;}
+function grade(){let ok=0,n=0;S.forEach((r,k)=>{if(r[0]=="#")return;n++;const e=document.getElementById("s"+k);const g=r[1].split("|").some(a=>norm(a)==norm(e.value));e.className=g?"ok":"ng";if(g)ok++;});document.getElementById("res").textContent=`${ok} / ${n} 正解`+(ok==n?" 🎉 完ぺき！":"（赤いところは「答えを見る」で確認）");}
+function reveal(){S.forEach((r,k)=>{if(r[0]!="#"){const e=document.getElementById("s"+k);if(e.className!="ok"){e.value=r[1].split("|")[0];e.className="ng";}}});}
+function list(){const m=mk();document.getElementById("v").innerHTML=`<div class="sheet"><div class="h">P/L（上から順）</div>${PL.map(r=>r[0]+" "+r[1].split("|")[0]).join("<br>")}<div class="h">B/S</div>${BS.map(r=>r[0]=="#"?"<b>"+r[1]+"</b>":(r[0]?"　":"")+r[1].split("|")[0]).join("<br>")}<div class="h">用語</div><table class="list">${W.map(w=>`<tr><td>${m[w[0]]===1?"○":""}</td><td><b>${w[0]}</b></td><td>${w[1]}</td></tr>`).join("")}</table></div>`;}
+tab(1);
+</script></body></html>
