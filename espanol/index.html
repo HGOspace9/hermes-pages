@@ -41,7 +41,7 @@ ul{background:#fff;border-radius:14px;padding:12px 12px 12px 30px}li{margin:6px 
 </div><div id="app"></div>
 <p class="meta">日本語を見てスペイン語を答えます</p>
 </div>
-<script src="words.js?v=1793806639"></script>
+<script src="words.js?v=1793806985"></script>
 <script>
 const $=id=>document.getElementById(id);
 const KEY='esp_int1_marks';
@@ -112,8 +112,8 @@ function show(){
  $('app').innerHTML=bar()+`<div class=card><div class=q>${w[3]}</div><div class=en>${w[2]}</div>
  <input id=in autocomplete=off autocapitalize=off placeholder="スペイン語で入力" onkeydown="if(event.key=='Enter'){answered?nextT():check()}">
  <div class=acc>${'áéíóúñ¿¡'.split('').map(c=>`<button onclick="ins('${c}')">${c}</button>`).join('')}</div>
- ${pg?`<div class=lab>品詞</div><div class=sel id=sp>${POS.map(p=>`<button onclick="pick('p','${p}')">${p}</button>`).join('')}</div>
- <div class=lab>性（男性・女性）</div><div class=sel id=sg>${GEN.map(g=>`<button onclick="pick('g','${g}')">${g}</button>`).join('')}</div>`:''}
+ ${pg?`<div class=lab>品詞（答えなくてもOK）</div><div class=sel id=sp>${POS.map(p=>`<button onclick="pick('p','${p}')">${p}</button>`).join('')}</div>
+ <div class=lab>性（答えなくてもOK）</div><div class=sel id=sg>${GEN.map(g=>`<button onclick="pick('g','${g}')">${g}</button>`).join('')}</div>`:''}
  <div id=res></div></div>
  <div class=row>${backB()}<button id=btn class=main onclick="answered?nextT():check()">答え合わせ</button></div>`;
  selP=selG=null;$('in').focus()}
@@ -127,15 +127,15 @@ const strip=s=>s.trim().toLowerCase().replace(/[¿?¡!.,]/g,'').replace(/\s+/g,'
 const norm=s=>strip(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,'').trim();
 let lastOk=false;
 function check(){const w=W[pool[i]],v=$('in').value,pg=hasPG(w);
- if(!v||(pg&&(!selP||!selG))){$('res').innerHTML='<p class=meta>'+(pg?'単語・品詞・性をすべて選んでください':'スペイン語を入力してください')+'</p>';return}
+ if(!v){$('res').innerHTML='<p class=meta>スペイン語を入力してください</p>';return}
  const alts=w[0].split(' / ').concat([w[0]]);
  const KA=w[4].startsWith('冠詞'),S=KA?(x=>x.trim().toLowerCase().replace(/[¿?¡!.,]/g,'').replace(/\s+/g,' ').trim()):strip,Nn=KA?(x=>S(x).normalize('NFD').replace(/[\u0300-\u036f]/g,'')):norm;
  const okW=alts.some(a=>Nn(v)==Nn(a)),exact=alts.some(a=>S(v)==S(a));
- const f=info(w),okP=!pg||selP==f.p,okG=!pg||selG==f.g;
+ const f=info(w),okP=!pg||!selP||selP==f.p,okG=!pg||!selG||selG==f.g;
  lastOk=okW&&okP&&okG;answered=true;
  const line=(ok,label,ans)=>`<div class=${ok?'ok':'ng'}>${ok?'○':'✕'} ${label}：${ans}</div>`;
  $('res').innerHTML=`<p class=${lastOk?'ok':'ng'}>${lastOk?'⭕ 正解！':'❌ 惜しい'}</p>`+
-  line(okW,'答え',spk(w[0])+' '+w[0]+(okW&&!exact?'（アクセント記号に注意）':''))+(pg?line(okP,'品詞',f.p)+line(okG,'性',f.g):'');
+  line(okW,'答え',spk(w[0])+' '+w[0]+(okW&&!exact?'（アクセント記号に注意）':''))+(pg?(selP?line(okP,'品詞',f.p):`<div class=meta>品詞：${f.p}</div>`)+(selG?line(okG,'性',f.g):`<div class=meta>性：${f.g}</div>`):'');
  $('btn').textContent='次へ →';say(w[0])}
 function nextT(){mark(lastOk?'ok':'ng')}
 let ES=null;const pickV=()=>{const v=speechSynthesis.getVoices();ES=v.find(x=>x.lang=='es-ES')||v.find(x=>x.lang.startsWith('es'))||null};
