@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0">
+<title>モデル人形（関節つき）</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:radial-gradient(ellipse at 50% 60%,#2a3160 0%,#141a38 55%,#07091a 100%);font-family:system-ui,"Hiragino Sans",sans-serif;color:#dfe4ff}
+canvas{display:block;touch-action:none}
+#ui{position:fixed;top:10px;left:10px;display:flex;gap:8px;flex-wrap:wrap;max-width:calc(100vw - 20px)}
+#ui button{background:#1d2450cc;color:#e8ecff;border:1px solid #6d78c8;border-radius:18px;padding:8px 14px;font-size:14px;cursor:pointer}
+#ui button.on{background:#e8c27a;color:#1a1a2a;border-color:#e8c27a}
+#hint{position:fixed;bottom:10px;left:10px;right:10px;font-size:13px;opacity:.8;line-height:1.5;pointer-events:none}
+#info{position:fixed;top:56px;left:10px;font-size:13px;background:#0c1030cc;padding:6px 10px;border-radius:8px;min-height:18px}
+</style></head><body>
+<div id="ui">
+ <button id="bGrav">ぶらぶら（重力）</button>
+ <button id="bHold" class="on">ポーズ固定</button>
+ <button id="bReset">立ちポーズに戻す</button>
+ <button id="bT">Tポーズ</button>
+</div>
+<div id="info">関節: —</div>
+<div id="hint">人形の体をクリックしたまま動かすと引っぱれます。何もないところをドラッグすると視点が回ります（ホイールで拡大）。<br>ひじ・ひざは片側にしか曲がらず、肩・股・首・腰・手首・足首にも人と同じくらいの動く範囲を付けています。</div>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/","cannon-es":"https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import * as CANNON from 'cannon-es';
+
+/* ---------- three ---------- */
+const R=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});
+R.setPixelRatio(Math.min(devicePixelRatio,2));R.setSize(innerWidth,innerHeight);
+R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;
+document.body.appendChild(R.domElement);
+const S=new THREE.Scene();
+const cam=new THREE.PerspectiveCamera(40,innerWidth/innerHeight,.05,50);
+cam.position.set(1.6,1.35,2.6);
+const ctl=new OrbitControls(cam,R.domElement);
+ctl.target.set(0,.9,0);ctl.enableDamping=true;ctl.enablePan=false;ctl.minDistance=1;ctl.maxDistance=6;ctl.update();
+S.add(new THREE.HemisphereLight(0xc8d0ff,0x30283a,1.5));
+const key=new THREE.DirectionalLight(0xfff2dc,3.2);key.position.set(2,4,3);key.castShadow=true;
+key.shadow.mapSize.set(2048,2048);Object.assign(key.shadow.camera,{left:-2,right:2,top:2.5,bottom:-1});S.add(key);
+const rim=new THREE.DirectionalLight(0x8fa0ff,2);rim.position.set(-3,2,-3);S.add(rim);
+const floorM=new THREE.Mesh(new THREE.CircleGeometry(2.2,40),new THREE.MeshStandardMaterial({color:0x1b2046,roughness:.9}));
+floorM.rotation.x=-Math.PI/2;floorM.receiveShadow=true;S.add(floorM);
+
+const WOOD=new THREE.MeshStandardMaterial({color:0xd9b27c,roughness:.7,flatShading:true});
+const JOINT=new THREE.MeshStandardMaterial({color:0x8a5a34,roughness:.6,flatShading:true});
+const STANDM=new THREE.MeshStandardMaterial({color:0x5a3a24,roughness:.6,flatShading:true});
+
+/* ---------- physics ---------- */
+const W=new CANNON.World({gravity:new CANNON.Vec3(0,0,0)});
+W.solver.iterations=30;
+const ground=new CANNON.Body({mass:0,shape:new CANNON.Plane()});
+ground.quaternion.setFromEuler(-Math.PI/2,0,0);ground.collisionFilterGroup=2;ground.collisionFilterMask=1;W.addBody(ground);
+
+const parts={},list=[];
+const V=(x,y,z)=>new CANNON.Vec3(x,y,z);
+/* name, center, physics half-extents, visual builder, mass */
+function part(name,c,he,mesh,mass){
+  const b=new CANNON.Body({mass,position:V(...c),linearDamping:.4,angularDamping:.6});
+  b.addShape(new CANNON.Box(V(...he)));
+  b.collisionFilterGroup=1;b.collisionFilterMask=2; /* body parts only hit the floor */
+  W.addBody(b);
+  mesh.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});
+  S.add(mesh);mesh.userData.part=name;
+  const p={name,b,mesh,rest:c};parts[name]=p;list.push(p);return p;
+}
+const g=(geo,mat=WOOD)=>new THREE.Mesh(geo,mat);
+function limb(len,r0,r1){ /* low-poly tapered segment along Y, centered */
+  const grp=new THREE.Group();
+  grp.add(g(new THREE.CylinderGeometry(r0,r1,len*.86,8)));
+  return grp;
+}
+function ball(r,parent,y){const m=g(new THREE.IcosahedronGeometry(r,0),JOINT);m.position.y=y;parent.add(m);return m;}
+
+/* sizes (m). height 1.6, ~7 heads */
+const H=1.6;
+// torso
+const pelvis=part('骨盤',[0,.95,0],[.15,.08,.09],(()=>{const m=g(new THREE.CylinderGeometry(.14,.16,.17,8));m.scale.z=.65;const G=new THREE.Group();G.add(m);return G})(),3);
+const waist=part('腰',[0,1.1,0],[.11,.06,.07],(()=>{const G=new THREE.Group();const m=g(new THREE.CylinderGeometry(.115,.13,.1,8));m.scale.z=.7;G.add(m);ball(.07,G,-.07);return G})(),2);
+const chest=part('胸',[0,1.29,0],[.16,.12,.09],(()=>{const G=new THREE.Group();const m=g(new THREE.CylinderGeometry(.17,.12,.25,8));m.scale.z=.62;G.add(m);ball(.07,G,-.13);return G})(),4);
+const head=part('頭',[0,1.53,0],[.08,.1,.09],(()=>{const G=new THREE.Group();const h=g(new THREE.IcosahedronGeometry(.1,1));h.scale.set(.85,1.1,.95);h.position.y=.02;G.add(h);
+  const nose=g(new THREE.ConeGeometry(.018,.04,4));nose.rotation.x=Math.PI/2;nose.position.set(0,.01,.095);G.add(nose);
+  const neck=g(new THREE.CylinderGeometry(.04,.045,.09,6));neck.position.y=-.1;G.add(neck);ball(.045,G,-.14);return G})(),1.5);
+// arms (s=+1 right of figure = -x? keep +x = figure's left)
+for(const s of [1,-1]){
+  const L=s>0?'左':'右';
+  const sx=.2*s;
+  part(L+'上腕',[sx,1.26,0],[.045,.13,.045],(()=>{const G=limb(.28,.05,.042);ball(.06,G,.14);return G})(),1.2);
+  part(L+'前腕',[sx,1.0,0],[.038,.11,.038],(()=>{const G=limb(.24,.04,.032);ball(.045,G,.125);return G})(),.8);
+  part(L+'手',[sx,.83,0],[.03,.05,.015],(()=>{const G=new THREE.Group();const p=g(new THREE.BoxGeometry(.06,.09,.025));G.add(p);
+    const t=g(new THREE.BoxGeometry(.018,.045,.018));t.position.set(-.035*s,.01,.015);t.rotation.z=.4*s;G.add(t);ball(.025,G,.055);return G})(),.3);
+  part(L+'もも',[.09*s,.68,0],[.06,.19,.06],(()=>{const G=limb(.4,.075,.055);ball(.07,G,.2);return G})(),3);
+  part(L+'すね',[.09*s,.28,0],[.045,.19,.045],(()=>{const G=limb(.4,.052,.038);ball(.055,G,.2);return G})(),2);
+  part(L+'足',[.09*s,.035,.05],[.045,.035,.11],(()=>{const G=new THREE.Group();const f=g(new THREE.BoxGeometry(.085,.06,.21));G.add(f);
+    const toe=g(new THREE.BoxGeometry(.08,.035,.06));toe.position.set(0,-.012,.125);G.add(toe);ball(.04,G,.04).position.z=-.05;return G})(),.6);
+}
+/* stand */
+const standBody=new CANNON.Body({mass:0,position:V(0,.95,0)});W.addBody(standBody);
+const rod=g(new THREE.CylinderGeometry(.018,.018,.95-.02,8),STANDM);rod.position.set(0,(.95)/2,-.16);S.add(rod);
+const arm=g(new THREE.BoxGeometry(.03,.03,.16),STANDM);arm.position.set(0,.93,-.08);S.add(arm);
+const base=g(new THREE.CylinderGeometry(.22,.26,.04,10),STANDM);base.position.set(0,.02,-.16);base.receiveShadow=true;S.add(base);
+let standLock=new CANNON.LockConstraint(standBody,pelvis.b);W.addConstraint(standLock);
+
+/* joints */
+const P=n=>parts[n];
+const sub=(a,b)=>V(a[0]-b[0],a[1]-b[1],a[2]-b[2]);
+const joints=[];
+function cone(A,B,pt,axis,angle,twist,label){
+  const ax=V(...axis);ax.normalize();
+  const up=axis[1]>0.5;
+  const c=new CANNON.ConeTwistConstraint(P(A).b,P(B).b,{pivotA:sub(pt,P(A).rest),pivotB:sub(pt,P(B).rest),axisA:ax,axisB:up?V(0,1,0):V(0,-1,0),angle,twistAngle:twist,maxForce:1e6});
+  W.addConstraint(c);joints.push({type:'cone',A,B,label,c,axA:ax.clone(),axB:up?V(0,1,0):V(0,-1,0),lim:angle});return c;
+}
+function hinge(A,B,pt,min,max,label){
+  const c=new CANNON.HingeConstraint(P(A).b,P(B).b,{pivotA:sub(pt,P(A).rest),pivotB:sub(pt,P(B).rest),axisA:V(1,0,0),axisB:V(1,0,0),maxForce:1e6});
+  W.addConstraint(c);joints.push({type:'hinge',A,B,label,c,min,max});return c;
+}
+// spine (axis up)
+cone('骨盤','腰',[0,1.03,0],[0,1,0],.35,.25,'腰');
+cone('腰','胸',[0,1.16,0],[0,1,0],.35,.35,'胸');
+cone('胸','頭',[0,1.41,0],[0,1,0],.6,1.1,'首');
+for(const s of [1,-1]){
+  const L=s>0?'左':'右';
+  // shoulder: cone axis tilted outward+forward so the arm can reach up/forward but not far back
+  cone('胸',L+'上腕',[.2*s,1.39,0],[.55*s,-.55,.45],1.75,.9,L+'肩');
+  hinge(L+'上腕',L+'前腕',[.2*s,1.12,0],-2.5,0,L+'ひじ');
+  cone(L+'前腕',L+'手',[.2*s,.88,0],[0,-1,0],.9,.25,L+'手首');
+  // hip: cone axis tilted forward (legs lift forward a lot, backward a little)
+  cone('骨盤',L+'もも',[.09*s,.88,0],[.25*s,-.75,.6],1.15,.5,L+'股');
+  hinge(L+'もも',L+'すね',[.09*s,.48,0],0,2.5,L+'ひざ');
+  cone(L+'すね',L+'足',[.09*s,.08,0],[0,-1,0],.45,.2,L+'足首');
+}
+/* hinge limits (cannon hinges have none): measure relative angle about local x and push back */
+const qA=new CANNON.Quaternion(),qr=new CANNON.Quaternion(),ax=new CANNON.Vec3();
+function hingeAngle(j){
+  P(j.A).b.quaternion.conjugate(qA);qA.mult(P(j.B).b.quaternion,qr);
+  return 2*Math.atan2(qr.x,qr.w);
+}
+/* joint friction + stiff spine (real mannequins hold their pose by friction) */
+let FR=.25,SPR=0;
+const qrel=new CANNON.Quaternion(),tmpV=new CANNON.Vec3();
+function friction(){
+  for(const j of joints){
+    const a=P(j.A).b,b=P(j.B).b;
+    const spine=/腰|胸|首/.test(j.label)&&j.type==='cone'&&!/上腕/.test(j.B);
+    const rel=b.angularVelocity.vsub(a.angularVelocity);
+    const k=spine?(SPR>0?.9:Math.max(FR,.35)):FR;
+    b.angularVelocity.vsub(rel.scale(k*.5),b.angularVelocity);
+    if(a.mass>0)a.angularVelocity.vadd(rel.scale(k*.5*b.mass/a.mass*.3),a.angularVelocity);
+    if(spine&&SPR>0){ /* servo spine/neck back toward straight relative to parent */
+      a.quaternion.conjugate(qA);qA.mult(b.quaternion,qrel);
+      const sgn=qrel.w<0?-1:1;tmpV.set(qrel.x*sgn,qrel.y*sgn,qrel.z*sgn);
+      a.quaternion.vmult(tmpV,tmpV);
+      const target=a.angularVelocity.vsub(tmpV.scale(2*SPR));
+      b.angularVelocity.vadd(target.vsub(b.angularVelocity).scale(.8),b.angularVelocity);
+    }
+    if(j.type==='cone'){ /* hard-ish cone limit */
+      const wa=a.quaternion.vmult(j.axA),wb=b.quaternion.vmult(j.axB);
+      const d=Math.max(-1,Math.min(1,wa.dot(wb))),ang=Math.acos(d);
+      if(ang>j.lim){const cx=wb.cross(wa);const n=cx.length();if(n>1e-6){cx.scale(1/n,cx);
+        const relv=b.angularVelocity.vsub(a.angularVelocity).dot(cx);const want=(ang-j.lim)*30;
+        if(relv<want)b.angularVelocity.vadd(cx.scale(want-relv),b.angularVelocity);}}
+    }
+  }
+}
+function enforce(){
+  friction();
+  for(const j of joints){if(j.type!=='hinge')continue;
+    let a=hingeAngle(j);if(a>Math.PI)a-=2*Math.PI;if(a<-Math.PI)a+=2*Math.PI;j.cur=a;
+    const over=a<j.min?j.min-a:a>j.max?j.max-a:0;
+    if(over!==0){
+      P(j.A).b.quaternion.vmult(V(1,0,0),ax);
+      const rel=P(j.B).b.angularVelocity.vsub(P(j.A).b.angularVelocity).dot(ax);
+      const want=over*25;            /* spring back into range */
+      const dv=want-rel;
+      if(Math.sign(dv)===Math.sign(over)){
+        P(j.B).b.angularVelocity.vadd(ax.scale(dv*.6),P(j.B).b.angularVelocity);
+        if(P(j.A).b.mass>0&&j.A!=='骨盤')P(j.A).b.angularVelocity.vsub(ax.scale(dv*.4),P(j.A).b.angularVelocity);
+      }
+    }
+  }
+}
+
+/* ---------- drag ---------- */
+const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();
+const plane=new THREE.Plane(),hitP=new THREE.Vector3();
+const mouseBody=new CANNON.Body({type:CANNON.Body.KINEMATIC,mass:0});W.addBody(mouseBody);
+let drag=null;
+const marker=new THREE.Mesh(new THREE.SphereGeometry(.015,8,6),new THREE.MeshBasicMaterial({color:0xff6b6b}));marker.visible=false;S.add(marker);
+const meshes=()=>list.map(p=>p.mesh);
+function setMouse(e){mouse.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1);}
+R.domElement.addEventListener('pointerdown',e=>{
+  setMouse(e);ray.setFromCamera(mouse,cam);
+  const h=ray.intersectObjects(meshes(),true)[0];if(!h)return;
+  let o=h.object;while(o&&!o.userData.part)o=o.parent;const p=parts[o.userData.part];
+  ctl.enabled=false;
+  const wp=V(h.point.x,h.point.y,h.point.z);
+  const local=p.b.pointToLocalFrame(wp);
+  mouseBody.position.copy(wp);
+  const c=new CANNON.PointToPointConstraint(p.b,local,mouseBody,V(0,0,0),60);
+  W.addConstraint(c);
+  plane.setFromNormalAndCoplanarPoint(cam.getWorldDirection(new THREE.Vector3()).negate(),h.point);
+  drag={c,p};marker.visible=true;marker.position.copy(h.point);
+  info.textContent='つかんでいる: '+p.name;
+  R.domElement.setPointerCapture(e.pointerId);
+});
+R.domElement.addEventListener('pointermove',e=>{
+  if(!drag)return;setMouse(e);ray.setFromCamera(mouse,cam);
+  if(ray.ray.intersectPlane(plane,hitP)){hitP.y=Math.max(hitP.y,.01);mouseBody.position.set(hitP.x,hitP.y,hitP.z);marker.position.copy(hitP);}
+});
+function endDrag(){if(!drag)return;W.removeConstraint(drag.c);drag=null;marker.visible=false;ctl.enabled=true;}
+addEventListener('pointerup',endDrag);addEventListener('pointercancel',endDrag);
+
+/* ---------- modes ---------- */
+const bG=document.getElementById('bGrav'),bH=document.getElementById('bHold'),info=document.getElementById('info');
+function setMode(m){
+  const grav=m==='grav';
+  W.gravity.set(0,grav?-9.8:0,0);FR=grav?.04:.25;SPR=grav?25:0;
+  for(const p of list){p.b.angularDamping=grav?.15:.85;p.b.linearDamping=grav?.05:.6;p.b.wakeUp();}
+  bG.classList.toggle('on',grav);bH.classList.toggle('on',!grav);
+}
+bG.onclick=()=>setMode('grav');bH.onclick=()=>setMode('hold');
+function resetPose(t){
+  for(const p of list){
+    let [x,y,z]=p.rest;const q=new CANNON.Quaternion();
+    if(t&&/上腕|前腕|手$/.test(p.name)){
+      const s=p.name[0]==='左'?1:-1;const d=1.39-y; /* distance below shoulder */
+      x=.2*s+d*s;y=1.39;q.setFromEuler(0,0,s*Math.PI/2);
+    }
+    p.b.position.set(x,y,z);p.b.quaternion.copy(q);p.b.velocity.setZero();p.b.angularVelocity.setZero();
+  }
+}
+document.getElementById('bReset').onclick=()=>resetPose(false);
+document.getElementById('bT').onclick=()=>resetPose(true);
+setMode('hold');
+
+/* ---------- loop ---------- */
+addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();R.setSize(innerWidth,innerHeight);});
+let last=performance.now();
+function tick(now){
+  const dt=Math.min((now-last)/1000,1/30);last=now;
+  const n=3;for(let i=0;i<n;i++){W.step(dt/n);enforce();}
+  for(const p of list){p.mesh.position.copy(p.b.position);p.mesh.quaternion.copy(p.b.quaternion);}
+  if(!drag){const k=joints.filter(j=>j.type==='hinge').map(j=>j.label+' '+Math.round(Math.abs(j.cur||0)*180/Math.PI)+'°').join('　');info.textContent='曲がり: '+k;}
+  ctl.update();R.render(S,cam);requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+/* test hooks */
+window.__doll={parts,joints,W,setMode,resetPose,cam,
+  scr(n){const v=parts[n].mesh.position.clone().project(cam);return [Math.round((v.x+1)/2*innerWidth),Math.round((1-v.y)/2*innerHeight)]},
+  pull(name,dx,dy,dz,steps=120){const p=parts[name];const c=new CANNON.PointToPointConstraint(p.b,V(0,0,0),mouseBody,V(0,0,0),60);
+    mouseBody.position.set(p.b.position.x+dx,p.b.position.y+dy,p.b.position.z+dz);W.addConstraint(c);
+    for(let i=0;i<steps;i++){W.step(1/180);enforce();}W.removeConstraint(c);
+    return joints.filter(j=>j.type==='hinge').map(j=>j.label+':'+Math.round(hingeAngle(j)*180/Math.PI));}};
+</script>
+</body></html>
