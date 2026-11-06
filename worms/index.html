@@ -1,0 +1,106 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache"><meta http-equiv="Pragma" content="no-cache">
+<title>ミミズの群れ — Verlet物理の学習</title>
+<style>
+html,body{margin:0;height:100%;background:#07070c;color:#cfd3e6;font:13px system-ui,sans-serif;overflow:hidden}
+canvas{display:block;touch-action:none}
+#ui{position:fixed;left:10px;top:10px;background:#0d0f1ccc;padding:8px 10px;border:1px solid #2a2f4a;border-radius:8px;max-width:300px}
+#ui label{display:block;margin:3px 0}#ui b{color:#9fb3ff}
+button{background:#1b2040;color:#dfe4ff;border:1px solid #3a4270;border-radius:6px;padding:4px 8px;margin-top:4px}
+</style></head><body>
+<canvas id="c"></canvas>
+<div id="ui"><b>ミミズの群れ（Verlet物理）</b> <span id="fps"></span><br>
+マウス/指 = プレイヤー（ミミズが寄ってくる）・クリック = 爆発<br>
+<label><input type="checkbox" id="grid" checked> 空間グリッド（近くだけ当たり判定）</label>
+<label><input type="checkbox" id="sdf" checked> 距離場で壁に押し出す</label>
+<label><input type="checkbox" id="showsdf"> 距離場を表示</label>
+<label>ミミズの数 <input type="range" id="n" min="20" max="600" value="300"> <span id="nv"></span></label>
+<span id="chk"></span>
+</div>
+<script>
+/* 学習用デモ: 動画の4つのコツ
+ 1) Verlet: 点（位置と前回位置だけ）＋ひも（距離制約）。回転も衝突形状もいらない（Hitman 2000, Jakobsen）
+ 2) 距離場(SDF): レベルを格子に焼き込み、点は1回の参照で「壁の中か」が分かる
+ 3) 空間グリッド: 全点どうしでなく、近くのマスの点だけ比べる
+ 4) AI: 全ての点に「プレイヤーへ這う」力を足すだけ */
+const cv=document.getElementById('c'),g=cv.getContext('2d');
+let W,H;function rs(){W=cv.width=innerWidth;H=cv.height=innerHeight;bakeSDF()}
+const SEG=12,LINK=5,R=2.6;
+let px,py,ox,oy,N=0,worms=0;
+const player={x:0,y:0};
+/* ---- レベル: 柱と床・壁（関数で書いて格子に焼く） ---- */
+function levelDist(x,y){
+  let d=Math.min(x-20,W-20-x,y-20,H-20-y);        /* 外枠（内側が正） */
+  const pil=[[W*.3,H*.55,40],[W*.65,H*.35,55],[W*.75,H*.75,30]];
+  for(const[cx,cy,r]of pil)d=Math.min(d,Math.hypot(x-cx,y-cy)-r);
+  const bx=Math.abs(x-W*.45)-W*.12,by=Math.abs(y-H*.2)-10; /* 横の棚 */
+  d=Math.min(d,Math.hypot(Math.max(bx,0),Math.max(by,0))+Math.min(Math.max(bx,by),0));
+  return d}
+const CELL=8;let sdf,sw,sh;
+function bakeSDF(){sw=Math.ceil(W/CELL)+1;sh=Math.ceil(H/CELL)+1;sdf=new Float32Array(sw*sh);
+  for(let j=0;j<sh;j++)for(let i=0;i<sw;i++)sdf[j*sw+i]=levelDist(i*CELL,j*CELL)}
+function sample(x,y){ /* 双線形補間で1回の参照 */
+  let fx=x/CELL,fy=y/CELL,i=Math.max(0,Math.min(sw-2,fx|0)),j=Math.max(0,Math.min(sh-2,fy|0)),
+  tx=fx-i,ty=fy-j,a=sdf[j*sw+i],b=sdf[j*sw+i+1],c=sdf[(j+1)*sw+i],d=sdf[(j+1)*sw+i+1];
+  return a*(1-tx)*(1-ty)+b*tx*(1-ty)+c*(1-tx)*ty+d*tx*ty}
+function spawn(n){worms=n;N=n*SEG;px=new Float32Array(N);py=new Float32Array(N);ox=new Float32Array(N);oy=new Float32Array(N);
+  for(let w=0;w<n;w++){let x,y;do{x=Math.random()*W;y=Math.random()*H}while(levelDist(x,y)<30);
+    const a=Math.random()*6.28;for(let s=0;s<SEG;s++){const k=w*SEG+s;px[k]=ox[k]=x+Math.cos(a)*s*LINK;py[k]=oy[k]=y+Math.sin(a)*s*LINK}}}
+/* ---- 空間グリッド ---- */
+const GC=8;let head,next,gw,gh;
+function buildGrid(){gw=Math.ceil(W/GC)+1;gh=Math.ceil(H/GC)+1;
+  if(!head||head.length!==gw*gh)head=new Int32Array(gw*gh);head.fill(-1);
+  if(!next||next.length!==N)next=new Int32Array(N);
+  for(let k=0;k<N;k++){const c=Math.min(gh-1,Math.max(0,py[k]/GC|0))*gw+Math.min(gw-1,Math.max(0,px[k]/GC|0));next[k]=head[c];head[c]=k}}
+let checks=0;
+function pushPair(a,b){checks++;const dx=px[b]-px[a],dy=py[b]-py[a],d2=dx*dx+dy*dy,m=2*R;
+  if(d2<m*m&&d2>1e-6){const d=Math.sqrt(d2),f=(m-d)/d*.5;px[a]-=dx*f;py[a]-=dy*f;px[b]+=dx*f;py[b]+=dy*f}}
+function collide(useGrid){
+  if(!useGrid){for(let a=0;a<N;a++)for(let b=a+1;b<N;b++)if((a/SEG|0)!==(b/SEG|0))pushPair(a,b);return}
+  buildGrid();
+  for(let a=0;a<N;a++){const ci=Math.min(gw-1,Math.max(0,px[a]/GC|0)),cj=Math.min(gh-1,Math.max(0,py[a]/GC|0)),wa=a/SEG|0;
+    for(let j=cj-1;j<=cj+1;j++)if(j>=0&&j<gh)for(let i=ci-1;i<=ci+1;i++)if(i>=0&&i<gw)
+      for(let b=head[j*gw+i];b!==-1;b=next[b])if(b>a&&(b/SEG|0)!==wa)pushPair(a,b)}}
+function step(){
+  const useSDF=document.getElementById('sdf').checked;
+  for(let k=0;k<N;k++){ /* 1) Verlet: 速度＝今の位置−前の位置 */
+    let vx=(px[k]-ox[k])*.96,vy=(py[k]-oy[k])*.96;ox[k]=px[k];oy[k]=py[k];
+    /* 4) AI: 各点がプレイヤーへ這う（頭ほど強く）＋少しのうねり */
+    const s=k%SEG,dx=player.x-px[k],dy=player.y-py[k],d=Math.hypot(dx,dy)+1,f=(s===0?.12:.035);
+    vx+=dx/d*f+Math.sin(t*.2+k)*.02;vy+=dy/d*f+.03; /* .03 = 弱い重力 */
+    px[k]+=vx;py[k]+=vy}
+  for(let it=0;it<3;it++){
+    for(let w=0;w<worms;w++)for(let s=0;s<SEG-1;s++){ /* ひも: 離れすぎ・近すぎを戻すだけ */
+      const a=w*SEG+s,b=a+1,dx=px[b]-px[a],dy=py[b]-py[a],d=Math.hypot(dx,dy)||1e-3,f=(d-LINK)/d*.5;
+      px[a]+=dx*f;py[a]+=dy*f;px[b]-=dx*f;py[b]-=dy*f}
+    if(it===0)collide(document.getElementById('grid').checked);
+    for(let k=0;k<N;k++){ /* 2) 距離場: マイナス＝壁の中→外へ押す */
+      if(useSDF){const d=sample(px[k],py[k])-R;if(d<0){const e=1,nx=sample(px[k]+e,py[k])-sample(px[k]-e,py[k]),ny=sample(px[k],py[k]+e)-sample(px[k],py[k]-e),l=Math.hypot(nx,ny)||1;
+        px[k]-=nx/l*d;py[k]-=ny/l*d}}
+      else{px[k]=Math.min(W-20,Math.max(20,px[k]));py[k]=Math.min(H-20,Math.max(20,py[k]))}}}}
+function boom(x,y){for(let k=0;k<N;k++){const dx=px[k]-x,dy=py[k]-y,d=Math.hypot(dx,dy)+1;if(d<220){const f=30*(1-d/220)/d;ox[k]=px[k]-dx*f;oy[k]=py[k]-dy*f}}}
+let t=0,last=performance.now(),fr=0,ft=0;
+function draw(){
+  g.fillStyle='#07070c';g.fillRect(0,0,W,H);
+  if(document.getElementById('showsdf').checked){for(let j=0;j<sh;j+=2)for(let i=0;i<sw;i+=2){const d=sdf[j*sw+i];
+    g.fillStyle=d<0?'#3a1d2a':`rgba(80,110,200,${Math.max(0,.25-d/400)})`;g.fillRect(i*CELL,j*CELL,CELL*2,CELL*2)}}
+  /* レベル描画 */
+  g.fillStyle='#1a1d2e';g.fillRect(0,0,W,20);g.fillRect(0,H-20,W,20);g.fillRect(0,0,20,H);g.fillRect(W-20,0,20,H);
+  for(const[cx,cy,r]of[[W*.3,H*.55,40],[W*.65,H*.35,55],[W*.75,H*.75,30]]){g.beginPath();g.arc(cx,cy,r,0,7);g.fill()}
+  g.fillRect(W*.33,H*.2-10,W*.24,20);
+  g.lineCap='round';
+  for(let w=0;w<worms;w++){const b=w*SEG;g.strokeStyle=`hsl(${345+w%20},35%,${38+w%7*3}%)`;g.lineWidth=R*2;g.beginPath();g.moveTo(px[b],py[b]);
+    for(let s=1;s<SEG;s++)g.lineTo(px[b+s],py[b+s]);g.stroke()}
+  g.fillStyle='#e8ecff';g.beginPath();g.arc(player.x,player.y,6,0,7);g.fill()}
+function loop(now){t++;checks=0;step();draw();fr++;ft+=now-last;last=now;
+  if(ft>500){document.getElementById('fps').textContent=Math.round(fr*1000/ft)+'fps';
+    document.getElementById('chk').textContent='当たり判定の比較回数/フレーム: '+checks.toLocaleString();fr=0;ft=0}
+  requestAnimationFrame(loop)}
+addEventListener('resize',rs);
+cv.addEventListener('pointermove',e=>{player.x=e.clientX;player.y=e.clientY});
+cv.addEventListener('pointerdown',e=>{player.x=e.clientX;player.y=e.clientY;boom(e.clientX,e.clientY)});
+const nI=document.getElementById('n');nI.oninput=()=>{document.getElementById('nv').textContent=nI.value;spawn(+nI.value)};
+rs();player.x=W*.5;player.y=H*.85;nI.oninput();requestAnimationFrame(loop);
+window.boom=boom; /* worms-v1 */
+</script></body></html>
