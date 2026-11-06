@@ -22,7 +22,7 @@ canvas{display:block;touch-action:none}
  <button id="bCam">A案カメラ</button>
 </div>
 <div id="info">関節: —</div>
-<div id="hint">人形の体をクリックしたまま動かすと引っぱれます。何もないところをドラッグすると視点が回ります（ホイールで拡大）。<br>ひじ・ひざは片側にしか曲がらず、肩・股・首・腰・手首・足首にも人と同じくらいの動く範囲を付けています。</div>
+<div id="hint">人形の体をクリックしたまま動かすと引っぱれます。何もないところをドラッグすると視点が回ります（ホイールで拡大）。<br>「ポーズ固定」では手を離すとその形でピタッと止まります（揺れません）。ひじ・ひざは片側にしか曲がらず、肩・股・首・腰・手首・足首にも人と同じくらいの動く範囲を付けています。</div>
 <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/","cannon-es":"https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 <script type="module">
 import * as THREE from 'three';
@@ -147,7 +147,8 @@ function hingeAngle(j){
   return 2*Math.atan2(qr.x,qr.w);
 }
 /* joint friction + stiff spine (real mannequins hold their pose by friction) */
-let FR=.25,SPR=0;
+let FR=.25,SPR=0,MODE='hold';
+function freeze(){for(const p of list){p.b.velocity.setZero();p.b.angularVelocity.setZero();}swordBody.velocity.setZero();swordBody.angularVelocity.setZero();}
 const qrel=new CANNON.Quaternion(),tmpV=new CANNON.Vec3();
 function friction(){
   for(const j of joints){
@@ -218,13 +219,13 @@ R.domElement.addEventListener('pointermove',e=>{
   if(!drag)return;setMouse(e);ray.setFromCamera(mouse,cam);
   if(ray.ray.intersectPlane(plane,hitP)){hitP.y=Math.max(hitP.y,.01);mouseBody.position.set(hitP.x,hitP.y,hitP.z);marker.position.copy(hitP);}
 });
-function endDrag(){if(!drag)return;W.removeConstraint(drag.c);drag=null;marker.visible=false;ctl.enabled=true;}
+function endDrag(){if(!drag)return;W.removeConstraint(drag.c);drag=null;freeze();marker.visible=false;ctl.enabled=true;}
 addEventListener('pointerup',endDrag);addEventListener('pointercancel',endDrag);
 
 /* ---------- modes ---------- */
 const bG=document.getElementById('bGrav'),bH=document.getElementById('bHold'),info=document.getElementById('info');
 function setMode(m){
-  const grav=m==='grav';
+  const grav=m==='grav';MODE=m;
   W.gravity.set(0,grav?-9.8:0,0);FR=grav?.04:.25;SPR=grav?25:0;
   for(const p of list){p.b.angularDamping=grav?.15:.85;p.b.linearDamping=grav?.05:.6;p.b.wakeUp();}
   bG.classList.toggle('on',grav);bH.classList.toggle('on',!grav);
@@ -328,10 +329,11 @@ addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProje
 let last=performance.now();
 function tick(now){
   const dt=Math.min((now-last)/1000,1/30);last=now;
-  const n=3;for(let i=0;i<n;i++){W.step(dt/n);enforce();}
+  /* ポーズ固定: つかんでいる間だけ動かし、離したらその場で完全に止める */
+  if(MODE==='grav'||drag){const n=3;for(let i=0;i<n;i++){W.step(dt/n);enforce();}}else freeze();
   for(const p of list){p.mesh.position.copy(p.b.position);p.mesh.quaternion.copy(p.b.quaternion);}
   if(swordMesh.visible){swordMesh.position.copy(swordBody.position);swordMesh.quaternion.copy(swordBody.quaternion);}
-  if(!drag){const k=joints.filter(j=>j.type==='hinge').map(j=>j.label+' '+Math.round(Math.abs(j.cur||0)*180/Math.PI)+'°').join('　');info.textContent='曲がり: '+k;}
+  if(!drag){const k=joints.filter(j=>j.type==='hinge').map(j=>j.label+' '+Math.round(Math.abs(hingeAngle(j))*180/Math.PI)+'°').join('　');info.textContent='曲がり: '+k;}
   ctl.update();R.render(S,cam);requestAnimationFrame(tick);
 }
 requestAnimationFrame(tick);
