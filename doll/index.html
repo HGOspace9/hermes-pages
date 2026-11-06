@@ -175,7 +175,7 @@ function friction(){
   }
 }
 function enforce(){
-  friction();
+  friction();snapWrists();
   for(const j of joints){if(j.type!=='hinge')continue;
     let a=hingeAngle(j);if(a>Math.PI)a-=2*Math.PI;if(a<-Math.PI)a+=2*Math.PI;j.cur=a;
     const over=a<j.min?j.min-a:a>j.max?j.max-a:0;
@@ -260,7 +260,10 @@ swordMesh.traverse(o=>{if(o.isMesh)o.castShadow=true});swordMesh.visible=false;S
 const swordBody=new CANNON.Body({mass:.9,linearDamping:.6,angularDamping:.85});
 swordBody.addShape(new CANNON.Box(V(.02,.03,.45)),V(0,0,.3));swordBody.collisionFilterGroup=4;swordBody.collisionFilterMask=2;
 let swordCons=[];
-function swordOff(){for(const c of swordCons)W.removeConstraint(c);swordCons=[];if(W.bodies.includes(swordBody))W.removeBody(swordBody);swordMesh.visible=false;}
+let wristLock=null,swordRel=null;
+function snapWrists(){if(!wristLock)return;for(const w of wristLock){w.fa.quaternion.mult(w.rq,w.h.quaternion);w.fa.pointToWorldFrame(w.rp,w.h.position);w.h.velocity.copy(w.fa.velocity);w.h.angularVelocity.copy(w.fa.angularVelocity);}
+  const r=parts['右手'].b;r.quaternion.mult(swordRel.rq,swordBody.quaternion);r.pointToWorldFrame(swordRel.rp,swordBody.position);swordBody.velocity.copy(r.velocity);swordBody.angularVelocity.copy(r.angularVelocity);}
+function swordOff(){wristLock=null;for(const c of swordCons)W.removeConstraint(c);swordCons=[];if(W.bodies.includes(swordBody))W.removeBody(swordBody);swordMesh.visible=false;}
 /* ---------- pose (FK + 2-bone IK) ---------- */
 const T3=THREE,v3=(a)=>new T3.Vector3(...a);
 const PIV={'腰':['骨盤',[0,1.03,0]],'胸':['腰',[0,1.16,0]],'頭':['胸',[0,1.41,0]]};
@@ -310,20 +313,24 @@ function pose(def){
   swordBody.velocity.setZero();swordBody.angularVelocity.setZero();W.addBody(swordBody);swordMesh.visible=true;
   const c1=new CANNON.LockConstraint(parts['右手'].b,swordBody);
   const c2=new CANNON.PointToPointConstraint(parts['左手'].b,V(0,0,0),swordBody,V(0,0,-.095),1e6);
-  swordCons=[c1,c2];W.addConstraint(c1);W.addConstraint(c2);
+  /* 手首に力: 剣を持っている間は前腕と手を固定（ぐにゃっと曲がらない） */
+  swordCons=[c1,c2];for(const c of swordCons)W.addConstraint(c);
+  wristLock=['右','左'].map(L=>{const fa=parts[L+'前腕'].b,h=parts[L+'手'].b;const iq=fa.quaternion.inverse();
+    return {fa,h,rq:iq.mult(h.quaternion),rp:fa.pointToLocalFrame(h.position)};});
+  swordRel={rq:parts['右手'].b.quaternion.inverse().mult(swordBody.quaternion),rp:parts['右手'].b.pointToLocalFrame(swordBody.position)};
   return Wp;
 }
 const SLASH={pelvisPos:[0,.7,0],'骨盤':[0,.35,0],'腰':[.12,.12,0],'胸':[.18,.22,-.05],'頭':[-.1,-.45,.05],
   '右もも':[-1.25,0,0],'右すね':[1.15,0,0],'右足':[.1,0,0],
   '左もも':[.85,-.15,.12],'左すね':[.12,0,0],'左足':[-.35,0,0],
-  grip:[.12,.72,.42],G:[.28,-.42,.86]}; /* 振り抜き後: 手は前足の上・腰の高さ、剣先は前下の床近く */
+  grip:[.2,.82,.36],G:[.55,-.62,-.25]}; /* 振り抜き後: 手は前足の上・腰の高さ、剣先は前下の床近く */
 const RAISE={pelvisPos:[0,.74,0],'骨盤':[0,-.2,0],'腰':[-.05,-.15,0],'胸':[-.1,-.3,.05],'頭':[0,.4,0],
   '右もも':[-1.15,0,0],'右すね':[1.1,0,0],'右足':[.05,0,0],
   '左もも':[.8,.1,.1],'左すね':[.12,0,0],'左足':[-.35,0,0],
   grip:[-.18,1.62,-.02],G:[.25,.55,-.8]};
 document.getElementById('bSlash').onclick=()=>pose(SLASH);
 document.getElementById('bRaise').onclick=()=>pose(RAISE);
-document.getElementById('bCam').onclick=()=>{cam.position.set(1.25,.55,2.1);ctl.target.set(0,.75,0);ctl.update();};
+document.getElementById('bCam').onclick=()=>{cam.position.set(1.5,.75,2.7);ctl.target.set(0,.95,0);ctl.update();};
 /* ---------- loop ---------- */
 addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();R.setSize(innerWidth,innerHeight);});
 let last=performance.now();
