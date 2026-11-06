@@ -17,6 +17,7 @@ canvas{display:block;touch-action:none}
  <button id="bHold" class="on">ポーズ固定</button>
  <button id="bReset">立ちポーズに戻す</button>
  <button id="bT">Tポーズ</button>
+ <button id="bKamae">剣：構え（中段）</button>
  <button id="bSlash">剣：振り抜き</button>
  <button id="bRaise">剣：振りかぶり</button>
  <button id="bCam">A案カメラ</button>
@@ -323,13 +324,18 @@ function pose(def){
 const SLASH={pelvisPos:[0,.7,0],'骨盤':[0,.35,0],'腰':[.12,.12,0],'胸':[.18,.22,-.05],'頭':[-.1,-.45,.05],
   '右もも':[-1.25,0,0],'右すね':[1.15,0,0],'右足':[.1,0,0],
   '左もも':[.85,-.15,.12],'左すね':[.12,0,0],'左足':[-.35,0,0],
-  grip:[.2,.82,.36],G:[.55,-.62,-.25]}; /* 振り抜き後: 手は前足の上・腰の高さ、剣先は前下の床近く */
+  grip:[.15,.82,.35],G:[0,-.5,.3]}; /* 振り抜き後: 手は前足の上・腰の高さ、剣先は前下の床近く */
 const RAISE={pelvisPos:[0,.74,0],'骨盤':[0,-.2,0],'腰':[-.05,-.15,0],'胸':[-.1,-.3,.05],'頭':[0,.4,0],
   '右もも':[-1.15,0,0],'右すね':[1.1,0,0],'右足':[.05,0,0],
   '左もも':[.8,.1,.1],'左すね':[.12,0,0],'左足':[-.35,0,0],
-  grip:[-.18,1.62,-.02],G:[.25,.55,-.8]};
+  grip:[-.12,1.55,0],G:[0,.8,-.6]};
+const KAMAE={pelvisPos:[0,.84,0],'骨盤':[0,.25,0],'腰':[0,-.1,0],'胸':[0,-.1,0],'頭':[0,-.05,0],
+  '右もも':[-.35,0,0],'右すね':[.25,0,0],'右足':[.1,0,0],
+  '左もも':[.2,0,.03],'左すね':[.2,0,0],'左足':[-.45,0,0],
+  grip:[0,.98,.35],G:[0,.2,.3]}; /* 中段: 拳はへその前、剣先はのどの高さ */
 document.getElementById('bSlash').onclick=()=>pose(SLASH);
 document.getElementById('bRaise').onclick=()=>pose(RAISE);
+document.getElementById('bKamae').onclick=()=>pose(KAMAE);
 document.getElementById('bCam').onclick=()=>{cam.position.set(1.5,.75,2.7);ctl.target.set(0,.95,0);ctl.update();};
 /* ---------- loop ---------- */
 addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();R.setSize(innerWidth,innerHeight);});
@@ -345,7 +351,7 @@ function tick(now){
 }
 requestAnimationFrame(tick);
 /* test hooks */
-window.__doll={parts,joints,W,setMode,resetPose,cam,pose,SLASH,RAISE,swordBody,
+window.__doll={parts,joints,W,setMode,resetPose,cam,pose,SLASH,RAISE,KAMAE,swordBody,
   scr(n){const v=parts[n].mesh.position.clone().project(cam);return [Math.round((v.x+1)/2*innerWidth),Math.round((1-v.y)/2*innerHeight)]},
   pull(name,dx,dy,dz,steps=120){const p=parts[name];const c=new CANNON.PointToPointConstraint(p.b,V(0,0,0),mouseBody,V(0,0,0),60);
     mouseBody.position.set(p.b.position.x+dx,p.b.position.y+dy,p.b.position.z+dz);W.addConstraint(c);
