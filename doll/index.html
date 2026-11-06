@@ -17,6 +17,9 @@ canvas{display:block;touch-action:none}
  <button id="bHold" class="on">ポーズ固定</button>
  <button id="bReset">立ちポーズに戻す</button>
  <button id="bT">Tポーズ</button>
+ <button id="bSlash">剣：振り抜き</button>
+ <button id="bRaise">剣：振りかぶり</button>
+ <button id="bCam">A案カメラ</button>
 </div>
 <div id="info">関節: —</div>
 <div id="hint">人形の体をクリックしたまま動かすと引っぱれます。何もないところをドラッグすると視点が回ります（ホイールで拡大）。<br>ひじ・ひざは片側にしか曲がらず、肩・股・首・腰・手首・足首にも人と同じくらいの動く範囲を付けています。</div>
@@ -88,8 +91,11 @@ for(const s of [1,-1]){
   const sx=.2*s;
   part(L+'上腕',[sx,1.26,0],[.045,.13,.045],(()=>{const G=limb(.28,.05,.042);ball(.06,G,.14);return G})(),1.2);
   part(L+'前腕',[sx,1.0,0],[.038,.11,.038],(()=>{const G=limb(.24,.04,.032);ball(.045,G,.125);return G})(),.8);
-  part(L+'手',[sx,.83,0],[.03,.05,.015],(()=>{const G=new THREE.Group();const p=g(new THREE.BoxGeometry(.06,.09,.025));G.add(p);
-    const t=g(new THREE.BoxGeometry(.018,.045,.018));t.position.set(-.035*s,.01,.015);t.rotation.z=.4*s;G.add(t);ball(.025,G,.055);return G})(),.3);
+  part(L+'手',[sx,.83,0],[.03,.04,.042],(()=>{const G=new THREE.Group();
+    const p=g(new THREE.BoxGeometry(.06,.075,.085));G.add(p); /* fist: grip runs along local z */
+    for(let k=0;k<4;k++){const kn=g(new THREE.BoxGeometry(.064,.02,.019));kn.position.set(0,-.03,-.03+k*.02);G.add(kn);}
+    const t=g(new THREE.BoxGeometry(.022,.02,.045));t.position.set(-.028*s,.0,.03);G.add(t);
+    ball(.025,G,.05);return G})(),.3);
   part(L+'もも',[.09*s,.68,0],[.06,.19,.06],(()=>{const G=limb(.4,.075,.055);ball(.07,G,.2);return G})(),3);
   part(L+'すね',[.09*s,.28,0],[.045,.19,.045],(()=>{const G=limb(.4,.052,.038);ball(.055,G,.2);return G})(),2);
   part(L+'足',[.09*s,.035,.05],[.045,.035,.11],(()=>{const G=new THREE.Group();const f=g(new THREE.BoxGeometry(.085,.06,.21));G.add(f);
@@ -97,10 +103,13 @@ for(const s of [1,-1]){
 }
 /* stand */
 const standBody=new CANNON.Body({mass:0,position:V(0,.95,0)});W.addBody(standBody);
-const rod=g(new THREE.CylinderGeometry(.018,.018,.95-.02,8),STANDM);rod.position.set(0,(.95)/2,-.16);S.add(rod);
-const arm=g(new THREE.BoxGeometry(.03,.03,.16),STANDM);arm.position.set(0,.93,-.08);S.add(arm);
-const base=g(new THREE.CylinderGeometry(.22,.26,.04,10),STANDM);base.position.set(0,.02,-.16);base.receiveShadow=true;S.add(base);
+const rod=g(new THREE.CylinderGeometry(.018,.018,1,8),STANDM);S.add(rod);
+const arm=g(new THREE.BoxGeometry(.03,.03,.16),STANDM);S.add(arm);
+const base=g(new THREE.CylinderGeometry(.22,.26,.04,10),STANDM);base.receiveShadow=true;S.add(base);
 let standLock=new CANNON.LockConstraint(standBody,pelvis.b);W.addConstraint(standLock);
+function placeStand(){const p=standBody.position;rod.scale.y=p.y;rod.position.set(p.x,p.y/2,p.z-.16);arm.position.set(p.x,p.y-.02,p.z-.08);base.position.set(p.x,.02,p.z-.16);}
+function relock(){W.removeConstraint(standLock);standBody.position.copy(pelvis.b.position);standBody.quaternion.set(0,0,0,1);standLock=new CANNON.LockConstraint(standBody,pelvis.b);W.addConstraint(standLock);placeStand();}
+placeStand();
 
 /* joints */
 const P=n=>parts[n];
@@ -127,7 +136,7 @@ for(const s of [1,-1]){
   hinge(L+'上腕',L+'前腕',[.2*s,1.12,0],-2.5,0,L+'ひじ');
   cone(L+'前腕',L+'手',[.2*s,.88,0],[0,-1,0],.9,.25,L+'手首');
   // hip: cone axis tilted forward (legs lift forward a lot, backward a little)
-  cone('骨盤',L+'もも',[.09*s,.88,0],[.25*s,-.75,.6],1.15,.5,L+'股');
+  cone('骨盤',L+'もも',[.09*s,.88,0],[.25*s,-.85,.35],1.4,.5,L+'股');
   hinge(L+'もも',L+'すね',[.09*s,.48,0],0,2.5,L+'ひざ');
   cone(L+'すね',L+'足',[.09*s,.08,0],[0,-1,0],.45,.2,L+'足首');
 }
@@ -231,10 +240,89 @@ function resetPose(t){
     p.b.position.set(x,y,z);p.b.quaternion.copy(q);p.b.velocity.setZero();p.b.angularVelocity.setZero();
   }
 }
-document.getElementById('bReset').onclick=()=>resetPose(false);
-document.getElementById('bT').onclick=()=>resetPose(true);
+document.getElementById('bReset').onclick=()=>{swordOff();resetPose(false);relock();};
+document.getElementById('bT').onclick=()=>{swordOff();resetPose(true);relock();};
 setMode('hold');
 
+/* ---------- sword ---------- */
+const STEEL=new THREE.MeshStandardMaterial({color:0xcfd6e6,roughness:.25,metalness:.8,flatShading:true});
+const GRIPM=new THREE.MeshStandardMaterial({color:0x3a2a40,roughness:.8,flatShading:true});
+const GOLD=new THREE.MeshStandardMaterial({color:0xc8a050,roughness:.4,metalness:.6,flatShading:true});
+const swordMesh=new THREE.Group();
+{const gr=new THREE.Mesh(new THREE.CylinderGeometry(.016,.016,.2,6),GRIPM);gr.rotation.x=Math.PI/2;swordMesh.add(gr);
+ const pm=new THREE.Mesh(new THREE.IcosahedronGeometry(.026,0),GOLD);pm.position.z=-.11;swordMesh.add(pm);
+ const gd=new THREE.Mesh(new THREE.BoxGeometry(.03,.2,.03),GOLD);gd.position.z=.11;swordMesh.add(gd);
+ const bl=new THREE.Mesh(new THREE.BoxGeometry(.008,.052,.62),STEEL);bl.position.z=.43;swordMesh.add(bl); /* wide side along local y */
+ const tip=new THREE.Mesh(new THREE.ConeGeometry(.026,.12,4),STEEL);tip.rotation.x=Math.PI/2;tip.scale.x=.3;tip.position.z=.8;swordMesh.add(tip);
+}
+swordMesh.traverse(o=>{if(o.isMesh)o.castShadow=true});swordMesh.visible=false;S.add(swordMesh);
+const swordBody=new CANNON.Body({mass:.9,linearDamping:.6,angularDamping:.85});
+swordBody.addShape(new CANNON.Box(V(.02,.03,.45)),V(0,0,.3));swordBody.collisionFilterGroup=4;swordBody.collisionFilterMask=2;
+let swordCons=[];
+function swordOff(){for(const c of swordCons)W.removeConstraint(c);swordCons=[];if(W.bodies.includes(swordBody))W.removeBody(swordBody);swordMesh.visible=false;}
+/* ---------- pose (FK + 2-bone IK) ---------- */
+const T3=THREE,v3=(a)=>new T3.Vector3(...a);
+const PIV={'腰':['骨盤',[0,1.03,0]],'胸':['腰',[0,1.16,0]],'頭':['胸',[0,1.41,0]]};
+for(const s of [1,-1]){const L=s>0?'左':'右';
+  Object.assign(PIV,{[L+'上腕']:['胸',[.2*s,1.39,0]],[L+'前腕']:[L+'上腕',[.2*s,1.12,0]],[L+'手']:[L+'前腕',[.2*s,.88,0]],
+   [L+'もも']:['骨盤',[.09*s,.88,0]],[L+'すね']:[L+'もも',[.09*s,.48,0]],[L+'足']:[L+'すね',[.09*s,.08,0]]});}
+const ORDER=['腰','胸','頭','左もも','左すね','左足','右もも','右すね','右足'];
+function eq(e){return new T3.Quaternion().setFromEuler(new T3.Euler(e[0],e[1],e[2],'YXZ'));}
+function basisQ(x,y,z){return new T3.Quaternion().setFromRotationMatrix(new T3.Matrix4().makeBasis(x,y,z));}
+function pose(def){
+  swordOff();
+  const Wp={},Wq={};
+  Wp['骨盤']=v3(def.pelvisPos);Wq['骨盤']=eq(def['骨盤']||[0,0,0]);
+  const pivotW=(c)=>{const [par,pt]=PIV[c];return v3(pt).sub(v3(parts[par].rest)).applyQuaternion(Wq[par]).add(Wp[par]);};
+  const put=(c,q,pv)=>{const [,pt]=PIV[c];Wq[c]=q;Wp[c]=v3(parts[c].rest).sub(v3(pt)).applyQuaternion(q).add(pv);};
+  for(const c of ORDER){const par=PIV[c][0];put(c,Wq[par].clone().multiply(eq(def[c]||[0,0,0])),pivotW(c));}
+  /* arms by IK: hand centre + grip axis G */
+  const G=v3(def.G).normalize();
+  const grip=v3(def.grip);
+  const hands={'右':grip.clone().addScaledVector(G,.045),'左':grip.clone().addScaledVector(G,-.05)};
+  for(const L of ['右','左']){
+    const s=L==='左'?1:-1,Sp=pivotW(L+'上腕'),Hc=hands[L];
+    const pole=v3([s*.6,-1,-.3]).normalize();
+    let wrist=Hc.clone().add(new T3.Vector3(0,.05,0)),f,u,x,yH;
+    for(let it=0;it<4;it++){
+      const d=wrist.clone().sub(Sp);let Ln=Math.min(Math.max(d.length(),.08),.505);const dir=d.normalize();
+      const a=.27,b=.24,cosA=Math.min(1,Math.max(-1,(a*a+Ln*Ln-b*b)/(2*a*Ln))),A=Math.acos(cosA);
+      const perp=pole.clone().addScaledVector(dir,-pole.dot(dir)).normalize();
+      const E=Sp.clone().addScaledVector(dir,a*cosA).addScaledVector(perp,a*Math.sin(A));
+      u=E.clone().sub(Sp).normalize();f=Sp.clone().addScaledVector(dir,Ln).sub(E).normalize();
+      x=new T3.Vector3().crossVectors(f,u).normalize();
+      const y0=f.clone().negate();yH=y0.addScaledVector(G,-y0.dot(G)).normalize();
+      wrist=Hc.clone().addScaledVector(yH,.05);
+    }
+    const yU=u.clone().negate(),zU=new T3.Vector3().crossVectors(x,yU);
+    put(L+'上腕',basisQ(x,yU,zU),Sp);
+    const yF=f.clone().negate(),zF=new T3.Vector3().crossVectors(x,yF);
+    put(L+'前腕',basisQ(x,yF,zF),pivotW(L+'前腕'));
+    const xH=new T3.Vector3().crossVectors(yH,G);
+    Wq[L+'手']=basisQ(xH,yH,G);Wp[L+'手']=Hc.clone();
+  }
+  {const lo=Math.min(Wp['左足'].y,Wp['右足'].y)-.075;if(lo<0){for(const k in Wp)Wp[k].y-=lo;grip.y-=lo;}}
+  for(const p of list){const P_=Wp[p.name],Q=Wq[p.name];p.b.position.set(P_.x,P_.y,P_.z);p.b.quaternion.set(Q.x,Q.y,Q.z,Q.w);p.b.velocity.setZero();p.b.angularVelocity.setZero();}
+  relock();setMode('hold');
+  /* sword: locked to right fist, left fist pinned to the grip */
+  const Qr=Wq['右手'];swordBody.position.set(Wp['右手'].x,Wp['右手'].y,Wp['右手'].z);swordBody.quaternion.set(Qr.x,Qr.y,Qr.z,Qr.w);
+  swordBody.velocity.setZero();swordBody.angularVelocity.setZero();W.addBody(swordBody);swordMesh.visible=true;
+  const c1=new CANNON.LockConstraint(parts['右手'].b,swordBody);
+  const c2=new CANNON.PointToPointConstraint(parts['左手'].b,V(0,0,0),swordBody,V(0,0,-.095),1e6);
+  swordCons=[c1,c2];W.addConstraint(c1);W.addConstraint(c2);
+  return Wp;
+}
+const SLASH={pelvisPos:[0,.7,0],'骨盤':[0,.35,0],'腰':[.12,.12,0],'胸':[.18,.22,-.05],'頭':[-.1,-.45,.05],
+  '右もも':[-1.25,0,0],'右すね':[1.15,0,0],'右足':[.1,0,0],
+  '左もも':[.85,-.15,.12],'左すね':[.12,0,0],'左足':[-.35,0,0],
+  grip:[.2,.82,.36],G:[.55,-.62,-.25]};
+const RAISE={pelvisPos:[0,.74,0],'骨盤':[0,-.2,0],'腰':[-.05,-.15,0],'胸':[-.1,-.3,.05],'頭':[0,.4,0],
+  '右もも':[-1.15,0,0],'右すね':[1.1,0,0],'右足':[.05,0,0],
+  '左もも':[.8,.1,.1],'左すね':[.12,0,0],'左足':[-.35,0,0],
+  grip:[-.18,1.62,-.02],G:[.25,.55,-.8]};
+document.getElementById('bSlash').onclick=()=>pose(SLASH);
+document.getElementById('bRaise').onclick=()=>pose(RAISE);
+document.getElementById('bCam').onclick=()=>{cam.position.set(1.25,.55,2.1);ctl.target.set(0,.75,0);ctl.update();};
 /* ---------- loop ---------- */
 addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();R.setSize(innerWidth,innerHeight);});
 let last=performance.now();
@@ -242,12 +330,13 @@ function tick(now){
   const dt=Math.min((now-last)/1000,1/30);last=now;
   const n=3;for(let i=0;i<n;i++){W.step(dt/n);enforce();}
   for(const p of list){p.mesh.position.copy(p.b.position);p.mesh.quaternion.copy(p.b.quaternion);}
+  if(swordMesh.visible){swordMesh.position.copy(swordBody.position);swordMesh.quaternion.copy(swordBody.quaternion);}
   if(!drag){const k=joints.filter(j=>j.type==='hinge').map(j=>j.label+' '+Math.round(Math.abs(j.cur||0)*180/Math.PI)+'°').join('　');info.textContent='曲がり: '+k;}
   ctl.update();R.render(S,cam);requestAnimationFrame(tick);
 }
 requestAnimationFrame(tick);
 /* test hooks */
-window.__doll={parts,joints,W,setMode,resetPose,cam,
+window.__doll={parts,joints,W,setMode,resetPose,cam,pose,SLASH,RAISE,swordBody,
   scr(n){const v=parts[n].mesh.position.clone().project(cam);return [Math.round((v.x+1)/2*innerWidth),Math.round((1-v.y)/2*innerHeight)]},
   pull(name,dx,dy,dz,steps=120){const p=parts[name];const c=new CANNON.PointToPointConstraint(p.b,V(0,0,0),mouseBody,V(0,0,0),60);
     mouseBody.position.set(p.b.position.x+dx,p.b.position.y+dy,p.b.position.z+dz);W.addConstraint(c);
