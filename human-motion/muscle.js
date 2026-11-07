@@ -119,5 +119,5 @@ function makeSwing(load,strength=1,target,opt={}){target=target||targetFor(load)
 function simulateSwing(load,strength=1,sec=2.5,dt=.001,target,opt={}){const sw=makeSwing(load,strength,target,opt);let peak=0,qmax=0,peakPhase='';
  for(let i=0;i<sec/dt;i++){sw.step(dt);if(sw.v>peak){peak=sw.v;peakPhase=sw.phase}qmax=Math.max(qmax,sw.s.q1)}
  return {minDist:sw.hit?0:sw.minDist,elbowAt:sw.elbowAt,target:sw.target,afterMax:sw.afterMax||0,raiseTime:sw.raiseTime,hit:sw.hit,hitV:sw.hit?sw.hit.v:0,top:sw.top,qmax,end:sw.s,peak,peakPhase}}
-const api={targetFor,bladeDist,TARGET,bladeCross,makeSwing,fv,ARM,ARM2,MUS,swordStep,SWING,swingAct,simulateSwing,toAct,armTorques,armStep,holdArm,lengthFactor,momentArm,gravityTorque,step,holdActivation};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Muscle=api;
+const api={momentArmS,lengthFactorS,targetFor,bladeDist,TARGET,bladeCross,makeSwing,fv,ARM,ARM2,MUS,swordStep,SWING,swingAct,simulateSwing,toAct,armTorques,armStep,holdArm,lengthFactor,momentArm,gravityTorque,step,holdActivation};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Muscle=api;
 })(this);
