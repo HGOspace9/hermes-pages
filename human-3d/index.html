@@ -38,22 +38,25 @@ button{font-family:inherit}
 #marks span{position:absolute;transform:translateX(-50%);white-space:nowrap;cursor:pointer}
 #marks span::before{content:"";position:absolute;left:50%;top:-9px;width:2px;height:7px;background:#b9c0ea}
 #marks span.hit{color:#f3d89a;font-weight:600}
-#scrubO{position:absolute;right:0;top:-18px;font-size:12px;color:#b9c0ea}
+#scrubO{position:absolute;left:0;top:-20px;transform:translateX(-50%);white-space:nowrap;pointer-events:none;font-size:12px;color:#b9c0ea}
 #saveMoment{height:46px;background:#323a70;color:#fff;border:1px solid #4b5596;border-radius:10px;padding:0 16px;font-size:14px;font-weight:600;cursor:pointer;flex:none}
-#status{position:fixed;left:50%;transform:translateX(-50%);top:70px;width:min(560px,calc(100vw - 680px));text-align:center;font-size:12px;line-height:1.45;color:#c9cff5;text-shadow:0 1px 3px #000;z-index:3;pointer-events:none;max-height:3.1em;overflow:hidden}
+#status{word-break:keep-all;overflow-wrap:anywhere;position:fixed;left:50%;transform:translateX(-50%);top:70px;width:min(560px,calc(100vw - 680px));text-align:center;font-size:12px;line-height:1.45;color:#c9cff5;text-shadow:0 1px 3px #000;z-index:3;pointer-events:none;max-height:3.1em;overflow:hidden}
 .row{display:flex;align-items:center;gap:6px;margin:7px 0;flex-wrap:wrap}.lab{width:44px;font-weight:600;color:#f3d89a;flex:none}
 .seg{display:inline-flex;border:1px solid #4b5596;border-radius:10px;overflow:hidden}#panel .seg button{margin:0;border:0;border-radius:0;padding:6px 10px;background:#323a70}#panel .seg button+button{border-left:1px solid #4b5596}#panel .seg button.on{background:#f3d89a;color:#1d1f3a}
 .ends{font-size:11px;opacity:.75}.num{font-size:11px;opacity:.6;margin-left:auto}#panel .row input[type=range]{width:96px}
 details{margin-top:10px;border-top:1px solid #363b6c;padding-top:6px}summary{cursor:pointer;color:#c9cff5;font-weight:600;list-style:none}summary::before{content:"▸ "}details[open] summary::before{content:"▾ "}
 .grp{margin:8px 0 2px;font-weight:600;color:#c9cff5}
 @media (max-width:1100px){#panel{width:250px;box-sizing:border-box;left:12px;padding:10px 12px}#tabs button{padding:8px 12px;font-size:14px}#views{right:10px;top:14px;grid-template-columns:repeat(6,38px);gap:4px;padding:5px}#views button{height:32px;font-size:11px}#tabs{left:12px;transform:none}#bar{left:12px;right:12px;gap:8px}#bar .sm{padding:0 8px}#saveMoment{padding:0 10px}}
+#pane-pose button.sm{padding:5px 8px;margin:0}
 </style></head><body data-human-3d-ready>
 <nav id="tabs"><button data-tab="pose">① ポーズを作る</button><button data-tab="move" class="on">② 動きを見る</button><button data-tab="save">③ 保存</button></nav>
 <div id="panel" class="card">
 <div class="pane" id="pane-pose">
 <h2>ポーズを作る</h2>
 <button id="stand">立ちポーズに戻す</button>
-<div class="sub" style="margin:6px 0">関節を直接つかんで動かす機能は、これから付けます。今は「② 動きを見る」で動きを止めて、その瞬間をポーズとして使えます。</div>
+<div class="sub" style="margin:6px 0">人形の<b>黄色い玉</b>（関節）をつかんで動かすと、その先の腕や脚がついてきます。腰の大きな玉で体ごと動き、剣先の玉で剣の向きが変わります。玉のない所をドラッグすると、見る角度が回ります。</div>
+<button id="undo">ひとつ前に戻す</button>
+<div class="row"><span class="lab" style="width:auto">左右対称</span><button id="mirR2L" class="sm">右を左にうつす</button><button id="mirL2R" class="sm">左を右にうつす</button></div>
 <h2>保存したポーズを呼び出す</h2>
 <select id="poseList" style="width:100%"><option value="">（このブラウザに保存したポーズ）</option></select>
 <button id="poseLoad" style="margin-top:6px">ファイルから読み込む</button><input type="file" id="poseFile" accept=".json,application/json" style="display:none">
@@ -189,9 +192,9 @@ function swTick(dt){acc+=dt*speedK;while(acc>=DT&&swOn){acc-=DT;const hadHit=!!s
  put('up',off(sh,0,.05,0),lerp(sh,el,.4),-.04);put('down',off(sh,0,-.18,-.08),lerp(sh,el,.35),-.03);put('flex',lerp(sh,el,.15),lerp(el,hd,.2),-.05);put('ext',lerp(sh,el,.1),lerp(el,hd,-.1),-.02);
  if(sw.mode!=='なし'&&(sw.use||0)>.01){arrow.visible=true;arrow.position.set(J.lank[0],.02,J.lank[2]);arrow.setDirection(new THREE.Vector3(0,0,Math.sign(sw.F||1)));arrow.setLength(Math.min(.6,sw.use*.8),.08,.06);arrow.setColor(sw.slip?0xd0453f:0x3a9a55)}else arrow.visible=false;
  const D=180/Math.PI,act=Object.entries(a).filter(([k,v])=>typeof v==='number'&&v>.05).map(([k,v])=>NAMES[k]+' '+(v*100).toFixed(0)+'%').join('・');
- const res=sw.fail&&sw.fail.blew?'⚠ 計算がうまくいかず止めました（この結果は使えません）':sw.fail?'⚠ 足が滑って踏ん張れず失敗':sw.hit?`打つ瞬間の剣先 毎秒${sw.hit.v.toFixed(1)}m`:swOn?'':`外れ（目標物まで${gapTxt(Math.max(0,sw.minDist-Body3D.TARGET_R)).slice(2)}）`;
+ const res=sw.fail&&sw.fail.blew?'⚠ 計算がうまくいかず止めました（この結果は使えません）':sw.fail?'⚠ 足が滑って踏ん張れず失敗':sw.hit?`打つ瞬間の剣先\u00a0毎秒${sw.hit.v.toFixed(1)}m`:swOn?'':`外れ（目標物まで${gapTxt(Math.max(0,sw.minDist-Body3D.TARGET_R)).slice(2)}）`;
  const warn=sw.wrist==='hold'&&sw.wristDev>Body3D.W3.lostDeg?' ⚠ 手首が負けて剣先が下がった':'',slipW=sw.slip?(sw.hit?' ⚠ 打った後、剣を止める間に足が滑っています':' ⚠ 足が滑っています'):'';
- lastLive=`${swOn?PH[sw.phase]||sw.phase:'おわり'} ／ 剣先 毎秒${tip3v.toFixed(1)}m${res?' ／ '+res:''}${act?' ／ 使っている筋肉：'+act:''}${warn}${slipW}`;if(!paused)$('#status').textContent=lastLive}
+ lastLive=`${swOn?PH[sw.phase]||sw.phase:'おわり'} ／ 剣先\u00a0毎秒${tip3v.toFixed(1)}m${res?' ／ '+res:''}${act?' ／ 使っている筋肉：'+act:''}${warn}${slipW}`;if(!paused)$('#status').textContent=lastLive}
 const PH={'構え':'構え','振りかぶり':'振りかぶり','打ち込み':'打ち込み','止め':'止め','戻し':'戻す','残心':'おわり'};let lastLive='';
 const gapTxt=g=>g<.01?'あと1cm未満':`あと ${(g*100).toFixed(0)} cm`,wrTxt=r=>r.wristLost?`（手首が負けて剣先が下がった：最大${(r.wristDev*180/Math.PI).toFixed(0)}°）`:'';
 const NAMES={wc:'手首を倒す筋肉',wu:'手首を返す筋肉',wl:'手首（横）',wr:'手首（横）',tw:'腹斜筋など（ひねる）',tb:'ひねりを戻す筋肉',tf:'腹筋・腰の筋肉',te:'背筋',up:'三角筋',down:'広背筋・大胸筋',flex:'上腕二頭筋',ext:'上腕三頭筋'},MN={なし:'腕だけ',同時:'体全体で一度に',連鎖:'腰から順に',順番:'体を先に倒してから腕'};
@@ -229,12 +232,12 @@ $('#chCmp').onclick=chCompare;
 $('#swGo').onclick=()=>swStart(1);$('#swSlow').onclick=()=>swStart(.25);$('#swCmp').onclick=compare;
 $('#wkGo').onclick=()=>{if(walking){stopAll();$('#status').textContent='止まりました';return}stopAll();cam.position.set(-3.4,1.5,1.4);ctl.update();walking=true;wState={x:0,v:0};wPhase=0;$('#wkGo').textContent='止める'};
 $('#armT').onclick=()=>{stopAll();const st={q1:Math.PI/2,w1:0,q2:0,w2:0},h=Muscle.holdArm(st.q1,0,0);arm={st,aS:Math.min(1,h.shoulder),aE:0};cam.position.set(0,1.4,3);ctl.update()};
-$('#stand').onclick=()=>{stopAll();J=Rg.stand();$('#status').textContent='立っています'};
+$('#stand').onclick=()=>{stopAll();pushUndo();J=Rg.stand();$('#status').textContent='立っています'};
 for(const [id,f] of [['swM',1],['swL',2],['swS',0],['swMu',2],['wkV',1],['wkMu',2]]){const e=$('#'+id),o=$('#'+id+'o');e.oninput=()=>o.value=(+e.value).toFixed(f)}
 // ===== R10 絵を描くための道具 =====
 let rec=[],paused=false,recI=-1;
 function scrubSync(){const e=$('#scrub');e.max=FULL;if(recI<0||!paused)e.value=Math.max(0,rec.length-1)}
-function showRec(i){if(!rec.length)return;recI=Math.max(0,Math.min(rec.length-1,i));const r=rec[recI];J=JSON.parse(JSON.stringify(r.J));for(const b of Object.values(bands))b.visible=false;arrow.visible=false;$('#scrub').value=recI;const isHit=marks.some(m=>m.k==='hit'&&m.i===recI),ph=isHit?'打つ瞬間':(PH[r.phase]||r.phase);$('#scrubO').textContent=`${r.t.toFixed(2)}秒`;$('#status').textContent=`止めています：${ph}（${r.t.toFixed(2)}秒） ／ 剣先 毎秒${r.tip.toFixed(1)}m`;render()}
+function showRec(i){if(!rec.length)return;recI=Math.max(0,Math.min(rec.length-1,i));const r=rec[recI];J=JSON.parse(JSON.stringify(r.J));for(const b of Object.values(bands))b.visible=false;arrow.visible=false;$('#scrub').value=recI;const isHit=marks.some(m=>m.k==='hit'&&m.i===recI),ph=isHit?'打つ瞬間':(PH[r.phase]||r.phase);$('#scrubO').textContent=`${r.t.toFixed(2)}秒`;scrubLabel();$('#status').textContent=`止めています：${ph}（${r.t.toFixed(2)}秒） ／ 剣先\u00a0毎秒${r.tip.toFixed(1)}m`;render()}
 function pauseSw(on){paused=on;if(sw&&rec.length){if(on){swOn=false;showRec(rec.length-1)}else if(sw.t<=2.5){swOn=true;recI=-1}}$('#pause').textContent=paused?'続ける':'一時停止'}
 $('#pause').onclick=()=>pauseSw(!paused);
 $('#stepB').onclick=()=>{if(!paused)pauseSw(true);showRec((recI<0?rec.length-1:recI)-20)};
@@ -247,7 +250,7 @@ function shot(){const hide=$('#shotClean').checked,ex=extras(),vis=ex.map(o=>o.v
  const a=document.createElement('a');a.href=url;a.download=`pose-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.png`;document.body.appendChild(a);a.click();a.remove();return url.length}
 $('#shot').onclick=shot;
 function poseData(){return {kind:'human-3d-pose',v:1,J:JSON.parse(JSON.stringify(J)),cam:{p:cam.position.toArray(),t:ctl.target.toArray()},note:sw?`${sw.phase} ${sw.t.toFixed(3)}秒`:''}}
-function applyPose(p){if(!p||p.kind!=='human-3d-pose'||!p.J||!p.J.tip&&!p.J.rsh)throw new Error('ポーズのファイルではありません');stopAll();J=p.J;if(p.cam){cam.position.fromArray(p.cam.p);ctl.target.fromArray(p.cam.t);ctl.update()}render();$('#status').textContent='ポーズを読み込みました'+(p.note?'（'+p.note+'）':'')}
+function applyPose(p){if(!p||p.kind!=='human-3d-pose'||!p.J||!p.J.tip&&!p.J.rsh)throw new Error('ポーズのファイルではありません');stopAll();if(typeof pushUndo==='function')pushUndo();J=p.J;if(p.cam){cam.position.fromArray(p.cam.p);ctl.target.fromArray(p.cam.t);ctl.update()}render();$('#status').textContent='ポーズを読み込みました'+(p.note?'（'+p.note+'）':'')}
 function poseListSync(){const L=JSON.parse(localStorage.getItem('h3dPoses')||'[]'),s=$('#poseList');s.innerHTML='<option value="">（このブラウザに保存したポーズ）</option>'+L.map((p,i)=>`<option value="${i}">${p.name}</option>`).join('')}
 $('#poseSave').onclick=()=>{const p=poseData(),name=(sw?`${sw.phase} ${(recI>=0&&rec[recI]?rec[recI].t:sw.t).toFixed(2)}秒`:'ポーズ')+' '+new Date().toLocaleTimeString();
  const L=JSON.parse(localStorage.getItem('h3dPoses')||'[]');L.push({name,p});localStorage.setItem('h3dPoses',JSON.stringify(L.slice(-30)));poseListSync();
@@ -261,7 +264,7 @@ const FULL=Math.round(2.5/DT),MK={'構え':'構え','振りかぶり':'振りか
 // 目印：「構え・振りかぶり・止め」は区間の真ん中に、「打つ瞬間」はその瞬間に置く（押すとその区間の始まり／打つ瞬間へ飛ぶ）
 function secEnd(n){if(sec&&!marks.some(m=>m.k===sec.k))addMark(sec.k,sec.k==='構え'?0:Math.round((sec.i+n)/2),sec.i);sec=null}
 function addMark(k,pos,go){marks.push({k,i:go});const s=document.createElement('span');s.textContent=k==='hit'?'打つ瞬間':MK[k];if(k==='hit')s.className='hit';s.style.left=(100*pos/FULL)+'%';if(k==='構え')s.style.transform='none';s.onclick=()=>{if(!paused)pauseSw(true);showRec(go)};$('#marks').appendChild(s)}
-function setTab(t){document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));for(const p of ['pose','move','save'])$('#pane-'+p).classList.toggle('on',p===t)}
+function setTab(t){if(t==='pose'&&running()){stopAll();$('#status').textContent='関節の黄色い玉をつかんで、ポーズを作れます'}else if(t==='pose')$('#status').textContent='関節の黄色い玉をつかんで、ポーズを作れます';document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));for(const p of ['pose','move','save'])$('#pane-'+p).classList.toggle('on',p===t)}
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 function setMotion(m){if(m!==motion)stopAll();motion=m;document.querySelectorAll('.motions button').forEach(b=>b.classList.toggle('on',b.dataset.motion===m));for(const k of ['sword','walk','arm'])$('#set-'+k).style.display=k===m?'':'none';$('#track').style.visibility=m==='sword'?'visible':'hidden';$('#saveMoment').disabled=false}
 document.querySelectorAll('.motions button').forEach(b=>b.onclick=()=>setMotion(b.dataset.motion));
@@ -292,9 +295,46 @@ for(const id of ['swM','swL','swMu','swS','wkV'])$('#'+id).addEventListener('inp
 function layout(){const W=innerWidth,H=innerHeight,pr=$('#panel').getBoundingClientRect(),br=$('#bar').getBoundingClientRect(),L=pr.right+8,Rr=W-8,T=64,B=br.top-6;
  const cx=(L+Rr)/2,cy=(T+B)/2,fw=Rr-L,fh=B-T;cam.aspect=W/H;cam.setViewOffset(W,H,-(cx-W/2),-(cy-H/2),W,H);cam.zoom=Math.min(1,fh/H*1.05,fw/W*1.75);cam.updateProjectionMatrix();R.setSize(W,H)}
 addEventListener('resize',layout);new ResizeObserver(layout).observe($('#panel'));layout();
-let last=0;function tick(t){playIcon();const dt=last?Math.min((t-last)/1000,1/20):0;last=t;if(swOn)swTick(dt);if(walking)wTick(dt);if(arm)armTick(dt);render();ctl.update();R.render(S,cam);requestAnimationFrame(tick)}
-render();requestAnimationFrame(tick);
-window.h3d={shot,poseData,applyPose,pauseSw,showRec,rec:()=>rec.length,chCompare,hdCompare,wrCompare,twCompare,J:()=>J,sw:()=>sw&&{hit:sw.hit,fail:sw.fail,phase:sw.phase,minDist:sw.minDist,t:sw.t},hit3:()=>hit3,go:(m,L,s,mu,md,k=1,tw='arm',wr='snap',hd=2)=>{document.querySelector(`input[name=hands][value="${hd}"]`).checked=true;document.querySelector(`input[name=wr][value=${wr}]`).checked=true;document.querySelector(`input[name=tw][value=${tw}]`).checked=true;$('#swM').value=m;$('#swL').value=L;$('#swS').value=s;$('#swMu').value=mu;document.querySelector(`input[name=mode][value=${md}]`).checked=true;swStart(k)},compare,walk:()=>wState,arm:()=>arm&&arm.st,
+// ===== U4 関節を直接つかんでポーズを作る（画面だけ。計算ファイルは使わない） =====
+const PAR={chest:['pelvis',['chest','neck','head','lsh','rsh','lelb','lhand','lwr','relb','rhand','rwr','tip']],head:['chest',['neck','head']],
+ lelb:['lsh',['lelb','lwr','lhand']],lhand:['lelb',['lwr','lhand']],relb:['rsh',['relb','rwr','rhand','tip']],rhand:['relb',['rwr','rhand','tip']],tip:['rhand',['tip']],
+ lknee:['lhip',['lknee','lank','ltoe']],lank:['lknee',['lank','ltoe']],rknee:['rhip',['rknee','rank','rtoe']],rank:['rknee',['rank','rtoe']]};
+const tipBall=new THREE.Mesh(new THREE.IcosahedronGeometry(.045,0),JOINT);tipBall.visible=false;S.add(tipBall);
+const pick=[...balls.filter(b=>PAR[b.n]||b.n==='pelvis').map(b=>({n:b.n,m:b.m})),{n:'head',m:headM},{n:'tip',m:tipBall}];
+const cloneJ=j=>JSON.parse(JSON.stringify(j));let undoS=[],drag=null;const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();
+const posing=()=>$('#pane-pose').classList.contains('on');
+function pushUndo(){undoS.push(cloneJ(J));if(undoS.length>60)undoS.shift();$('#undo').disabled=false}
+$('#undo').disabled=true;
+function undo(){if(!undoS.length)return;J=undoS.pop();render();$('#undo').disabled=!undoS.length;$('#status').textContent='ひとつ前に戻しました'}
+$('#undo').onclick=undo;addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key==='z'&&posing()){e.preventDefault();undo()}});
+function hitAt(e){const r=R.domElement.getBoundingClientRect();ndc.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ndc,cam);
+ const hs=ray.intersectObjects(pick.filter(p=>p.m.visible).map(p=>p.m),false);return hs.length?pick.find(p=>p.m===hs[0].object):null}
+R.domElement.addEventListener('pointerdown',e=>{if(!posing()||e.button!==0)return;const p=hitAt(e);if(!p||!J[p.n])return;
+ if(running())stopAll();pushUndo();const P=V3(J[p.n]);drag={n:p.n,base:cloneJ(J),plane:new THREE.Plane().setFromNormalAndCoplanarPoint(cam.getWorldDirection(new THREE.Vector3()),P),start:P};
+ ctl.enabled=false;R.domElement.setPointerCapture(e.pointerId);e.stopPropagation()},true);
+R.domElement.addEventListener('pointermove',e=>{if(!posing())return;if(!drag){R.domElement.style.cursor=hitAt(e)?'grab':'';return}
+ R.domElement.style.cursor='grabbing';const r=R.domElement.getBoundingClientRect();ndc.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ndc,cam);
+ const P=ray.ray.intersectPlane(drag.plane,new THREE.Vector3());if(!P)return;const B=drag.base;J=cloneJ(B);
+ if(drag.n==='pelvis'){const dv=P.clone().sub(drag.start);for(const k in J)if(Array.isArray(J[k])&&J[k].length===3)J[k]=V3(B[k]).add(dv).toArray()}
+ else{const [pa,kids]=PAR[drag.n],O=V3(B[pa]),a=V3(B[drag.n]).sub(O),b=P.clone().sub(O);if(b.length()<1e-4)return;const q=new THREE.Quaternion().setFromUnitVectors(a.normalize(),b.normalize());
+  for(const k of kids)if(B[k])J[k]=V3(B[k]).sub(O).applyQuaternion(q).add(O).toArray()}
+ render();$('#status').textContent='ポーズを作っています（離すと決まります。「ひとつ前に戻す」で戻せます）'});
+R.domElement.addEventListener('pointerup',()=>{if(drag){drag=null;ctl.enabled=true;R.domElement.style.cursor=''}});
+const SIDE=['sh','elb','hand','wr','hip','knee','ank','toe'];
+function mirror(from){const to=from==='r'?'l':'r',px=J.pelvis[0],m=a=>[2*px-a[0],a[1],a[2]];if(running())stopAll();pushUndo();const oldR=J.rhand&&J.rhand.slice();
+ for(const s of SIDE){if(J[from+s])J[to+s]=m(J[from+s]);else delete J[to+s]}
+ if(J.tip&&oldR&&to==='r'){const dv=V3(J.rhand).sub(V3(oldR));J.tip=V3(J.tip).add(dv).toArray()}
+ render();$('#status').textContent=from==='r'?'右の腕と脚の形を、左にうつしました':'左の腕と脚の形を、右にうつしました'}
+$('#mirR2L').onclick=()=>mirror('r');$('#mirL2R').onclick=()=>mirror('l');
+// ll：開いた直後は「剣を構えた姿を斜めから」
+function readyPose(){swStart(1);swOn=false;paused=false;camAt(-2.1,.5,2.1);$('#status').textContent='剣を構えています。下の ▶ を押すと振り始めます'}
+// mm：時間の文字をつまみの丸の上に
+function scrubLabel(){const s=$('#scrub'),f=+s.max?s.value/s.max:0,w=s.getBoundingClientRect().width;$('#scrubO').style.left=(8+f*(w-16))+'px'}
+$('#scrub').addEventListener('input',scrubLabel);
+const HL=new THREE.MeshStandardMaterial({color:0xf3c94a,emissive:0x6a4a00,roughness:.5});let hlOn=null;
+let last=0;function tick(t){playIcon();{const on=posing()&&!running();if(on!==hlOn){hlOn=on;for(const p of pick)if(p.n!=='head'){p.m.userData.m0=p.m.userData.m0||p.m.material;p.m.material=on?HL:p.m.userData.m0;p.m.scale.setScalar(on&&p.n!=='pelvis'&&p.n!=='chest'?1.6:1)}}}if(posing()&&!running()){tipBall.visible=!!J.tip;if(J.tip)tipBall.position.copy(V3(J.tip))}else tipBall.visible=false;const dt=last?Math.min((t-last)/1000,1/20):0;last=t;if(swOn)swTick(dt);if(walking)wTick(dt);if(arm)armTick(dt);render();ctl.update();R.render(S,cam);requestAnimationFrame(tick)}
+render();readyPose();requestAnimationFrame(tick);
+window.h3d={proj:a=>{const v=V3(a).project(cam),r=R.domElement.getBoundingClientRect();return [r.left+(v.x+1)/2*r.width,r.top+(1-v.y)/2*r.height]},undo,mirror,undoN:()=>undoS.length,readyPose,shot,poseData,applyPose,pauseSw,showRec,rec:()=>rec.length,chCompare,hdCompare,wrCompare,twCompare,J:()=>J,sw:()=>sw&&{hit:sw.hit,fail:sw.fail,phase:sw.phase,minDist:sw.minDist,t:sw.t},hit3:()=>hit3,go:(m,L,s,mu,md,k=1,tw='arm',wr='snap',hd=2)=>{document.querySelector(`input[name=hands][value="${hd}"]`).checked=true;document.querySelector(`input[name=wr][value=${wr}]`).checked=true;document.querySelector(`input[name=tw][value=${tw}]`).checked=true;$('#swM').value=m;$('#swL').value=L;$('#swS').value=s;$('#swMu').value=mu;document.querySelector(`input[name=mode][value=${md}]`).checked=true;swStart(k)},compare,walk:()=>wState,arm:()=>arm&&arm.st,
  run(sec){/* テスト用：画面を待たずに計算を進める */const n=Math.round(sec/DT);for(let i=0;i<n&&swOn;i++){acc=DT;swTick(0)}return {hit:sw.hit,hit3}}};
 </script>
 </body></html>
