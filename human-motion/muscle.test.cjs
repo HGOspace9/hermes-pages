@@ -1,0 +1,13 @@
+const assert=require('node:assert/strict');const M=require('./muscle.js');
+const run=(a,w,th0,sec=3)=>{let s={th:th0,om:0};for(let i=0;i<sec*1000;i++)s=M.step(s,a,w,.001);return s};
+const deg=Math.PI/180;
+assert.ok(run(0,0,90*deg).th<2*deg,'力を抜くと腕は下に落ちて伸びる');
+assert.ok(run(1,0,10*deg).th>140*deg,'全力で縮めると肘が曲がり切る');
+const h=M.holdActivation(90*deg,2);assert.ok(h>0&&h<1,'2kgなら90度で支えられる');
+assert.ok(Math.abs(run(h,2,90*deg).th-90*deg)<1*deg,'計算した力で90度に止まる');
+assert.ok(M.holdActivation(90*deg,10)>M.holdActivation(90*deg,2),'重いほど強い力が要る');
+assert.ok(M.holdActivation(30*deg,5)<M.holdActivation(90*deg,5),'腕が下がっている時は楽');
+assert.ok(M.holdActivation(90*deg,25)>1&&run(1,25,90*deg).th<60*deg,'25kgは全力でも支えきれず下がる');
+const t=M.gravityTorque(90*deg,0)+0;assert.ok(t>2&&t<4,'前腕だけの重さの回転力は約2.6Nm');
+const hh=M.holdActivation(90*deg,2);assert.ok(Math.abs(run(hh*1.03,2,90*deg).th-90*deg)<15*deg,'少し力が多くても曲がり切らず近くで落ち着く');
+console.log('筋肉 9項目 OK');

@@ -52,4 +52,25 @@ function walkFrame(t){if(walking){const dt=walkLast?Math.min((t-walkLast)/1000,.
  walkPhase+=dt*vT/1.2;const p=poseWalk(walkPhase);nodes=p.nodes;const grounded=Physics.footContacts(nodes,208,12).length>0;
  const r=Physics.walkStep(bodyState,{mass:70,gravity:9.81,muStatic:mu,muKinetic:mu*.8,drag:3,tau:.5,vTarget:vT},dt,grounded);walkDist+=r.x-bodyState.x;bodyState={x:r.x,v:r.v};if(bodyState.x>1.8)bodyState.x-=3.6;if(bodyState.x<-1.8)bodyState.x+=3.6;walkInfo={...r,stance:p.stance};draw();walkUI()}requestAnimationFrame(walkFrame)}
 requestAnimationFrame(walkFrame);walkUI();window.walkDebug={get:()=>({walking,phase:walkPhase,dist:walkDist,v:bodyState.v,info:walkInfo,feet:Physics.footContacts(nodes,208,12)})};
+</script><section class="note" style="max-width:868px;margin:0 auto 24px" id="muscle-lab"><h2>筋肉で肘を動かす（3-e 第一歩）</h2><p><b>ここは決めた形ではありません。</b>筋肉の力・腕の重さ・手に持つ重さから、肘の角度を毎瞬計算しています。横から見た右腕です。</p><p><label>筋肉の力の入れ具合 <input id="mAct" type="range" min="0" max="100" step="0.1" value="30"> <output id="mActOut">30</output>%</label></p><p><label>手に持つ重さ <input id="mW" type="range" min="0" max="30" step="1" value="2"> <output id="mWOut">2</output> kg</label></p><button id="mHold">今の角度で止める力にする</button> <button id="mReset">腕を下ろして戻す</button><p id="mStatus"></p><canvas id="mCanvas" style="height:300px;background:#fff;border-radius:8px;cursor:default" aria-label="肘の筋肉の実験"></canvas><p>赤い帯：肘を曲げる筋肉（上腕二頭筋など）。太いほど強く縮んでいます。緑の矢印＝筋肉が曲げる力、灰色の矢印＝重さが伸ばす力。数値は体重70kgの成人男性を想定した仮の目安で、肘90度で出せる最大の回転力は約50Nm、縮むほど力が落ちる性質も入れています。肘1か所だけで、伸ばす筋肉・疲れ・肩の動きはまだありません。</p></section>
+<script src="muscle.js?v=3e2"></script><script>
+(()=>{const mc=document.querySelector('#mCanvas'),mx=mc.getContext('2d'),act=document.querySelector('#mAct'),wt=document.querySelector('#mW');let st={th:0,om:0},info=null,last=0;
+function ui(){document.querySelector('#mActOut').value=(+act.value).toFixed(0);document.querySelector('#mWOut').value=wt.value}
+function arrow(x,y,dx,dy,col){mx.strokeStyle=mx.fillStyle=col;mx.lineWidth=4;mx.beginPath();mx.moveTo(x,y);mx.lineTo(x+dx,y+dy);mx.stroke();const L=Math.hypot(dx,dy)||1,ux=dx/L,uy=dy/L;mx.beginPath();mx.moveTo(x+dx+ux*10,y+dy+uy*10);mx.lineTo(x+dx-uy*7,y+dy+ux*7);mx.lineTo(x+dx+uy*7,y+dy-ux*7);mx.fill()}
+function draw(){const r=mc.getBoundingClientRect(),dp=devicePixelRatio||1;mc.width=r.width*dp;mc.height=r.height*dp;mx.setTransform(dp,0,0,dp,0,0);mx.clearRect(0,0,r.width,r.height);
+ const k=Math.min(r.width/520,1),S={x:r.width/2-40*k,y:40},E={x:S.x,y:S.y+120*k},a=st.th,H={x:E.x+110*k*Math.sin(a),y:E.y+110*k*Math.cos(a)};
+ const seg=(p,q,w)=>{mx.lineCap='round';mx.strokeStyle='#58616a';mx.lineWidth=w+4;mx.beginPath();mx.moveTo(p.x,p.y);mx.lineTo(q.x,q.y);mx.stroke();mx.strokeStyle='#fbfbfa';mx.lineWidth=w;mx.stroke()};
+ seg(S,E,30);seg(E,H,24);
+ const ins={x:E.x+26*k*Math.sin(a),y:E.y+26*k*Math.cos(a)},orig={x:S.x+16*k,y:S.y+10*k},bulge=8+16*(act.value/100);
+ mx.strokeStyle='#d25654';mx.globalAlpha=.85;mx.lineWidth=bulge*k;mx.lineCap='round';mx.beginPath();mx.moveTo(orig.x,orig.y);mx.quadraticCurveTo(S.x+30*k+bulge*k*.6,(S.y+E.y)/2,ins.x,ins.y);mx.stroke();mx.globalAlpha=1;
+ for(const p of [S,E,H]){mx.beginPath();mx.arc(p.x,p.y,6,0,7);mx.fillStyle='#fff';mx.fill();mx.strokeStyle='#3079b6';mx.lineWidth=2;mx.stroke()}
+ const w=+wt.value;if(w>0){const s=8+Math.sqrt(w)*4;mx.fillStyle='#8aaac6';mx.fillRect(H.x-s,H.y,s*2,s*1.4);mx.fillStyle='#263a4b';mx.font='12px sans-serif';mx.textAlign='center';mx.fillText(w+'kg',H.x,H.y+s*.9)}
+ if(info){const tx=Math.cos(a),ty=-Math.sin(a),m=Math.min(80,info.muscleTorque*1.2),g=Math.min(80,info.gravityTorque*1.2);if(m>2)arrow(H.x+16,H.y,tx*m,ty*m,'#3a9a55');if(g>2)arrow(H.x-16,H.y,-tx*g,-ty*g,'#8a9399')}
+ mx.fillStyle='#515962';mx.font='13px sans-serif';mx.textAlign='left';mx.fillText('肩',S.x-30,S.y+5);mx.fillText('肘',E.x-30,E.y+5)}
+function status(){const deg=st.th*180/Math.PI,need=Muscle.holdActivation(st.th,+wt.value);document.querySelector('#mStatus').textContent=`肘の角度 ${deg.toFixed(0)}° ／ 筋肉の力 ${info?info.force.toFixed(0):0} N ／ 曲げる回転力 ${info?info.muscleTorque.toFixed(1):0} Nm ／ 重さの回転力 ${info?info.gravityTorque.toFixed(1):0} Nm ／ この角度で止めるには ${need>1?'全力でも足りません':(need*100).toFixed(0)+'%'}`}
+function frame(t){const dt=last?Math.min((t-last)/1000,.05):0;last=t;for(let i=0;i<20;i++)info=Muscle.step(st,act.value/100,+wt.value,dt/20),st={th:info.th,om:info.om};draw();status();requestAnimationFrame(frame)}
+for(const e of [act,wt])e.addEventListener('input',ui);
+document.querySelector('#mHold').addEventListener('click',()=>{const h=Muscle.holdActivation(st.th,+wt.value);act.value=Math.min(100,h*100);st.om=0;ui()});
+document.querySelector('#mReset').addEventListener('click',()=>{st={th:0,om:0};act.value=0;ui()});
+ui();requestAnimationFrame(frame);window.muscleDebug={get:()=>({...st,info}),set:(a,w)=>{act.value=a;wt.value=w;ui()},setTh:th=>{st={th,om:0}}}})();
 </script></body></html>
