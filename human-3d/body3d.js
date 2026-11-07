@@ -14,7 +14,7 @@ const {ARM,ARM2,MUS,fv,lengthFactor,momentArm,momentArmS,lengthFactorS,targetFor
 const W3={lostDeg:10*Math.PI/180,HAND:0.08,f:12,vmax:15,damp:.05,I:.001,q5min:-35*Math.PI/180,q5max:25*Math.PI/180,q6max:60*Math.PI/180,cock:25*Math.PI/180};
 // R8 両手持ちの値（仮の目安）：左手は右手の0.1m下で柄を握る。左腕の形は、左肩から握る位置へ届くように決まる（閉じた輪）。
 // 両腕の筋肉は同じ向きに働くとみなし、肩と肘の筋力は2倍。手首は2本分＋両手の間隔で作る「てこ」（握る力300N×0.1m＝30Nm）で 12×2+30＝54Nm。
-const H2={gap:0.10,wristF:54,L1:0.28,lHand:0.30}; // 見かけの腕：胸の中心から握りまで最大0.58m（左右の肩から0.61mまで届く）
+const H2={gap:0.10,wristF:54,L1:0.28,lHand:0.30,straight:0.985}; // straight：左右の腕を伸ばしきる手前で止める（伸びきると計算が不安定になり、体が飛ぶため。R9） // 見かけの腕：胸の中心から握りまで最大0.58m（左右の肩から0.61mまで届く）
 const T3={SH:0.19,Iyaw:1.2,fTw:100,vmaxTw:12,dampTw:5,psMin:-45*D,psMax:45*D,rYaw:0.25,tolLat:0.08,wind:-30*D,brakeAt:-8*D};
 const fvW=v=>fv(v*14/W3.vmax),cl=(v,hi=1)=>Math.max(0,Math.min(hi,v||0)),fvT=v=>fv(v*14/B.vmaxT),fvTw=v=>fv(v*14/T3.vmaxTw);
 const add=(a,b,k=1)=>[a[0]+k*b[0],a[1]+k*b[1],a[2]+k*b[2]],dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
@@ -27,7 +27,7 @@ function geo(q,load){const two=load.hands===2,[x,q0,q1,q2,ps,q5=0,q6=0]=q,c=Math
  const O=two?C:S,l1v=two?H2.L1:p.L1,lhv=two?H2.lHand:a.lHand;
  const d1=inpl(q1-q0),E=add(O,d1,l1v),d2=inpl(q1+q2-q0),Wr=add(E,d2,lhv-W3.HAND),dp=inpl(q1+q2-q0+q5),c6=Math.cos(q6),s6=Math.sin(q6),d3=[c6*dp[0]+s6*lt[0],c6*dp[1],c6*dp[2]+s6*lt[2]],H=add(Wr,d3,W3.HAND),L=sw.L||0,tip=add(H,d3,L);
  const rT=Math.sqrt(B.IT/B.mT),k=Math.sqrt(.3),mass=[[B.mLeg,hip],[B.mT/2,add(hip,dT,B.cT+rT)],[B.mT/2,add(hip,dT,B.cT-rT)]];
- const ik=(Sh,P,side)=>{const r=[P[0]-Sh[0],P[1]-Sh[1],P[2]-Sh[2]],dd=Math.hypot(...r),u=r.map(v=>v/dd),l1=p.L1,l2=a.lHand,dc=Math.min(dd,l1+l2-1e-4);
+ const ik=(Sh,P,side)=>{const r=[P[0]-Sh[0],P[1]-Sh[1],P[2]-Sh[2]],dd=Math.hypot(...r),u=r.map(v=>v/dd),l1=p.L1,l2=a.lHand,dc=Math.min(dd,(l1+l2)*H2.straight-1e-4);
   const pole=add(lt,[0,1,0],side),pp=add(pole,u,-dot(pole,u)),pn=Math.hypot(...pp)||1,n=pp.map(v=>v/pn),ca=(l1*l1+dc*dc-l2*l2)/(2*l1*dc),sa=Math.sqrt(Math.max(0,1-ca*ca));
   const El=add(add(Sh,u,l1*ca),n,l1*sa),Hd=add(Sh,u,dc),e1=[El[0]-Sh[0],El[1]-Sh[1],El[2]-Sh[2]].map(v=>v/l1),e2=[Hd[0]-El[0],Hd[1]-El[1],Hd[2]-El[2]].map(v=>v/l2);
   mass.push([p.m1/2,add(Sh,e1,p.c1*(1+k))],[p.m1/2,add(Sh,e1,p.c1*(1-k))],[a.mForearm/2,add(El,e2,a.rCom*(1+k))],[a.mForearm/2,add(El,e2,a.rCom*(1-k))]);return {E:El,H:Hd,ok:dd<=l1+l2}};
@@ -78,13 +78,15 @@ function bodyStep(s,act,load,dt,opt={}){const mu=opt.mu??.6,tw=!!opt.twist,wr=!!
  if(R.slip&&tw&&tau4!==0&&!opt.lock){const R0=run(0);if(!R0.slip){let lo=0,hi=1;for(let i=0;i<10;i++){const m=(lo+hi)/2;run(m).slip?hi=m:lo=m}R=run(lo)}else R=R0}
  const {acc,F,Fl,Mz,need,slip}=R,yawSlip=slip&&yaw&&Math.abs(F)<need*.999;
  const n={vx:s.vx+acc[0]*dt,w0:s.w0+acc[1]*dt,w1:s.w1+acc[2]*dt,w2:s.w2+acc[3]*dt,w4:s.w4+acc[4]*dt,w5:(s.w5||0)+acc[5]*dt,w6:(s.w6||0)+acc[6]*dt};
+ // R9：計算の破たん防止。1歩の計算で速さが人の体ではありえない値（体10m/s・関節80rad/s）を超えたら、そこで頭打ちにして記録する（R8までの条件では一度も起きない）
+ const VC=opt.guard==='off'?[]:opt.guard?[['vx',10],['w0',80],['w1',80],['w2',80],['w4',80],['w5',80],['w6',80]]:[['vx',10]];let blew=false;for(const [k,l] of VC)if(!(Math.abs(n[k])<=l)){if(opt.guard!=='watch')n[k]=Math.max(-l,Math.min(l,n[k]||0));blew=true} // watch：見張るだけ（数値は変えない＝R8と同じ） // 関節は振っている間（振りかぶり・打ち込み）だけ見張る
  n.x=s.x+n.vx*dt;n.q0=s.q0+n.w0*dt;n.q1=s.q1+n.w1*dt;n.q2=s.q2+n.w2*dt;n.q4=s.q4+n.w4*dt;n.q5=(s.q5||0)+n.w5*dt;n.q6=(s.q6||0)+n.w6*dt;
  if(n.q0<B.q0min){n.q0=B.q0min;n.w0=Math.max(0,n.w0)}if(n.q0>B.q0max){n.q0=B.q0max;n.w0=Math.min(0,n.w0)}
  if(n.q1<0){n.q1=0;n.w1=Math.max(0,n.w1)}if(n.q1>ARM2.q1max){n.q1=ARM2.q1max;n.w1=Math.min(0,n.w1)}
  if(n.q2<ARM.min){n.q2=ARM.min;n.w2=Math.max(0,n.w2)}if(n.q2>ARM.max){n.q2=ARM.max;n.w2=Math.min(0,n.w2)}
  if(n.q4<T3.psMin){n.q4=T3.psMin;n.w4=Math.max(0,n.w4)}if(n.q4>T3.psMax){n.q4=T3.psMax;n.w4=Math.min(0,n.w4)}
  if(n.q5<W3.q5min){n.q5=W3.q5min;n.w5=Math.max(0,n.w5)}if(n.q5>W3.q5max){n.q5=W3.q5max;n.w5=Math.min(0,n.w5)}if(n.q6<-W3.q6max){n.q6=-W3.q6max;n.w6=Math.max(0,n.w6)}if(n.q6>W3.q6max){n.q6=W3.q6max;n.w6=Math.min(0,n.w6)}
- return {s:n,F,Fl,Mz,N:mt*G,slip,yawSlip,g,tau,Qg,used:Math.abs(F)/(mt*G),use:need/(mt*G)}}
+ return {blew,s:n,F,Fl,Mz,N:mt*G,slip,yawSlip,g,tau,Qg,used:Math.abs(F)/(mt*G),use:need/(mt*G)}}
 // 両手持ちで体幹・肩・肘を狙いの姿勢に保つ力（平面版 hold と同じ強さのばね。重さは3Dの計算＝左腕も含む）
 function hold3(goal,s,load,strength){const q=[s.x,s.q0,s.q1,s.q2,s.q4||0,s.q5||0,s.q6||0],{Qg}=dyn(q,[0,0,0,0,0,0,0],load),T=maxT({...s,w0:0,w1:0,w2:0},true),o={};
  const g=(i,gq,k,b,pos,neg,cur,w)=>{if(gq==null)return;const t=-Qg[i]+k*(gq-cur)-b*w;o[pos]=t>0?Math.min(strength,t/T[pos]):0;o[neg]=t<0?Math.min(strength,-t/T[neg]):0};
@@ -99,10 +101,10 @@ function blade(g,T){const r=[T[0]-g.H[0],T[1]-g.H[1],T[2]-g.H[2]],a=dot(r,g.fw),
  return {cross:uf*bb-ud*a,along,out:o,dist:Math.hypot(T[0]-p[0],T[1]-p[1],T[2]-p[2])}}
 // mode：'なし'／'同時'／'順番'（平面版と同じ意味）。twist：false=ひねり固定（腕のみ）／'only'=ひねりのみ（腕は振りかぶった形のまま）／'both'=ひねり＋腕
 // 点検aa：決まった言葉以外はエラーにする（打ち間違いに気づけるように）
-const OK={mode:['なし','同時','順番',undefined],twist:[false,'only','both',undefined],wrist:[false,'hold','snap',undefined],hands:[1,2,undefined]};
+const OK={mode:['なし','同時','順番','連鎖',undefined],twist:[false,'only','both',undefined],wrist:[false,'hold','snap',undefined],hands:[1,2,undefined]};
 function check(opt){for(const k of Object.keys(OK))if(!OK[k].includes(opt[k]))throw new Error(`設定「${k}」に使えない値です：${JSON.stringify(opt[k])}（使える値：${OK[k].filter(v=>v!==undefined).map(v=>JSON.stringify(v)).join('・')}）`)}
-function makeBodySwing(load0,strength=1,opt={}){check(opt);const two=opt.hands===2,load=two?{...load0,hands:2}:load0;const mode=opt.mode||'同時',mu=opt.mu??.6,lock=mode==='なし',twist=lock?false:(opt.twist||false),tg=targetFor(load),T=opt.target||{x:tg.x,y:-B.Lt+tg.y};
- const wrist=opt.wrist||false,so={mu,lock,twist:!!twist,wrist:!!wrist,yaw:opt.yaw};
+function makeBodySwing(load0,strength=1,opt={}){check(opt);const two=opt.hands===2,load=two?{...load0,hands:2}:load0;const mode=opt.mode||'同時',mu=opt.mu??.6,lock=mode==='なし',twist=lock?false:mode==='連鎖'?'both':(opt.twist||false),tg=targetFor(load),T=opt.target||{x:tg.x,y:-B.Lt+tg.y};
+ const wrist=opt.wrist||false,snapDeg=opt.snapDeg??null,so={mu,lock,twist:!!twist,wrist:!!wrist,yaw:opt.yaw};
  const st={mode,twist,wrist,two,mu,wristDev:0,target:T,t:0,since:0,phase:'構え',stage:0,s:{x:0,vx:0,q0:0,w0:0,q1:35*D,w1:0,q2:35*D,w2:0,q4:0,w4:0,q5:0,w5:0,q6:0,w6:0},hit:null,minDist:1e9,v:0,maxV:0,prevTip:null,prevC:null,act:{},maxFr:0,slipT:0,maxW0:0,maxW4:0,F:0};
  const go=p=>{st.phase=p;st.since=0};
  st.step=dt=>{const s=st.s;
@@ -111,6 +113,8 @@ function makeBodySwing(load0,strength=1,opt={}){check(opt);const two=opt.hands==
    if((still&&(near||st.since>=.4))||st.since>=1.5){st.raise={q0:s.q0,q1:s.q1,q2:s.q2,q4:s.q4,q5:s.q5||0,t:st.since};if(wrist)st.wristDev=Math.max(st.wristDev,Math.abs((s.q5||0)-(wrist==='snap'?W3.cock:0)));st.stage=0;go('打ち込み')}}
   if(st.phase==='止め'&&((Math.abs(s.w1)<.8&&Math.abs(s.w2)<.8&&Math.abs(s.w0)<.8&&Math.abs(s.w4)<.8)||st.since>=.6))go('戻し');
   if(st.phase==='戻し'&&st.since>=.5)go('残心');
+  // 剣が目標物まであと何度か（振りの面の中で、腕の根元 O から見た角度）。点検bb：手首を返し始める合図
+  if(st.g&&st.targetNow){const g=st.g,ang=p=>Math.atan2(p[1]-g.O[1],dot([p[0]-g.O[0],p[1]-g.O[1],p[2]-g.O[2]],g.fw));st.toGo=((ang(st.targetNow)-ang(g.tip))%(2*Math.PI)+2*Math.PI)%(2*Math.PI)} // 振る向き（上→前→下）に残っている角度。0〜360°
   let a,hd=two?hold3:Bd.hold;
   if(st.phase==='構え'){a=hd([lock?null:0,35*D,35*D],s,load,strength);if(twist)Object.assign(a,holdTw(0,s,strength,two))}
   else if(st.phase==='振りかぶり'){a=hd([lock?null:-10*D,150*D,110*D],s,load,strength);if(twist)Object.assign(a,holdTw(T3.wind,s,strength,two))}
@@ -119,22 +123,33 @@ function makeBodySwing(load0,strength=1,opt={}){check(opt);const two=opt.hands==
   else{const R=st.raise;
    if(mode==='なし')a={down:strength,ext:strength};
    else if(mode==='同時')a={tf:strength,down:strength,ext:strength,step:true};
+   else if(mode==='連鎖'){// R9 点検bb：腰（体幹を前へ倒す・踏み込み）→胸（ひねり）→肩→肘→手首。次が動き出したら前の部分にブレーキ
+    if(st.stage===0&&s.q0-R.q0>(opt.trunkDeg??5)*D){st.stage=1;st.chainT=[st.since];st.q0Stop=s.q0+(opt.trunkLead??20)*D}
+    if(st.stage===1&&s.q4-R.q4>(opt.twistDeg??5)*D){st.stage=2;st.chainT.push(st.since)}
+    if(st.stage===2&&R.q1-s.q1>(opt.switchDeg??35)*D){st.stage=3;st.chainT.push(st.since)}
+    const armHold=hd([null,R.q1,R.q2],s,load,strength),brk=(w,k)=>w>.2?Math.min(strength,w*k):0;
+    a={step:true,up:armHold.up,down:armHold.down,flex:armHold.flex,ext:armHold.ext};
+    if(st.stage===0){a.tf=strength;Object.assign(a,holdTw(R.q4,s,strength,two))}
+    else{const th=hd([st.q0Stop,null,null],s,load,strength);a.tf=th.tf;a.te=th.te; // 腰（体幹）は止めた角度に保つ（ブレーキ＝その場で止まる。後ろへ倒れない）
+     if(st.stage===1&&s.q4<T3.brakeAt)Object.assign(a,{tw:strength,tb:0});else{const h=holdTw(0,s,strength,two);Object.assign(a,s.q4<0?h:{tw:0,tb:Math.max(h.tb,brk(s.w4,.3))})} // 胸は正面の少し手前で止める（R6と同じ）
+     if(st.stage>=2){a.up=0;a.down=strength;if(st.stage===2){const e=hd([null,null,R.q2],s,load,strength);a.flex=e.flex;a.ext=e.ext}else{a.flex=0;a.ext=strength}}}}
    else{if(st.stage===0&&s.q0-R.q0>(opt.trunkDeg??25)*D){st.stage=1;st.trunkStopAt=st.since}
     if(st.stage===1&&R.q1-s.q1>(opt.switchDeg??35)*D){st.stage=2;st.elbowAt=st.since}
     const armHold=hd([null,R.q1,R.q2],s,load,strength);
     if(st.stage===0)a={tf:strength,step:true,up:armHold.up,down:armHold.down,flex:armHold.flex,ext:armHold.ext};
     else{a={te:s.w0>.2?Math.min(strength,s.w0*.3):0,step:true,down:strength};if(st.stage===1){const e=hd([null,null,R.q2],s,load,strength);a.flex=e.flex;a.ext=e.ext}else a.ext=strength}}
    if(twist==='only'){const ah=hd([null,R.q1,R.q2],s,load,strength);Object.assign(a,{up:ah.up,down:ah.down,flex:ah.flex,ext:ah.ext})}
-   if(twist){// ひねり：右肩を前へ全力。正面に近づいたら（brakeAt）ブレーキで止める
+   if(twist&&mode!=='連鎖'){// ひねり：右肩を前へ全力。正面に近づいたら（brakeAt）ブレーキで止める
     if(s.q4<T3.brakeAt)Object.assign(a,{tw:strength,tb:0});else Object.assign(a,{tw:0,tb:s.w4>0?Math.min(strength,s.w4*.3):0})}}
   if(wrist){// R7 手首：'hold'＝まっすぐに保つ／'snap'＝振りかぶりで剣先を後ろへ倒し（コック）、打ち込みで全力で返す
    const ph=st.phase,cock=wrist==='snap'&&(ph==='振りかぶり');let w;
-   if(ph==='打ち込み'&&wrist==='snap')w={...holdWr(0,0,s,st.Qg,strength,two),wc:0,wu:(s.q5||0)>W3.q5min+5*D?strength:0};
+   if(ph==='打ち込み'&&wrist==='snap'&&snapDeg!=null&&!st.snapAt&&!(st.toGo!=null&&st.toGo<=snapDeg*D))w=holdWr(W3.cock,0,s,st.Qg,strength,two); // 点検bb：手首は目標物の手前 snapDeg° まで倒したまま
+   else if(ph==='打ち込み'&&wrist==='snap'){if(snapDeg!=null&&!st.snapAt)st.snapAt=st.since;w={...holdWr(0,0,s,st.Qg,strength,two),wc:0,wu:(s.q5||0)>W3.q5min+5*D?strength:0}}
    else if(ph==='止め'){const b=v=>Math.min(strength,Math.abs(v)*.02);w={...holdWr(0,0,s,st.Qg,strength,two),wc:(s.w5||0)<0?b(s.w5):0,wu:(s.w5||0)>0?b(s.w5):0}}
    else w=holdWr(cock?W3.cock:0,0,s,st.Qg,strength,two);Object.assign(a,w)}
   st.act=a;
   if(wrist==='hold'&&!st.hit&&(st.phase==='振りかぶり'||st.phase==='打ち込み'))st.wristDev=Math.max(st.wristDev,Math.abs(s.q5||0)); // 点検z：保つ間ずっと見張る
-  const r=bodyStep(s,a,load,dt,so);st.Qg=r.Qg;st.F=r.F;st.Fl=r.Fl;st.Mz=r.Mz;st.slip=r.slip;st.yawSlip=r.yawSlip;st.use=r.use;if(!lock)st.maxFr=Math.max(st.maxFr,r.use);st.used=r.used;if(r.slip)st.slipT+=dt;
+  const swinging=st.phase==='振りかぶり'||st.phase==='打ち込み',r=bodyStep(s,a,load,dt,{...so,guard:mode==='連鎖'?(swinging&&!st.hit):(swinging&&!st.hit)?'watch':'off'});if(r.blew){st.blew=(st.blew||0)+1;if(mode==='連鎖'&&swinging&&!st.hit&&!st.fail){st.fail={t:st.t,phase:st.phase,blew:true};go('止め')}}st.Qg=r.Qg;st.F=r.F;st.Fl=r.Fl;st.Mz=r.Mz;st.slip=r.slip;st.yawSlip=r.yawSlip;st.use=r.use;if(!lock)st.maxFr=Math.max(st.maxFr,r.use);st.used=r.used;if(r.slip)st.slipT+=dt;
   st.s=r.s;const g=geo([r.s.x,r.s.q0,r.s.q1,r.s.q2,r.s.q4,r.s.q5,r.s.q6],load);st.g=g;if(two&&!g.reach)st.reachMiss=(st.reachMiss||0)+dt;
   if(st.prevTip)st.v=Math.hypot(g.tip[0]-st.prevTip[0],g.tip[1]-st.prevTip[1],g.tip[2]-st.prevTip[2])/dt;
   if(!st.hit&&!st.fail&&(st.phase==='振りかぶり'||st.phase==='打ち込み')&&r.slip){st.preSlip=(st.preSlip||0)+dt;if(st.preSlip>=B.slipFail){st.fail={t:st.t,phase:st.phase,yaw:!!r.yawSlip};go('止め')}}
@@ -143,11 +158,11 @@ function makeBodySwing(load0,strength=1,opt={}){check(opt);const two=opt.hands==
    // 球の目標物：刃が球に触れた瞬間に当たり（その時の剣先の速さ）。点の目標物：刃が目標物を横切った瞬間（平面版と同じ）
    const hitNow=opt.targetR!=null?(st.prevC!==null&&st.prevC>0&&c.dist<=opt.targetR):(st.prevC!==null&&st.prevC>0&&c.cross<=0&&c.along>=0&&c.along<=g.L&&Math.abs(c.out)<=T3.tolLat);
    if(hitNow){st.hit={v:st.v,t:st.t,x:r.s.x,q0:r.s.q0,q1:r.s.q1,q2:r.s.q2,q4:r.s.q4,q5:r.s.q5,q6:r.s.q6,out:c.out};if(wrist==='hold')st.wristDev=Math.max(st.wristDev,Math.abs(r.s.q5));go('止め')}
-   else if(st.since>=.8)go('止め');st.prevC=c.cross}
+   else if(st.since>=(mode==='連鎖'?2:.8))go('止め');st.prevC=c.cross}
   st.prevTip=g.tip;st.t+=dt;st.since+=dt;return st};
  return st}
 function simulateBody(load,strength=1,opt={},sec=2.5,dt=.0005){const sw=makeBodySwing(load,strength,opt);let maxX=0;for(let i=0;i<sec/dt;i++){sw.step(dt);maxX=Math.max(maxX,sw.s.x)}
- return {wristDev:sw.wristDev,wristLost:!!sw.wrist&&sw.wristDev>W3.lostDeg,wristAtHit:sw.hit?sw.hit.q5:null,reachMiss:sw.reachMiss||0,fail:sw.fail||null,hit:sw.hit,hitV:sw.hit?sw.hit.v:0,minDist:sw.hit?0:(sw.fail||sw.minDist>=1e8)?null:sw.minDist,gap:sw.hit?0:(sw.fail||sw.minDist>=1e8)?null:Math.max(0,sw.minDist-(opt.targetR||0)),maxV:sw.maxV,maxUse:sw.maxFr,slipT:sw.slipT,maxW0:sw.maxW0,maxW4:sw.maxW4,maxX,end:sw.s,raise:sw.raise}}
+ return {blew:sw.blew||0,chainT:sw.chainT||null,snapAt:sw.snapAt??null,raiseT:sw.raise?sw.raise.t:null,wristDev:sw.wristDev,wristLost:!!sw.wrist&&sw.wristDev>W3.lostDeg,wristAtHit:sw.hit?sw.hit.q5:null,reachMiss:sw.reachMiss||0,fail:sw.fail||null,hit:sw.hit,hitV:sw.hit?sw.hit.v:0,minDist:sw.hit?0:(sw.fail||sw.minDist>=1e8)?null:sw.minDist,gap:sw.hit?0:(sw.fail||sw.minDist>=1e8)?null:Math.max(0,sw.minDist-(opt.targetR||0)),maxV:sw.maxV,maxUse:sw.maxFr,slipT:sw.slipT,maxW0:sw.maxW0,maxW4:sw.maxW4,maxX,end:sw.s,raise:sw.raise}}
 const TARGET_R=0.10; // 目標物の半径（頭くらいの球）
 const api={H2,check,W3,TARGET_R,T3,geo,dyn,bodyStep,makeBodySwing,simulateBody,blade};if(isNode)module.exports=api;else root.Body3D=api;
 })(globalThis);
