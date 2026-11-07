@@ -77,34 +77,47 @@ function swingAct(t,s,load,strength=1,prog=SWING){let cur=prog[0];for(const k of
 // 指摘a：打つ瞬間＝剣（手〜剣先）が目標物を上から下へ通った時。target={x,y}（肩から、m）。
 // 指摘c：振りかぶり→打ち込みは「腕が上がりきって止まった時」（狙いに近く、ほぼ止まった）。安全のため最大1.5秒。
 const TARGET={x:0.95,y:-0.15};
+// 点検g：目標物は剣の長さに合わせる。肩から（上腕＋前腕・手＋剣）の8割の距離、水平より約9°上
+function targetFor(load,frac=.8,a=ARM,p=ARM2){const L=(load.sword&&load.sword.L)||0,R=frac*(p.L1+a.lHand+L),ang=9*Math.PI/180;return {x:R*Math.cos(ang),y:-R*Math.sin(ang)}}
+// 刃（手〜剣先）と目標物の最短距離(m)
+function bladeDist(s,load,target,a=ARM,p=ARM2){const L=(load.sword&&load.sword.L)||0,ph=s.q1+s.q2,ex=p.L1*Math.sin(s.q1),ey=p.L1*Math.cos(s.q1),ux=Math.sin(ph),uy=Math.cos(ph),hx=ex+a.lHand*ux,hy=ey+a.lHand*uy,t=Math.max(0,Math.min(L,(target.x-hx)*ux+(target.y-hy)*uy));return Math.hypot(target.x-hx-t*ux,target.y-hy-t*uy)}
 function bladeCross(s,load,target,a=ARM,p=ARM2){const sw=load.sword||{L:0},ph=s.q1+s.q2,ex=p.L1*Math.sin(s.q1),ey=p.L1*Math.cos(s.q1),ux=Math.sin(ph),uy=Math.cos(ph),hx=ex+a.lHand*ux,hy=ey+a.lHand*uy,rx=target.x-hx,ry=target.y-hy;
  return {cross:ux*ry-uy*rx,along:ux*rx+uy*ry,len:sw.L||0}}
-function makeSwing(load,strength=1,target=TARGET){const st={t:0,s:{q1:35*D,w1:0,q2:35*D,w2:0},phase:'構え',since:0,hit:null,top:0,prevTip:null,prevC:null,v:0,act:{},target};
+function makeSwing(load,strength=1,target,opt={}){target=target||targetFor(load);const order=opt.order||'順番';const st={order,minDist:1e9,t:0,s:{q1:35*D,w1:0,q2:35*D,w2:0},phase:'構え',since:0,hit:null,top:0,prevTip:null,prevC:null,v:0,act:{},target};
  const ballistic={up:0,down:strength,flex:0,ext:strength},goal={構え:[35,35],振りかぶり:[150,110],戻し:[25,15],残心:[25,15]};
  st.step=dt=>{const go=p=>{st.phase=p;st.since=0};
   if(st.phase==='構え'&&st.since>=.1)go('振りかぶり');
   if(st.phase==='振りかぶり'&&st.since>=.15){const g=goal['振りかぶり'],near=Math.abs(st.s.q1-g[0]*D)<12*D&&Math.abs(st.s.q2-g[1]*D)<15*D,still=Math.abs(st.s.w1)<.4&&Math.abs(st.s.w2)<.6;
-   if((still&&(near||st.since>=.4))||st.since>=1.5){st.raiseTime=st.since;go('打ち込み')}}
+   if((still&&(near||st.since>=.4))||st.since>=1.5){st.raiseTime=st.since;st.raiseQ1=st.s.q1;st.raiseQ2=st.s.q2;go('打ち込み')}}
   // 点検b：止め＝まずブレーキ。動いている向きと逆の筋肉だけを使い（伸ばされながら踏ん張る）、ほぼ止まったら構えへ戻す
   if(st.phase==='止め'&&Math.abs(st.s.w1)<.8&&Math.abs(st.s.w2)<.8)go('戻し');
   if(st.phase==='止め'&&st.since>=.6)go('戻し');
   if(st.phase==='戻し'&&st.since>=.5)go('残心');
   if(st.phase==='止め'){const k=strength,b1=Math.min(k,Math.abs(st.s.w1)*.25),b2=Math.min(k,Math.abs(st.s.w2)*.25);
    st.act={up:st.s.w1<0?b1:0,down:st.s.w1>0?b1:0,flex:st.s.w2<0?b2:0,ext:st.s.w2>0?b2:0}}
-  else st.act=st.phase==='打ち込み'?ballistic:toAct(goal[st.phase],st.s,load,strength);
+  else if(st.phase==='打ち込み'){
+   // 3-e-g-1：力を入れる順番。'同時'＝下ろす・伸ばすを同時に全力。'順番'＝まず肩だけ全力で下ろし、肘は曲げたまま保つ。
+   // 肩が十分速く回り（上がりきりから35°下りた）たら、肘を伸ばす筋肉に切り替える＝肩の勢いを肘から先へ渡す
+   const sd=(opt.switchDeg??35)*D,elbowMode=opt.elbow||'保持',brake=opt.brake||0;
+   if(order==='同時')st.act=ballistic;
+   else{if(!st.elbowGo&&st.raiseQ1-st.s.q1>sd){st.elbowGo=true;st.elbowAt=st.since}
+    if(st.elbowGo)st.act={up:brake*strength,down:brake?0:strength,flex:0,ext:strength};
+    else if(elbowMode==='脱力')st.act={up:0,down:strength,flex:0,ext:0};
+    else{const hold=toAct([st.s.q1/D,st.raiseQ2/D],st.s,load,strength);st.act={up:0,down:strength,flex:hold.flex,ext:hold.ext}}}}
+  else st.act=toAct(goal[st.phase],st.s,load,strength);
   const r=swordStep(st.s,st.act,load,dt);
   if(st.prevTip)st.v=Math.hypot(r.tip.x-st.prevTip.x,r.tip.y-st.prevTip.y)/dt;
   if(st.phase==='振りかぶり')st.top=Math.min(st.top,r.tip.y);
-  const c=bladeCross(r,load,target);
+  const c=bladeCross(r,load,target);if(st.phase==='打ち込み')st.minDist=Math.min(st.minDist,bladeDist(r,load,target));
   if(st.phase==='打ち込み'){
    // 剣が上から前へ振り下ろされ、目標の上側→下側へ刃が通り過ぎた瞬間で、目標が刃の範囲内なら命中
    if(st.prevC!==null&&st.prevC>0&&c.cross<=0&&c.along>=0&&c.along<=c.len){st.hit={v:st.v,t:st.t,q1:r.q1,q2:r.q2,tip:r.tip};go('止め')}
-   else if(st.since>=.6)go('止め');
+   else if(st.since>=.8)go('止め');
   }
   if(st.hit&&st.phase!=='打ち込み')st.afterMax=Math.max(st.afterMax||0,st.v);st.prevC=c.cross;st.prevTip=r.tip;st.s={q1:r.q1,w1:r.w1,q2:r.q2,w2:r.w2};st.tip=r.tip;st.t+=dt;st.since+=dt;return st};
  return st}
-function simulateSwing(load,strength=1,sec=2.5,dt=.001,target=TARGET){const sw=makeSwing(load,strength,target);let peak=0,qmax=0,peakPhase='';
+function simulateSwing(load,strength=1,sec=2.5,dt=.001,target,opt={}){const sw=makeSwing(load,strength,target,opt);let peak=0,qmax=0,peakPhase='';
  for(let i=0;i<sec/dt;i++){sw.step(dt);if(sw.v>peak){peak=sw.v;peakPhase=sw.phase}qmax=Math.max(qmax,sw.s.q1)}
- return {afterMax:sw.afterMax||0,raiseTime:sw.raiseTime,hit:sw.hit,hitV:sw.hit?sw.hit.v:0,top:sw.top,qmax,end:sw.s,peak,peakPhase}}
-const api={TARGET,bladeCross,makeSwing,fv,ARM,ARM2,MUS,swordStep,SWING,swingAct,simulateSwing,toAct,armTorques,armStep,holdArm,lengthFactor,momentArm,gravityTorque,step,holdActivation};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Muscle=api;
+ return {minDist:sw.hit?0:sw.minDist,elbowAt:sw.elbowAt,target:sw.target,afterMax:sw.afterMax||0,raiseTime:sw.raiseTime,hit:sw.hit,hitV:sw.hit?sw.hit.v:0,top:sw.top,qmax,end:sw.s,peak,peakPhase}}
+const api={targetFor,bladeDist,TARGET,bladeCross,makeSwing,fv,ARM,ARM2,MUS,swordStep,SWING,swingAct,simulateSwing,toAct,armTorques,armStep,holdArm,lengthFactor,momentArm,gravityTorque,step,holdActivation};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Muscle=api;
 })(this);
