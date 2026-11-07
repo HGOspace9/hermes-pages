@@ -1,0 +1,11 @@
+const assert=require('node:assert/strict');const M=require('./muscle.js');const deg=Math.PI/180;
+const run=(aS,aE,w,s0={q1:0,w1:0,q2:0,w2:0},sec=4)=>{let s=s0;for(let i=0;i<sec*1000;i++)s=M.armStep(s,aS,aE,w,.001);return s};
+assert.ok(run(0,0,0,{q1:90*deg,w1:0,q2:30*deg,w2:0}).q1<2*deg,'力を抜くと腕は体の横に下がる');
+const h=M.holdArm(90*deg,0,0);assert.ok(h.shoulder>0&&h.shoulder<1,'腕を真横に上げて保てる');
+const s=run(h.shoulder,0,0,{q1:90*deg,w1:0,q2:0,w2:0});assert.ok(Math.abs(s.q1-90*deg)<3*deg,'計算した力で真横に止まる');
+assert.ok(M.holdArm(90*deg,0,10).shoulder>1,'10kgを伸ばした腕で真横に保つのは無理');
+assert.ok(M.holdArm(90*deg,90*deg,0).shoulder<M.holdArm(90*deg,0,0).shoulder,'肘を曲げると肩が楽になる');
+assert.ok(M.armTorques(90*deg,90*deg,0).elbow<1e-9,'前腕が真上なら肘に重さの回転力はかからない');
+assert.ok(run(1,0,0).q1>150*deg,'肩に全力で腕が上がり切る');
+assert.ok(run(0,1,2).q2>140*deg&&run(0,1,2).q1<2*deg,'肘だけ全力なら肩は下がったまま肘が曲がる');
+console.log('肩と肘 8項目 OK');
