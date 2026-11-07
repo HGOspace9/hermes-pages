@@ -33,6 +33,8 @@ function swing(K,s){const J={},x=s.x,hip=sag([x,0]);
 const m3=(p)=>v(p[2],R.HIP-p[1],p[0]);
 function swing3(g,s){const J={},x=s.x,hip=m3(g.hip),shC=m3(g.C);const u=upper(J,hip,shC);J.rsh=m3(g.S);J.lsh=m3(g.LS);
  J.relb=m3(g.E);J.rhand=m3(g.H);J.tip=m3(g.tip);if(g.W)J.rwr=m3(g.W);J.lelb=add(J.lsh,mul(u,-R.U));J.lhand=add(J.lelb,mul(u,-R.F));
+ if(g.two){/* 両手持ち：左右の腕は、それぞれの肩から握る位置へ届く形（body3d.js の geo が決める） */const wr=(E,Hd)=>{const d=[Hd[0]-E[0],Hd[1]-E[1],Hd[2]-E[2]],l=len(d);return add(E,mul(d,(l-0.08)/l))};
+  J.relb=m3(g.RE);J.rwr=wr(J.relb,J.rhand);J.lelb=m3(g.LE);J.lhand=m3(g.LH);J.lwr=wr(J.lelb,J.lhand);J.two=true}
  const back=-Math.min(.24,x),front=Math.min(.21,x*.5);lowerLegs(J,hip,v(R.HIPW,R.ANKLE,x+back),v(-R.HIPW,R.ANKLE,x+front));J.L=g.L;J.twist=s.q4;return J}
 // 歩く（motion.js の sampleWalk の角度）。z方向へ進む
 function walk(g,z){const J={},hip0=v(0,R.HIP,z);const kn=(h)=>[Math.sin(h),-Math.cos(h)];
