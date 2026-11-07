@@ -20,4 +20,6 @@ for(const [m,L,st] of [[1,.6,1],[3,.9,1],[3,.6,.6],[3,.9,.6]])for(const mode of 
  assert.ok(z.fail||!z.hit||(g.hit&&z.hitV<=g.hitV),`摩擦0では失敗か遅い（${m}kg・${L}m・${st*100}%・${mode}）`);if(z.fail)assert.ok(!z.hit,'失敗した振りは速さを記録しない')}
 // 点検n：踏み込みは目標の距離（0.3m）で止まる（行き過ぎは10cm未満）
 for(const [m,L,st] of [[1,.6,1],[3,.9,1],[3,.9,.6]])for(const mode of ['同時','順番']){const r=Bd.simulateBody(S(m,L),st,{mode,mu:.6});assert.ok(r.maxX<Bd.B.stepLen+.1,`踏み込みは目標の距離で止まる（${m}kg・${mode}・${r.maxX.toFixed(2)}m）`)}
-console.log('全身の振り 14項目 OK');
+// 点検p：失敗した振りは「一番近づいた距離」を出さない（計算用の仮の大きな数を返さない）
+{const z=Bd.simulateBody(S(1),1,{mode:'同時',mu:0});assert.ok(z.fail&&z.minDist===null,'失敗した時は距離を出さない')}
+console.log('全身の振り 15項目 OK');

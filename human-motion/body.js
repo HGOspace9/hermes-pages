@@ -95,6 +95,6 @@ function makeBodySwing(load,strength=1,opt={}){const mode=opt.mode||'順番',mu=
   st.prevS=K.S;st.prevTip=K.tip;st.t+=dt;st.since+=dt;return st};
  return st}
 function simulateBody(load,strength=1,opt={},sec=2.5,dt=.0005){const sw=makeBodySwing(load,strength,opt);let maxX=0;for(let i=0;i<sec/dt;i++){sw.step(dt);maxX=Math.max(maxX,sw.s.x)}
- return {fail:sw.fail||null,maxSv:sw.maxSv||0,hit:sw.hit,hitV:sw.hit?sw.hit.v:0,minDist:sw.hit?0:sw.minDist,maxFr:sw.maxFr,slipT:sw.slipT,maxW0:sw.maxW0,maxX,end:sw.s,afterMax:sw.afterMax||0,raise:sw.raise,trunkStopAt:sw.trunkStopAt,elbowAt:sw.elbowAt}}
+ return {fail:sw.fail||null,maxSv:sw.maxSv||0,hit:sw.hit,hitV:sw.hit?sw.hit.v:0,minDist:sw.hit?0:(sw.fail||sw.minDist>=1e8)?null:sw.minDist,maxFr:sw.maxFr,slipT:sw.slipT,maxW0:sw.maxW0,maxX,end:sw.s,afterMax:sw.afterMax||0,raise:sw.raise,trunkStopAt:sw.trunkStopAt,elbowAt:sw.elbowAt}}
 const api={B,bodies,dyn,bodyStep,hold,makeBodySwing,simulateBody};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Body=api;
 })(this);
