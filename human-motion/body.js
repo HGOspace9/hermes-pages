@@ -5,7 +5,7 @@
 const Mu=(typeof module!=='undefined'&&module.exports)?require('./muscle.js'):root.Muscle;
 const {ARM,ARM2,MUS,fv,lengthFactor,momentArm,momentArmS,lengthFactorS,targetFor}=Mu;
 const D=Math.PI/180,G=9.81;
-const B={mLeg:20,mT:45,cT:0.30,IT:1.6,Lt:0.55,dampT:8,q0min:-25*D,q0max:60*D,fTflex:200,fText:260,vmaxT:6,legF:0.9,vStep:1.0,kx:12,hHip:0.9,stepLen:0.3};
+const B={mLeg:20,mT:45,cT:0.30,IT:1.6,Lt:0.55,dampT:8,q0min:-25*D,q0max:60*D,fTflex:200,fText:260,vmaxT:6,legF:0.9,vStep:1.0,kx:12,hHip:0.9,stepLen:0.3,stopA:3,slipFail:0.02};
 const cl=(v,hi=1)=>Math.max(0,Math.min(hi,v||0));
 const fvT=v=>fv(v*14/B.vmaxT);
 function bodies(q,qd,load){const [x,q0,q1,q2]=q,[,w0,w1,w2]=qd,sw=load.sword||{m:0,c:0,L:0},w=load.w||0,a=ARM,p=ARM2;
@@ -32,20 +32,27 @@ function maxT(s){return {tf:B.fTflex*fvT(s.w0),te:B.fText*fvT(-s.w0),up:MUS.fUp*
 function bodyStep(s,act,load,dt,opt={}){const mu=opt.mu??.6,q=[s.x,s.q0,s.q1,s.q2],qd=[s.vx,s.w0,s.w1,s.w2],{K,M,h,Qg,mt}=dyn(q,qd,load),T=maxT(s);
  const tau=[0,cl(act.tf)*T.tf-cl(act.te)*T.te,cl(act.up)*T.up-cl(act.down)*T.down,cl(act.flex)*T.flex-cl(act.ext)*T.ext];
  // 床：足は体全体の前後の勢いの変化に必要な力（F）を床から受ける。|F|は摩擦×体重まで。超えると足が滑り、腰が後ろへ逃げる。
- const frTrunk=0;
+ // 体幹を回す力は体の中の力なので、床が受け持つのは「体全体の前後の勢いの変化」＝Fだけ（体幹を倒すと重心が前へ動き、その分がFに入る）。
+ // 以前の仮の欄（体幹の力を別に摩擦へ数える欄）は二重に数えることになるので削除した。
  const damp=[0,B.dampT*s.w0,ARM2.damp1*s.w1,ARM.damp*s.w2],rhs=q.map((_,i)=>Qg[i]+tau[i]-h[i]-damp[i]);
  const sub=(free,pres)=>{const A=free.map(i=>free.map(j=>M[i][j])),bb=free.map(i=>rhs[i]-pres.reduce((t,[j,a])=>t+M[i][j]*a,0)),sol=solve(A,bb),acc=[0,0,0,0];pres.forEach(([j,a])=>acc[j]=a);free.forEach((i,k)=>acc[i]=sol[k]);return acc};
  let acc,F=0,slip=false;
  if(opt.lock){acc=sub([2,3],[[0,0],[1,0]]);F=M[0].reduce((t,v,j)=>t+v*acc[j],0)-rhs[0]}
- else{const lim=B.legF*mt*G,stepOn=act.step&&s.x<B.stepLen,ax=Math.max(-lim/mt,Math.min(lim/mt,stepOn?B.kx*(B.vStep-s.vx):-B.kx*s.vx));
-  acc=sub([1,2,3],[[0,ax]]);F=M[0].reduce((t,v,j)=>t+v*acc[j],0)-rhs[0];const fr=Math.max(0,mu*mt*G-frTrunk);
-  if(Math.abs(F)>fr){F=Math.sign(F)*fr;slip=true;rhs[0]+=F;acc=solve(M,rhs)}}
+ else{const lim=B.legF*mt*G,vWant=act.step?Math.min(B.vStep,Math.sqrt(2*B.stopA*Math.max(0,B.stepLen-s.x))):0,ax=Math.max(-lim/mt,Math.min(lim/mt,B.kx*(vWant-s.vx)));
+  // 点検n：踏み込みは目標の距離（stepLen）で止まるよう、残りの距離から出してよい速さを決めて脚で減速する
+  const Fof=a0=>{const ac=sub([1,2,3],[[0,a0]]);return [ac,M[0].reduce((t,v,j)=>t+v*ac[j],0)-rhs[0]]},fr=mu*mt*G;
+  [acc,F]=Fof(ax);
+  if(Math.abs(F)>fr){
+   // 脚は滑らない範囲まで踏み込みの力を弱める（人は床に合わせて加減する）。力Fは踏み込みの加速度に比例して変わる
+   const [ac0,F0]=Fof(0);
+   if(Math.abs(F0)<=fr){const tgt=Math.sign(F)*fr,a2=ax*(tgt-F0)/(F-F0);[acc,F]=Fof(a2)}
+   else{F=Math.sign(F0)*fr;slip=true;rhs[0]+=F;acc=solve(M,rhs)}}} // 踏み込みを止めても体と腕の動きだけで摩擦を超える＝本当に滑る
  const n={vx:s.vx+acc[0]*dt,w0:s.w0+acc[1]*dt,w1:s.w1+acc[2]*dt,w2:s.w2+acc[3]*dt};
  n.x=s.x+n.vx*dt;n.q0=s.q0+n.w0*dt;n.q1=s.q1+n.w1*dt;n.q2=s.q2+n.w2*dt;
  if(n.q0<B.q0min){n.q0=B.q0min;n.w0=Math.max(0,n.w0)}if(n.q0>B.q0max){n.q0=B.q0max;n.w0=Math.min(0,n.w0)}
  if(n.q1<0){n.q1=0;n.w1=Math.max(0,n.w1)}if(n.q1>ARM2.q1max){n.q1=ARM2.q1max;n.w1=Math.min(0,n.w1)}
  if(n.q2<ARM.min){n.q2=ARM.min;n.w2=Math.max(0,n.w2)}if(n.q2>ARM.max){n.q2=ARM.max;n.w2=Math.min(0,n.w2)}
- return {s:n,F,N:mt*G,slip,K,tau,used:(frTrunk+Math.abs(F))/(mt*G)}}
+ return {s:n,F,N:mt*G,slip,K,tau,used:Math.abs(F)/(mt*G)}}
 // 狙いの姿勢を保つ力（重さの打ち消し＋ばね）→ 筋肉の力の入れ具合
 function hold(goal,s,load,strength){const q=[s.x,s.q0,s.q1,s.q2],{Qg}=dyn(q,[s.vx,s.w0,s.w1,s.w2],load),T=maxT({...s,w0:0,w1:0,w2:0}),o={};
  const g=(i,gq,k,b,pos,neg,cur,w)=>{if(gq==null)return;const t=-Qg[i]+k*(gq-cur)-b*w;o[pos]=t>0?Math.min(strength,t/T[pos]):0;o[neg]=t<0?Math.min(strength,-t/T[neg]):0};
@@ -74,11 +81,13 @@ function makeBodySwing(load,strength=1,opt={}){const mode=opt.mode||'順番',mu=
     if(st.stage===1&&R.q1-s.q1>(opt.switchDeg??35)*D){st.stage=2;st.elbowAt=st.since}
     const armHold=hold([null,R.q1,R.q2],s,load,strength);
     if(st.stage===0)a={tf:strength,step:true,up:armHold.up,down:armHold.down,flex:armHold.flex,ext:armHold.ext};
-    else{a={te:s.w0>.2?strength:0,step:true,down:strength};if(st.stage===1){a.flex=hold([null,null,R.q2],s,load,strength).flex;a.ext=hold([null,null,R.q2],s,load,strength).ext}else a.ext=strength}}}
+    else{a={te:s.w0>.2?Math.min(strength,s.w0*.3):0,step:true,down:strength};if(st.stage===1){a.flex=hold([null,null,R.q2],s,load,strength).flex;a.ext=hold([null,null,R.q2],s,load,strength).ext}else a.ext=strength}}}
   st.act=a;
   const r=bodyStep(s,a,load,dt,{mu,lock});st.F=r.F;st.N=r.N;st.slip=r.slip;if(!lock)st.maxFr=Math.max(st.maxFr,r.used);st.used=r.used;if(r.slip)st.slipT+=dt;
   st.s=r.s;const K=bodies([r.s.x,r.s.q0,r.s.q1,r.s.q2],[r.s.vx,r.s.w0,r.s.w1,r.s.w2],load);st.K=K;
   if(st.prevTip)st.v=Math.hypot(K.tip[0]-st.prevTip[0],K.tip[1]-st.prevTip[1])/dt;
+  // 点検m：打つ前に足が滑ったら踏ん張れず失敗（転倒扱い）。速さは記録しない。転ぶ動きそのものは未計算
+  if(!st.hit&&!st.fail&&(st.phase==='振りかぶり'||st.phase==='打ち込み')&&r.slip){st.preSlip=(st.preSlip||0)+dt;if(st.preSlip>=B.slipFail){st.fail={t:st.t,phase:st.phase};go('止め')}}
   if(st.phase==='打ち込み'){st.maxW0=Math.max(st.maxW0,r.s.w0);if(st.prevS)st.maxSv=Math.max(st.maxSv||0,(K.S[0]-st.prevS[0])/dt);const TT={x:r.s.x+T.x,y:T.y};st.targetNow=TT;const c=bladeWorld(K,TT);st.minDist=Math.min(st.minDist,c.dist);
    if(st.prevC!==null&&st.prevC>0&&c.cross<=0&&c.along>=0&&c.along<=K.L){st.hit={v:st.v,t:st.t,x:r.s.x,q0:r.s.q0,q1:r.s.q1,q2:r.s.q2};go('止め')}
    else if(st.since>=.8)go('止め');st.prevC=c.cross}
@@ -86,6 +95,6 @@ function makeBodySwing(load,strength=1,opt={}){const mode=opt.mode||'順番',mu=
   st.prevS=K.S;st.prevTip=K.tip;st.t+=dt;st.since+=dt;return st};
  return st}
 function simulateBody(load,strength=1,opt={},sec=2.5,dt=.0005){const sw=makeBodySwing(load,strength,opt);let maxX=0;for(let i=0;i<sec/dt;i++){sw.step(dt);maxX=Math.max(maxX,sw.s.x)}
- return {maxSv:sw.maxSv||0,hit:sw.hit,hitV:sw.hit?sw.hit.v:0,minDist:sw.hit?0:sw.minDist,maxFr:sw.maxFr,slipT:sw.slipT,maxW0:sw.maxW0,maxX,end:sw.s,afterMax:sw.afterMax||0,raise:sw.raise,trunkStopAt:sw.trunkStopAt,elbowAt:sw.elbowAt}}
+ return {fail:sw.fail||null,maxSv:sw.maxSv||0,hit:sw.hit,hitV:sw.hit?sw.hit.v:0,minDist:sw.hit?0:sw.minDist,maxFr:sw.maxFr,slipT:sw.slipT,maxW0:sw.maxW0,maxX,end:sw.s,afterMax:sw.afterMax||0,raise:sw.raise,trunkStopAt:sw.trunkStopAt,elbowAt:sw.elbowAt}}
 const api={B,bodies,dyn,bodyStep,hold,makeBodySwing,simulateBody};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Body=api;
 })(this);

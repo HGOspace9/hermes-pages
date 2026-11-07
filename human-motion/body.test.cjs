@@ -15,4 +15,9 @@ for(const [m,L,st] of [[1,.6,1],[3,.9,1]]){const a=Bd.simulateBody(S(m,L),st,{mo
 {const sw=Bd.makeBodySwing(S(1),1,{mode:'順番'});for(let i=0;i<5000;i++)sw.step(.0005);assert.ok(sw.trunkStopAt>0&&sw.elbowAt>sw.trunkStopAt,'順番：体幹→肩→肘の順に切り替わる')}
 // 止めで加速しない（点検b）・外れたら距離が出る
 for(const mode of ['なし','同時','順番']){const r=Bd.simulateBody(S(1),1,{mode});if(r.hit)assert.ok(r.afterMax<=r.hitV*1.001,`止めで剣が加速しない（${mode}）`);else assert.ok(r.minDist>0,'外れたら距離が出る')}
-console.log('全身の振り 12項目 OK');
+// 点検m：摩擦0では踏ん張れず失敗になるか、摩擦0.6より遅い（滑ったほうが速い逆転がない）
+for(const [m,L,st] of [[1,.6,1],[3,.9,1],[3,.6,.6],[3,.9,.6]])for(const mode of ['同時','順番']){const g=Bd.simulateBody(S(m,L),st,{mode,mu:.6}),z=Bd.simulateBody(S(m,L),st,{mode,mu:0});
+ assert.ok(z.fail||!z.hit||(g.hit&&z.hitV<=g.hitV),`摩擦0では失敗か遅い（${m}kg・${L}m・${st*100}%・${mode}）`);if(z.fail)assert.ok(!z.hit,'失敗した振りは速さを記録しない')}
+// 点検n：踏み込みは目標の距離（0.3m）で止まる（行き過ぎは10cm未満）
+for(const [m,L,st] of [[1,.6,1],[3,.9,1],[3,.9,.6]])for(const mode of ['同時','順番']){const r=Bd.simulateBody(S(m,L),st,{mode,mu:.6});assert.ok(r.maxX<Bd.B.stepLen+.1,`踏み込みは目標の距離で止まる（${m}kg・${mode}・${r.maxX.toFixed(2)}m）`)}
+console.log('全身の振り 14項目 OK');
