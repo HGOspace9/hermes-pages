@@ -1,0 +1,11 @@
+const assert=require('node:assert/strict');const M=require('./muscle.js');const S=m=>({sword:{m,c:.2,L:.6}});
+const light=M.simulateSwing(S(.5)),mid=M.simulateSwing(S(1)),heavy=M.simulateSwing(S(3));
+assert.ok(light.peak>mid.peak&&mid.peak>heavy.peak,'剣が重いほど剣先が遅い');
+assert.ok(mid.peak>6&&mid.peak<20,'1kgの剣の剣先は毎秒6〜20mの範囲');
+assert.ok(mid.qmax>120*Math.PI/180,'1kgなら腕を頭の上まで振りかぶれる');
+assert.ok(M.simulateSwing(S(3),.6).qmax<M.simulateSwing(S(3),1).qmax,'力が弱いと重い剣を高く上げられない');
+assert.ok(M.simulateSwing(S(1),.6).peak<mid.peak,'力が弱いと振りが遅い');
+assert.ok(Math.abs(mid.end.q1-25*Math.PI/180)<5*Math.PI/180,'振った後は止めの構えに戻る');
+assert.ok(M.fv(7)<M.fv(0)&&M.fv(14)===0,'速く縮むほど筋肉は力を出せない');
+const a=M.swingAct(.85,{q1:2,w1:0,q2:2,w2:0},S(1));assert.ok(a.name==='打ち込み'&&a.act.down>0&&a.act.up===0,'打ち込みでは下ろす筋肉を使う');
+console.log('剣の振り 8項目 OK');

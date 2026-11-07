@@ -32,5 +32,42 @@ function armStep(s,aS,aE,w,dt,a=ARM,p=ARM2){aS=Math.max(0,Math.min(1,aS));aE=Mat
  if(q2<a.min){q2=a.min;w2=Math.max(0,w2)}if(q2>a.max){q2=a.max;w2=Math.min(0,w2)}
  return {q1,w1,q2,w2,tS,tE,gS:gt.shoulder,gE:gt.elbow,fS,fE}}
 function holdArm(q1,q2,w,a=ARM,p=ARM2){const gt=armTorques(q1,q2,w,a,p);return {shoulder:gt.shoulder/(p.fMaxS*lengthFactorS(q1,p)*momentArmS(q1)),elbow:gt.elbow/(a.fMax*lengthFactor(q2,a)*momentArm(q2))}}
-const api={ARM,ARM2,armTorques,armStep,holdArm,lengthFactor,momentArm,gravityTorque,step,holdActivation};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Muscle=api;
+
+// 3-e-c：4つの筋肉＋剣。up=三角筋(上げる) down=広背筋・大胸筋(下ろす) flex=上腕二頭筋(曲げる) ext=上腕三頭筋(伸ばす)
+// 剣は前腕の延長線上に持つ簡略化。sword={m:質量kg,c:手から剣の重心m,L:手から剣先m}
+const MUS={fUp:2000,fDown:2600,fFlex:1600,fExt:1800};
+const maDown=q=>0.03,maExt=q=>0.02;
+// 速く縮むほど筋肉は力を出せない（力と速度の関係・Hillの式の簡略）。v=縮む向きの関節の角速度
+const VMAX=14;function fv(v){if(v<=0)return Math.min(1.5,1-v/VMAX*0.5);return Math.max(0,(1-v/VMAX)/(1+4*v/VMAX))}
+function swordStep(s,act,load,dt,a=ARM,p=ARM2,M=MUS){const cl=v=>Math.max(0,Math.min(1,v||0)),sw=load.sword||{m:0,c:0},w=load.w||0;
+ const rS=a.lHand+sw.c,phi=s.q1+s.q2,foreMom=a.mForearm*a.rCom+w*a.lHand+sw.m*rS,g=a.g;
+ const gE=foreMom*g*Math.sin(phi),gS=(p.m1*p.c1+(a.mForearm+w+sw.m)*p.L1)*g*Math.sin(s.q1)+gE;
+ const tS=cl(act.up)*M.fUp*lengthFactorS(s.q1,p)*momentArmS(s.q1)*fv(s.w1)-cl(act.down)*M.fDown*maDown(s.q1)*fv(-s.w1);
+ const tE=cl(act.flex)*M.fFlex*lengthFactor(s.q2,a)*momentArm(s.q2)*fv(s.w2)-cl(act.ext)*M.fExt*maExt(s.q2)*fv(-s.w2);
+ const I2=inertia(w,a)+sw.m*rS*rS+sw.m*(sw.L||0)**2/12,I1=p.m1*p.c1*p.c1*1.3+(a.mForearm+w+sw.m)*p.L1*p.L1+I2;
+ let w1=s.w1+(tS-gS-p.damp1*s.w1)/I1*dt,w2=s.w2+(tE-gE-a.damp*s.w2)/I2*dt,q1=s.q1+w1*dt,q2=s.q2+w2*dt;
+ if(q1<0){q1=0;w1=Math.max(0,w1)}if(q1>p.q1max){q1=p.q1max;w1=Math.min(0,w1)}
+ if(q2<a.min){q2=a.min;w2=Math.max(0,w2)}if(q2>a.max){q2=a.max;w2=Math.min(0,w2)}
+ // 剣先の位置(m)：肩を原点、x=外側、y=下向き
+ const ph=q1+q2,ex=p.L1*Math.sin(q1),ey=p.L1*Math.cos(q1),tip={x:ex+(a.lHand+(sw.L||0))*Math.sin(ph),y:ey+(a.lHand+(sw.L||0))*Math.cos(ph)};
+ return {q1,w1,q2,w2,tS,tE,gS,gE,tip}}
+// 振りの筋肉プログラム：脳が「どの姿勢へ」を決め、筋肉の力の入れ具合に変える（目標がある段階）。
+// 打ち込みだけは目標なしで全力（広背筋＋上腕三頭筋）。動き自体は力の計算から生まれる。
+const D=Math.PI/180;
+const SWING=[{t:0,name:'構え',goal:[35,35]},{t:.1,name:'振りかぶり',goal:[150,110]},{t:.8,name:'打ち込み',ballistic:{down:1,ext:1}},{t:1.0,name:'止め',goal:[25,15]},{t:1.5,name:'残心',goal:[25,15]}];
+function toAct(goalDeg,s,load,strength=1){const a=ARM,sw=load.sw||load.sword||{m:0,c:0},w=load.w||0,q1g=goalDeg[0]*D,q2g=goalDeg[1]*D;
+ const rS=a.lHand+sw.c,fm=a.mForearm*a.rCom+w*a.lHand+sw.m*rS,g=a.g;
+ const gE=fm*g*Math.sin(s.q1+s.q2),gS=(ARM2.m1*ARM2.c1+(a.mForearm+w+sw.m)*ARM2.L1)*g*Math.sin(s.q1)+gE;
+ const k1=60,b1=6,k2=40,b2=3; // 狙いへの固さと、速さを抑える働き（筋肉の反射の簡略）
+ const T1=gS+k1*(q1g-s.q1)-b1*s.w1,T2=gE+k2*(q2g-s.q2)-b2*s.w2;
+ const up=T1>0?T1/(MUS.fUp*lengthFactorS(s.q1)*momentArmS(s.q1)):0,down=T1<0?-T1/(MUS.fDown*0.03):0;
+ const flex=T2>0?T2/(MUS.fFlex*lengthFactor(s.q2)*momentArm(s.q2)):0,ext=T2<0?-T2/(MUS.fExt*0.02):0;
+ const c=v=>Math.min(strength,v);return {up:c(up),down:c(down),flex:c(flex),ext:c(ext)}}
+function swingAct(t,s,load,strength=1,prog=SWING){let cur=prog[0];for(const k of prog)if(t>=k.t)cur=k;
+ if(cur.ballistic){const o={up:0,down:0,flex:0,ext:0};for(const k in cur.ballistic)o[k]=cur.ballistic[k]*strength;return {name:cur.name,act:o}}
+ return {name:cur.name,act:toAct(cur.goal,s,load,strength)}}
+function simulateSwing(load,strength=1,sec=2,dt=.001){let s={q1:35*D,w1:0,q2:35*D,w2:0},prev=null,peak=0,top=1e9,out=[],qmax=0;
+ for(let i=0;i<sec/dt;i++){const t=i*dt,sa=swingAct(t,s,load,strength),r=swordStep(s,sa.act,load,dt);if(prev){const v=Math.hypot(r.tip.x-prev.x,r.tip.y-prev.y)/dt;if(sa.name==='打ち込み')peak=Math.max(peak,v)}prev=r.tip;top=Math.min(top,r.tip.y);qmax=Math.max(qmax,r.q1);s={q1:r.q1,w1:r.w1,q2:r.q2,w2:r.w2};if(i%10===0)out.push({t,...s,tip:r.tip,stage:sa.name,act:sa.act})}
+ return {peak,top,qmax,end:s,path:out}}
+const api={fv,ARM,ARM2,MUS,swordStep,SWING,swingAct,simulateSwing,toAct,armTorques,armStep,holdArm,lengthFactor,momentArm,gravityTorque,step,holdActivation};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Muscle=api;
 })(this);
