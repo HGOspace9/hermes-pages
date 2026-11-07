@@ -63,11 +63,29 @@ function toAct(goalDeg,s,load,strength=1){const a=ARM,sw=load.sw||load.sword||{m
  const up=T1>0?T1/(MUS.fUp*lengthFactorS(s.q1)*momentArmS(s.q1)):0,down=T1<0?-T1/(MUS.fDown*0.03):0;
  const flex=T2>0?T2/(MUS.fFlex*lengthFactor(s.q2)*momentArm(s.q2)):0,ext=T2<0?-T2/(MUS.fExt*0.02):0;
  const c=v=>Math.min(strength,v);return {up:c(up),down:c(down),flex:c(flex),ext:c(ext)}}
+// 指摘①②の修正：段階は時間ではなく出来事で切り替える。打ち込みは「剣先が肩の高さを下向きに通る（＝打つ瞬間）」まで全力で続け、
+// 速さはその瞬間に測る。どの振りも同じ地点で比べられる。届かなければ hit=null。
 function swingAct(t,s,load,strength=1,prog=SWING){let cur=prog[0];for(const k of prog)if(t>=k.t)cur=k;
  if(cur.ballistic){const o={up:0,down:0,flex:0,ext:0};for(const k in cur.ballistic)o[k]=cur.ballistic[k]*strength;return {name:cur.name,act:o}}
  return {name:cur.name,act:toAct(cur.goal,s,load,strength)}}
-function simulateSwing(load,strength=1,sec=2,dt=.001){let s={q1:35*D,w1:0,q2:35*D,w2:0},prev=null,peak=0,top=1e9,out=[],qmax=0;
- for(let i=0;i<sec/dt;i++){const t=i*dt,sa=swingAct(t,s,load,strength),r=swordStep(s,sa.act,load,dt);if(prev){const v=Math.hypot(r.tip.x-prev.x,r.tip.y-prev.y)/dt;if(sa.name==='打ち込み')peak=Math.max(peak,v)}prev=r.tip;top=Math.min(top,r.tip.y);qmax=Math.max(qmax,r.q1);s={q1:r.q1,w1:r.w1,q2:r.q2,w2:r.w2};if(i%10===0)out.push({t,...s,tip:r.tip,stage:sa.name,act:sa.act})}
- return {peak,top,qmax,end:s,path:out}}
-const api={fv,ARM,ARM2,MUS,swordStep,SWING,swingAct,simulateSwing,toAct,armTorques,armStep,holdArm,lengthFactor,momentArm,gravityTorque,step,holdActivation};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Muscle=api;
+function makeSwing(load,strength=1){const st={t:0,s:{q1:35*D,w1:0,q2:35*D,w2:0},phase:'構え',since:0,hit:null,top:0,prevTip:null,v:0,act:{}};
+ const ballistic={up:0,down:strength,flex:0,ext:strength},goal={構え:[35,35],振りかぶり:[150,110],止め:[25,15],残心:[25,15]};
+ st.step=dt=>{const go=p=>{st.phase=p;st.since=0};
+  if(st.phase==='構え'&&st.since>=.1)go('振りかぶり');
+  if(st.phase==='振りかぶり'&&st.since>=.7)go('打ち込み');
+  if(st.phase==='止め'&&st.since>=.5)go('残心');
+  st.act=st.phase==='打ち込み'?ballistic:toAct(goal[st.phase],st.s,load,strength);
+  const r=swordStep(st.s,st.act,load,dt);
+  if(st.prevTip)st.v=Math.hypot(r.tip.x-st.prevTip.x,r.tip.y-st.prevTip.y)/dt;
+  if(st.phase==='振りかぶり')st.top=Math.min(st.top,r.tip.y);
+  if(st.phase==='打ち込み'){
+   if(st.prevTip&&st.prevTip.y<0&&r.tip.y>=0){st.hit={v:st.v,t:st.t,q1:r.q1,q2:r.q2};go('止め')}
+   else if(st.since>=.6)go('止め'); // 0.6秒たっても届かない＝打てなかった
+  }
+  st.prevTip=r.tip;st.s={q1:r.q1,w1:r.w1,q2:r.q2,w2:r.w2};st.tip=r.tip;st.t+=dt;st.since+=dt;return st};
+ return st}
+function simulateSwing(load,strength=1,sec=2,dt=.001){const sw=makeSwing(load,strength);let peak=0,qmax=0,peakPhase='';
+ for(let i=0;i<sec/dt;i++){sw.step(dt);if(sw.v>peak){peak=sw.v;peakPhase=sw.phase}qmax=Math.max(qmax,sw.s.q1)}
+ return {hit:sw.hit,hitV:sw.hit?sw.hit.v:0,top:sw.top,qmax,end:sw.s,peak,peakPhase}}
+const api={makeSwing,fv,ARM,ARM2,MUS,swordStep,SWING,swingAct,simulateSwing,toAct,armTorques,armStep,holdArm,lengthFactor,momentArm,gravityTorque,step,holdActivation};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Muscle=api;
 })(this);
