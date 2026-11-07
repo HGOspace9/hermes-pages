@@ -29,6 +29,11 @@ function swing(K,s){const J={},x=s.x,hip=sag([x,0]);
  // 脚：後ろ（左）足は床に残り、前（右）足は踏み込む。届かない分は腰を下げる（平面と同じ考え）
  const back=-Math.min(.24,x),front=Math.min(.21,x*.5),reach=Math.max(Math.abs(back),Math.abs(front)),Lg=R.THIGH+R.SHIN,drop=Math.max(0,(R.HIP-R.ANKLE)-Math.sqrt(Math.max(0,Lg*Lg-reach*reach)));
  lowerLegs(J,hip,v(R.HIPW,R.ANKLE,x+back),v(-R.HIPW,R.ANKLE,x+front));J.drop=drop;/* 腰を少し低く（ひざを軽く曲げた構え）したので、0.24m開いても足は床に届く（drop=0） */J.L=K.L;return J}
+// R6：body3d.js の geo()（座標 [前,下,左]）から3Dの関節へ。胸はひねりで回り、腰から下は回らない
+const m3=(p)=>v(p[2],R.HIP-p[1],p[0]);
+function swing3(g,s){const J={},x=s.x,hip=m3(g.hip),shC=m3(g.C);const u=upper(J,hip,shC);J.rsh=m3(g.S);J.lsh=m3(g.LS);
+ J.relb=m3(g.E);J.rhand=m3(g.H);J.tip=m3(g.tip);J.lelb=add(J.lsh,mul(u,-R.U));J.lhand=add(J.lelb,mul(u,-R.F));
+ const back=-Math.min(.24,x),front=Math.min(.21,x*.5);lowerLegs(J,hip,v(R.HIPW,R.ANKLE,x+back),v(-R.HIPW,R.ANKLE,x+front));J.L=g.L;J.twist=s.q4;return J}
 // 歩く（motion.js の sampleWalk の角度）。z方向へ進む
 function walk(g,z){const J={},hip0=v(0,R.HIP,z);const kn=(h)=>[Math.sin(h),-Math.cos(h)];
  const legPts=(hx,h,k)=>{const H=v(hx,R.HIP,z),K=add(H,v(0,-R.THIGH*Math.cos(h),R.THIGH*Math.sin(h))),A=add(K,v(0,-R.SHIN*Math.cos(h-k),R.SHIN*Math.sin(h-k)));return {K,A}};
@@ -41,5 +46,5 @@ function walk(g,z){const J={},hip0=v(0,R.HIP,z);const kn=(h)=>[Math.sin(h),-Math
 // 筋肉で右腕を動かす（muscle.js armStep の q1=横に上げる角度, q2=肘）。正面の面で動く
 function armSide(q1,q2){const J=stand(),S=J.rsh,phi=q1+q2;J.relb=add(S,v(-R.U*Math.sin(q1),-R.U*Math.cos(q1),0));J.rhand=add(J.relb,v(-R.F*Math.sin(phi),-R.F*Math.cos(phi),0));return J}
 const BONES=[['pelvis','chest','胴'],['chest','head','首'],['lsh','lelb','左上腕'],['lelb','lhand','左前腕'],['rsh','relb','右上腕'],['relb','rhand','右前腕'],['lhip','lknee','左もも'],['lknee','lank','左すね'],['rhip','rknee','右もも'],['rknee','rank','右すね'],['lank','ltoe','左足'],['rank','rtoe','右足']];
-const api={R,sag,stand,swing,walk,armSide,BONES,len,leg};if(isNode)module.exports=api;else root.Rig3D=api;
+const api={R,sag,m3,swing3,stand,swing,walk,armSide,BONES,len,leg};if(isNode)module.exports=api;else root.Rig3D=api;
 })(globalThis);
