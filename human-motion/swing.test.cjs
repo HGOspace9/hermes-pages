@@ -14,4 +14,12 @@ const low=M.simulateSwing(S(3,.9),.6);assert.ok(low.qmax<90*D&&low.hit&&low.hitV
 // 指摘c：振りかぶりの時間は固定ではなく、重い剣ほど上がりきるのに時間がかかる
 assert.ok(heavy.raiseTime>light.raiseTime+.2,'重い剣ほど振りかぶりが長い（時間決め打ちではない）');
 const far=M.simulateSwing(S(1),1,2.5,.001,{x:3,y:0});assert.ok(!far.hit,'遠すぎる目標物には届かない');
-console.log('剣の振り 12項目 OK');
+// 点検b：止めではブレーキだけ。打った後に剣先が打った瞬間より速くならない（0.5〜3kg、筋力100%・60%）
+for(const st of [1,.6])for(const m of [.5,1,2,3]){const r=M.simulateSwing(S(m),st);if(r.hit)assert.ok(r.afterMax<=r.hitV*1.001,`止めで剣が加速しない（${m}kg・${st*100}%）`)}
+assert.ok(Math.abs(mid.end.q2-15*D)<5*D,'ブレーキの後も構えに戻れる');
+// 3-e-f：肩と肘の連動。肩を急に止めると、前腕が勢いで振り出される（鞭の動き）。連動なしでは起きない
+const L1={sword:{m:1,c:.2,L:.6}},s0={q1:Math.PI/2,w1:-8,q2:Math.PI/3,w2:0};const run=c=>{let s=s0;for(let i=0;i<60;i++)s=M.swordStep(s,{up:1},L1,.001,undefined,undefined,undefined,{coupled:c});return s};
+const cp=run(true),nc=run(false);assert.ok(cp.w2<-5&&Math.abs(nc.w2)<2,'肩にブレーキをかけると肘が勢いで伸びる（連動あり）');
+// 連動ありでも、力を抜けば腕は下に落ちて止まる（計算が暴れない）
+{let s={q1:2,w1:0,q2:1,w2:0};for(let i=0;i<5000;i++)s=M.swordStep(s,{},L1,.001);assert.ok(s.q1<.1&&Math.abs(s.w1)<.5&&Math.abs(s.w2)<.5,'連動ありで力を抜くと腕は下がって落ち着く')}
+console.log('剣の振り 16項目 OK');
