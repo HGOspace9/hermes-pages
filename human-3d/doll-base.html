@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0">
+<title>モデル人形（関節つき）</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:radial-gradient(ellipse at 50% 60%,#2a3160 0%,#141a38 55%,#07091a 100%);font-family:system-ui,"Hiragino Sans",sans-serif;color:#dfe4ff}
+canvas{display:block;touch-action:none}
+#ui{position:fixed;top:10px;left:10px;display:flex;gap:8px;flex-wrap:wrap;max-width:calc(100vw - 20px)}
+#ui button{background:#1d2450cc;color:#e8ecff;border:1px solid #6d78c8;border-radius:18px;padding:8px 14px;font-size:14px;cursor:pointer}
+#ui button.on{background:#e8c27a;color:#1a1a2a;border-color:#e8c27a}
+#hint{position:fixed;bottom:10px;left:10px;right:10px;font-size:13px;opacity:.8;line-height:1.5;pointer-events:none}
+#info{position:fixed;top:56px;left:10px;font-size:13px;background:#0c1030cc;padding:6px 10px;border-radius:8px;min-height:18px}
+</style></head><body>
+<div id="ui">
+ <button id="bGrav">ぶらぶら（重力）</button>
+ <button id="bHold" class="on">ポーズ固定</button>
+ <button id="bReset">立ちポーズに戻す</button>
+ <button id="bT">Tポーズ</button>
+ <button id="bKamae">剣：構え（中段）</button>
+ <button id="bSlash">剣：振り抜き</button>
+ <button id="bRaise">剣：振りかぶり</button>
+ <button id="bCam">A案カメラ</button>
+</div>
+<div id="info">関節: —</div>
+<div id="hint">人形の体をクリックしたまま動かすと引っぱれます。何もないところをドラッグすると視点が回ります（ホイールで拡大）。<br>「ポーズ固定」では手を離すとその形でピタッと止まります（揺れません）。ひじ・ひざは片側にしか曲がらず、肩・股・首・腰・手首・足首にも人と同じくらいの動く範囲を付けています。</div>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/","cannon-es":"https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import * as CANNON from 'cannon-es';
+
+/* ---------- three ---------- */
+const R=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});
+R.setPixelRatio(Math.min(devicePixelRatio,2));R.setSize(innerWidth,innerHeight);
+R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;
+document.body.appendChild(R.domElement);
+const S=new THREE.Scene();
+const cam=new THREE.PerspectiveCamera(40,innerWidth/innerHeight,.05,50);
+cam.position.set(1.6,1.35,2.6);
+const ctl=new OrbitControls(cam,R.domElement);
+ctl.target.set(0,.9,0);ctl.enableDamping=true;ctl.enablePan=false;ctl.minDistance=1;ctl.maxDistance=6;ctl.update();
+S.add(new THREE.HemisphereLight(0xc8d0ff,0x30283a,1.5));
+const key=new THREE.DirectionalLight(0xfff2dc,3.2);key.position.set(2,4,3);key.castShadow=true;
+key.shadow.mapSize.set(2048,2048);Object.assign(key.shadow.camera,{left:-2,right:2,top:2.5,bottom:-1});S.add(key);
+const rim=new THREE.DirectionalLight(0x8fa0ff,2);rim.position.set(-3,2,-3);S.add(rim);
+const floorM=new THREE.Mesh(new THREE.CircleGeometry(2.2,40),new THREE.MeshStandardMaterial({color:0x1b2046,roughness:.9}));
+floorM.rotation.x=-Math.PI/2;floorM.receiveShadow=true;S.add(floorM);
+
+const WOOD=new THREE.MeshStandardMaterial({color:0xd9b27c,roughness:.7,flatShading:true});
+const JOINT=new THREE.MeshStandardMaterial({color:0x8a5a34,roughness:.6,flatShading:true});
+const STANDM=new THREE.MeshStandardMaterial({color:0x5a3a24,roughness:.6,flatShading:true});
+
+/* ---------- physics ---------- */
+const W=new CANNON.World({gravity:new CANNON.Vec3(0,0,0)});
+W.solver.iterations=30;
+const ground=new CANNON.Body({mass:0,shape:new CANNON.Plane()});
+ground.quaternion.setFromEuler(-Math.PI/2,0,0);ground.collisionFilterGroup=2;ground.collisionFilterMask=1;W.addBody(ground);
+
+const parts={},list=[];
+const V=(x,y,z)=>new CANNON.Vec3(x,y,z);
+/* name, center, physics half-extents, visual builder, mass */
+function part(name,c,he,mesh,mass){
+  const b=new CANNON.Body({mass,position:V(...c),linearDamping:.4,angularDamping:.6});
+  b.addShape(new CANNON.Box(V(...he)));
+  b.collisionFilterGroup=1;b.collisionFilterMask=2; /* body parts only hit the floor */
+  W.addBody(b);
+  mesh.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});
+  S.add(mesh);mesh.userData.part=name;
+  const p={name,b,mesh,rest:c};parts[name]=p;list.push(p);return p;
+}
+const g=(geo,mat=WOOD)=>new THREE.Mesh(geo,mat);
+function limb(len,r0,r1){ /* low-poly tapered segment along Y, centered */
+  const grp=new THREE.Group();
+  grp.add(g(new THREE.CylinderGeometry(r0,r1,len*.86,8)));
+  return grp;
+}
+function ball(r,parent,y){const m=g(new THREE.IcosahedronGeometry(r,0),JOINT);m.position.y=y;parent.add(m);return m;}
+
+/* sizes (m). height 1.6, ~7 heads */
+const H=1.6;
+// torso
+const pelvis=part('骨盤',[0,.95,0],[.15,.08,.09],(()=>{const m=g(new THREE.CylinderGeometry(.14,.16,.17,8));m.scale.z=.65;const G=new THREE.Group();G.add(m);return G})(),3);
+const waist=part('腰',[0,1.1,0],[.11,.06,.07],(()=>{const G=new THREE.Group();const m=g(new THREE.CylinderGeometry(.115,.13,.1,8));m.scale.z=.7;G.add(m);ball(.07,G,-.07);return G})(),2);
+const chest=part('胸',[0,1.29,0],[.16,.12,.09],(()=>{const G=new THREE.Group();const m=g(new THREE.CylinderGeometry(.17,.12,.25,8));m.scale.z=.62;G.add(m);ball(.07,G,-.13);return G})(),4);
+const head=part('頭',[0,1.53,0],[.08,.1,.09],(()=>{const G=new THREE.Group();const h=g(new THREE.IcosahedronGeometry(.1,1));h.scale.set(.85,1.1,.95);h.position.y=.02;G.add(h);
+  const nose=g(new THREE.ConeGeometry(.018,.04,4));nose.rotation.x=Math.PI/2;nose.position.set(0,.01,.095);G.add(nose);
+  const neck=g(new THREE.CylinderGeometry(.04,.045,.09,6));neck.position.y=-.1;G.add(neck);ball(.045,G,-.14);return G})(),1.5);
+// arms (s=+1 right of figure = -x? keep +x = figure's left)
+for(const s of [1,-1]){
+  const L=s>0?'左':'右';
+  const sx=.2*s;
+  part(L+'上腕',[sx,1.26,0],[.045,.13,.045],(()=>{const G=limb(.28,.05,.042);ball(.06,G,.14);return G})(),1.2);
+  part(L+'前腕',[sx,1.0,0],[.038,.11,.038],(()=>{const G=limb(.24,.04,.032);ball(.045,G,.125);return G})(),.8);
+  part(L+'手',[sx,.83,0],[.03,.04,.042],(()=>{const G=new THREE.Group();
+    const p=g(new THREE.BoxGeometry(.06,.075,.085));G.add(p); /* fist: grip runs along local z */
+    for(let k=0;k<4;k++){const kn=g(new THREE.BoxGeometry(.064,.02,.019));kn.position.set(0,-.03,-.03+k*.02);G.add(kn);}
+    const t=g(new THREE.BoxGeometry(.022,.02,.045));t.position.set(-.028*s,.0,.03);G.add(t);
+    ball(.025,G,.05);return G})(),.3);
+  part(L+'もも',[.09*s,.68,0],[.06,.19,.06],(()=>{const G=limb(.4,.075,.055);ball(.07,G,.2);return G})(),3);
+  part(L+'すね',[.09*s,.28,0],[.045,.19,.045],(()=>{const G=limb(.4,.052,.038);ball(.055,G,.2);return G})(),2);
+  part(L+'足',[.09*s,.035,.05],[.045,.035,.11],(()=>{const G=new THREE.Group();const f=g(new THREE.BoxGeometry(.085,.06,.21));G.add(f);
+    const toe=g(new THREE.BoxGeometry(.08,.035,.06));toe.position.set(0,-.012,.125);G.add(toe);ball(.04,G,.04).position.z=-.05;return G})(),.6);
+}
+/* stand */
+const standBody=new CANNON.Body({mass:0,position:V(0,.95,0)});W.addBody(standBody);
+const rod=g(new THREE.CylinderGeometry(.018,.018,1,8),STANDM);S.add(rod);
+const arm=g(new THREE.BoxGeometry(.03,.03,.16),STANDM);S.add(arm);
+const base=g(new THREE.CylinderGeometry(.22,.26,.04,10),STANDM);base.receiveShadow=true;S.add(base);
+let standLock=new CANNON.LockConstraint(standBody,pelvis.b);W.addConstraint(standLock);
+function placeStand(){const p=standBody.position;rod.scale.y=p.y;rod.position.set(p.x,p.y/2,p.z-.16);arm.position.set(p.x,p.y-.02,p.z-.08);base.position.set(p.x,.02,p.z-.16);}
+function relock(){W.removeConstraint(standLock);standBody.position.copy(pelvis.b.position);standBody.quaternion.set(0,0,0,1);standLock=new CANNON.LockConstraint(standBody,pelvis.b);W.addConstraint(standLock);placeStand();}
+placeStand();
+
+/* joints */
+const P=n=>parts[n];
+const sub=(a,b)=>V(a[0]-b[0],a[1]-b[1],a[2]-b[2]);
+const joints=[];
+function cone(A,B,pt,axis,angle,twist,label){
+  const ax=V(...axis);ax.normalize();
+  const up=axis[1]>0.5;
+  const c=new CANNON.ConeTwistConstraint(P(A).b,P(B).b,{pivotA:sub(pt,P(A).rest),pivotB:sub(pt,P(B).rest),axisA:ax,axisB:up?V(0,1,0):V(0,-1,0),angle,twistAngle:twist,maxForce:1e6});
+  W.addConstraint(c);joints.push({type:'cone',A,B,label,c,axA:ax.clone(),axB:up?V(0,1,0):V(0,-1,0),lim:angle});return c;
+}
+function hinge(A,B,pt,min,max,label){
+  const c=new CANNON.HingeConstraint(P(A).b,P(B).b,{pivotA:sub(pt,P(A).rest),pivotB:sub(pt,P(B).rest),axisA:V(1,0,0),axisB:V(1,0,0),maxForce:1e6});
+  W.addConstraint(c);joints.push({type:'hinge',A,B,label,c,min,max});return c;
+}
+// spine (axis up)
+cone('骨盤','腰',[0,1.03,0],[0,1,0],.35,.25,'腰');
+cone('腰','胸',[0,1.16,0],[0,1,0],.35,.35,'胸');
+cone('胸','頭',[0,1.41,0],[0,1,0],.6,1.1,'首');
+for(const s of [1,-1]){
+  const L=s>0?'左':'右';
+  // shoulder: cone axis tilted outward+forward so the arm can reach up/forward but not far back
+  cone('胸',L+'上腕',[.2*s,1.39,0],[.55*s,-.55,.45],1.75,.9,L+'肩');
+  hinge(L+'上腕',L+'前腕',[.2*s,1.12,0],-2.5,0,L+'ひじ');
+  cone(L+'前腕',L+'手',[.2*s,.88,0],[0,-1,0],.9,.25,L+'手首');
+  // hip: cone axis tilted forward (legs lift forward a lot, backward a little)
+  cone('骨盤',L+'もも',[.09*s,.88,0],[.25*s,-.85,.35],1.4,.5,L+'股');
+  hinge(L+'もも',L+'すね',[.09*s,.48,0],0,2.5,L+'ひざ');
+  cone(L+'すね',L+'足',[.09*s,.08,0],[0,-1,0],.45,.2,L+'足首');
+}
+/* hinge limits (cannon hinges have none): measure relative angle about local x and push back */
+const qA=new CANNON.Quaternion(),qr=new CANNON.Quaternion(),ax=new CANNON.Vec3();
+function hingeAngle(j){
+  P(j.A).b.quaternion.conjugate(qA);qA.mult(P(j.B).b.quaternion,qr);
+  return 2*Math.atan2(qr.x,qr.w);
+}
+/* joint friction + stiff spine (real mannequins hold their pose by friction) */
+let FR=.25,SPR=0,MODE='hold';
+function freeze(){for(const p of list){p.b.velocity.setZero();p.b.angularVelocity.setZero();}swordBody.velocity.setZero();swordBody.angularVelocity.setZero();}
+const qrel=new CANNON.Quaternion(),tmpV=new CANNON.Vec3();
+function friction(){
+  for(const j of joints){
+    const a=P(j.A).b,b=P(j.B).b;
+    const spine=/腰|胸|首/.test(j.label)&&j.type==='cone'&&!/上腕/.test(j.B);
+    const rel=b.angularVelocity.vsub(a.angularVelocity);
+    const k=spine?(SPR>0?.9:Math.max(FR,.35)):FR;
+    b.angularVelocity.vsub(rel.scale(k*.5),b.angularVelocity);
+    if(a.mass>0)a.angularVelocity.vadd(rel.scale(k*.5*b.mass/a.mass*.3),a.angularVelocity);
+    if(spine&&SPR>0){ /* servo spine/neck back toward straight relative to parent */
+      a.quaternion.conjugate(qA);qA.mult(b.quaternion,qrel);
+      const sgn=qrel.w<0?-1:1;tmpV.set(qrel.x*sgn,qrel.y*sgn,qrel.z*sgn);
+      a.quaternion.vmult(tmpV,tmpV);
+      const target=a.angularVelocity.vsub(tmpV.scale(2*SPR));
+      b.angularVelocity.vadd(target.vsub(b.angularVelocity).scale(.8),b.angularVelocity);
+    }
+    if(j.type==='cone'){ /* hard-ish cone limit */
+      const wa=a.quaternion.vmult(j.axA),wb=b.quaternion.vmult(j.axB);
+      const d=Math.max(-1,Math.min(1,wa.dot(wb))),ang=Math.acos(d);
+      if(ang>j.lim){const cx=wb.cross(wa);const n=cx.length();if(n>1e-6){cx.scale(1/n,cx);
+        const relv=b.angularVelocity.vsub(a.angularVelocity).dot(cx);const want=(ang-j.lim)*30;
+        if(relv<want)b.angularVelocity.vadd(cx.scale(want-relv),b.angularVelocity);}}
+    }
+  }
+}
+function enforce(){
+  friction();snapWrists();
+  for(const j of joints){if(j.type!=='hinge')continue;
+    let a=hingeAngle(j);if(a>Math.PI)a-=2*Math.PI;if(a<-Math.PI)a+=2*Math.PI;j.cur=a;
+    const over=a<j.min?j.min-a:a>j.max?j.max-a:0;
+    if(over!==0){
+      P(j.A).b.quaternion.vmult(V(1,0,0),ax);
+      const rel=P(j.B).b.angularVelocity.vsub(P(j.A).b.angularVelocity).dot(ax);
+      const want=over*25;            /* spring back into range */
+      const dv=want-rel;
+      if(Math.sign(dv)===Math.sign(over)){
+        P(j.B).b.angularVelocity.vadd(ax.scale(dv*.6),P(j.B).b.angularVelocity);
+        if(P(j.A).b.mass>0&&j.A!=='骨盤')P(j.A).b.angularVelocity.vsub(ax.scale(dv*.4),P(j.A).b.angularVelocity);
+      }
+    }
+  }
+}
+
+/* ---------- drag ---------- */
+const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();
+const plane=new THREE.Plane(),hitP=new THREE.Vector3();
+const mouseBody=new CANNON.Body({type:CANNON.Body.KINEMATIC,mass:0});W.addBody(mouseBody);
+let drag=null;
+const marker=new THREE.Mesh(new THREE.SphereGeometry(.015,8,6),new THREE.MeshBasicMaterial({color:0xff6b6b}));marker.visible=false;S.add(marker);
+const meshes=()=>list.map(p=>p.mesh);
+function setMouse(e){mouse.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1);}
+R.domElement.addEventListener('pointerdown',e=>{
+  setMouse(e);ray.setFromCamera(mouse,cam);
+  const h=ray.intersectObjects(meshes(),true)[0];if(!h)return;
+  let o=h.object;while(o&&!o.userData.part)o=o.parent;const p=parts[o.userData.part];
+  ctl.enabled=false;
+  const wp=V(h.point.x,h.point.y,h.point.z);
+  const local=p.b.pointToLocalFrame(wp);
+  mouseBody.position.copy(wp);
+  const c=new CANNON.PointToPointConstraint(p.b,local,mouseBody,V(0,0,0),60);
+  W.addConstraint(c);
+  plane.setFromNormalAndCoplanarPoint(cam.getWorldDirection(new THREE.Vector3()).negate(),h.point);
+  drag={c,p};marker.visible=true;marker.position.copy(h.point);
+  info.textContent='つかんでいる: '+p.name;
+  R.domElement.setPointerCapture(e.pointerId);
+});
+R.domElement.addEventListener('pointermove',e=>{
+  if(!drag)return;setMouse(e);ray.setFromCamera(mouse,cam);
+  if(ray.ray.intersectPlane(plane,hitP)){hitP.y=Math.max(hitP.y,.01);mouseBody.position.set(hitP.x,hitP.y,hitP.z);marker.position.copy(hitP);}
+});
+function endDrag(){if(!drag)return;W.removeConstraint(drag.c);drag=null;freeze();marker.visible=false;ctl.enabled=true;}
+addEventListener('pointerup',endDrag);addEventListener('pointercancel',endDrag);
+
+/* ---------- modes ---------- */
+const bG=document.getElementById('bGrav'),bH=document.getElementById('bHold'),info=document.getElementById('info');
+function setMode(m){
+  const grav=m==='grav';MODE=m;
+  W.gravity.set(0,grav?-9.8:0,0);FR=grav?.04:.25;SPR=grav?25:0;
+  for(const p of list){p.b.angularDamping=grav?.15:.85;p.b.linearDamping=grav?.05:.6;p.b.wakeUp();}
+  bG.classList.toggle('on',grav);bH.classList.toggle('on',!grav);
+}
+bG.onclick=()=>setMode('grav');bH.onclick=()=>setMode('hold');
+function resetPose(t){
+  for(const p of list){
+    let [x,y,z]=p.rest;const q=new CANNON.Quaternion();
+    if(t&&/上腕|前腕|手$/.test(p.name)){
+      const s=p.name[0]==='左'?1:-1;const d=1.39-y; /* distance below shoulder */
+      x=.2*s+d*s;y=1.39;q.setFromEuler(0,0,s*Math.PI/2);
+    }
+    p.b.position.set(x,y,z);p.b.quaternion.copy(q);p.b.velocity.setZero();p.b.angularVelocity.setZero();
+  }
+}
+document.getElementById('bReset').onclick=()=>{swordOff();resetPose(false);relock();};
+document.getElementById('bT').onclick=()=>{swordOff();resetPose(true);relock();};
+setMode('hold');
+
+/* ---------- sword ---------- */
+const STEEL=new THREE.MeshStandardMaterial({color:0xcfd6e6,roughness:.25,metalness:.8,flatShading:true});
+const GRIPM=new THREE.MeshStandardMaterial({color:0x3a2a40,roughness:.8,flatShading:true});
+const GOLD=new THREE.MeshStandardMaterial({color:0xc8a050,roughness:.4,metalness:.6,flatShading:true});
+const swordMesh=new THREE.Group();
+{const gr=new THREE.Mesh(new THREE.CylinderGeometry(.016,.016,.2,6),GRIPM);gr.rotation.x=Math.PI/2;swordMesh.add(gr);
+ const pm=new THREE.Mesh(new THREE.IcosahedronGeometry(.026,0),GOLD);pm.position.z=-.11;swordMesh.add(pm);
+ const gd=new THREE.Mesh(new THREE.BoxGeometry(.03,.2,.03),GOLD);gd.position.z=.11;swordMesh.add(gd);
+ const bl=new THREE.Mesh(new THREE.BoxGeometry(.008,.052,.62),STEEL);bl.position.z=.43;swordMesh.add(bl); /* wide side along local y */
+ const tip=new THREE.Mesh(new THREE.ConeGeometry(.026,.12,4),STEEL);tip.rotation.x=Math.PI/2;tip.scale.x=.3;tip.position.z=.8;swordMesh.add(tip);
+}
+swordMesh.traverse(o=>{if(o.isMesh)o.castShadow=true});swordMesh.visible=false;S.add(swordMesh);
+const swordBody=new CANNON.Body({mass:.9,linearDamping:.6,angularDamping:.85});
+swordBody.addShape(new CANNON.Box(V(.02,.03,.45)),V(0,0,.3));swordBody.collisionFilterGroup=4;swordBody.collisionFilterMask=2;
+let swordCons=[];
+let wristLock=null,swordRel=null;
+function snapWrists(){if(!wristLock)return;for(const w of wristLock){w.fa.quaternion.mult(w.rq,w.h.quaternion);w.fa.pointToWorldFrame(w.rp,w.h.position);w.h.velocity.copy(w.fa.velocity);w.h.angularVelocity.copy(w.fa.angularVelocity);}
+  const r=parts['右手'].b;r.quaternion.mult(swordRel.rq,swordBody.quaternion);r.pointToWorldFrame(swordRel.rp,swordBody.position);swordBody.velocity.copy(r.velocity);swordBody.angularVelocity.copy(r.angularVelocity);}
+function swordOff(){wristLock=null;for(const c of swordCons)W.removeConstraint(c);swordCons=[];if(W.bodies.includes(swordBody))W.removeBody(swordBody);swordMesh.visible=false;}
+/* ---------- pose (FK + 2-bone IK) ---------- */
+const T3=THREE,v3=(a)=>new T3.Vector3(...a);
+const PIV={'腰':['骨盤',[0,1.03,0]],'胸':['腰',[0,1.16,0]],'頭':['胸',[0,1.41,0]]};
+for(const s of [1,-1]){const L=s>0?'左':'右';
+  Object.assign(PIV,{[L+'上腕']:['胸',[.2*s,1.39,0]],[L+'前腕']:[L+'上腕',[.2*s,1.12,0]],[L+'手']:[L+'前腕',[.2*s,.88,0]],
+   [L+'もも']:['骨盤',[.09*s,.88,0]],[L+'すね']:[L+'もも',[.09*s,.48,0]],[L+'足']:[L+'すね',[.09*s,.08,0]]});}
+const ORDER=['腰','胸','頭','左もも','左すね','左足','右もも','右すね','右足'];
+function eq(e){return new T3.Quaternion().setFromEuler(new T3.Euler(e[0],e[1],e[2],'YXZ'));}
+function basisQ(x,y,z){return new T3.Quaternion().setFromRotationMatrix(new T3.Matrix4().makeBasis(x,y,z));}
+function pose(def){
+  swordOff();
+  const Wp={},Wq={};
+  Wp['骨盤']=v3(def.pelvisPos);Wq['骨盤']=eq(def['骨盤']||[0,0,0]);
+  const pivotW=(c)=>{const [par,pt]=PIV[c];return v3(pt).sub(v3(parts[par].rest)).applyQuaternion(Wq[par]).add(Wp[par]);};
+  const put=(c,q,pv)=>{const [,pt]=PIV[c];Wq[c]=q;Wp[c]=v3(parts[c].rest).sub(v3(pt)).applyQuaternion(q).add(pv);};
+  for(const c of ORDER){const par=PIV[c][0];put(c,Wq[par].clone().multiply(eq(def[c]||[0,0,0])),pivotW(c));}
+  /* arms by IK: hand centre + grip axis G */
+  const G=v3(def.G).normalize();
+  const grip=v3(def.grip);
+  const hands={'右':grip.clone().addScaledVector(G,.045),'左':grip.clone().addScaledVector(G,-.05)};
+  for(const L of ['右','左']){
+    const s=L==='左'?1:-1,Sp=pivotW(L+'上腕'),Hc=hands[L];
+    const pole=v3([s*.6,-1,-.3]).normalize();
+    let wrist=Hc.clone().add(new T3.Vector3(0,.05,0)),f,u,x,yH;
+    for(let it=0;it<4;it++){
+      const d=wrist.clone().sub(Sp);let Ln=Math.min(Math.max(d.length(),.08),.505);const dir=d.normalize();
+      const a=.27,b=.24,cosA=Math.min(1,Math.max(-1,(a*a+Ln*Ln-b*b)/(2*a*Ln))),A=Math.acos(cosA);
+      const perp=pole.clone().addScaledVector(dir,-pole.dot(dir)).normalize();
+      const E=Sp.clone().addScaledVector(dir,a*cosA).addScaledVector(perp,a*Math.sin(A));
+      u=E.clone().sub(Sp).normalize();f=Sp.clone().addScaledVector(dir,Ln).sub(E).normalize();
+      x=new T3.Vector3().crossVectors(f,u).normalize();
+      const y0=f.clone().negate();yH=y0.addScaledVector(G,-y0.dot(G)).normalize();
+      wrist=Hc.clone().addScaledVector(yH,.05);
+    }
+    const yU=u.clone().negate(),zU=new T3.Vector3().crossVectors(x,yU);
+    put(L+'上腕',basisQ(x,yU,zU),Sp);
+    const yF=f.clone().negate(),zF=new T3.Vector3().crossVectors(x,yF);
+    put(L+'前腕',basisQ(x,yF,zF),pivotW(L+'前腕'));
+    const xH=new T3.Vector3().crossVectors(yH,G);
+    Wq[L+'手']=basisQ(xH,yH,G);Wp[L+'手']=Hc.clone();
+  }
+  {const lo=Math.min(Wp['左足'].y,Wp['右足'].y)-.075;if(lo<0||def.ground){for(const k in Wp)Wp[k].y-=lo;grip.y-=lo;}}
+  for(const p of list){const P_=Wp[p.name],Q=Wq[p.name];p.b.position.set(P_.x,P_.y,P_.z);p.b.quaternion.set(Q.x,Q.y,Q.z,Q.w);p.b.velocity.setZero();p.b.angularVelocity.setZero();}
+  relock();setMode('hold');
+  /* sword: locked to right fist, left fist pinned to the grip */
+  const Qr=Wq['右手'];swordBody.position.set(Wp['右手'].x,Wp['右手'].y,Wp['右手'].z);swordBody.quaternion.set(Qr.x,Qr.y,Qr.z,Qr.w);
+  swordBody.velocity.setZero();swordBody.angularVelocity.setZero();W.addBody(swordBody);swordMesh.visible=true;
+  const c1=new CANNON.LockConstraint(parts['右手'].b,swordBody);
+  const c2=new CANNON.PointToPointConstraint(parts['左手'].b,V(0,0,0),swordBody,V(0,0,-.095),1e6);
+  /* 手首に力: 剣を持っている間は前腕と手を固定（ぐにゃっと曲がらない） */
+  swordCons=[c1,c2];for(const c of swordCons)W.addConstraint(c);
+  wristLock=['右','左'].map(L=>{const fa=parts[L+'前腕'].b,h=parts[L+'手'].b;const iq=fa.quaternion.inverse();
+    return {fa,h,rq:iq.mult(h.quaternion),rp:fa.pointToLocalFrame(h.position)};});
+  swordRel={rq:parts['右手'].b.quaternion.inverse().mult(swordBody.quaternion),rp:parts['右手'].b.pointToLocalFrame(swordBody.position)};
+  lastPrePen=maxPen()[0];
+  /* めり込みが残っていたら、押し返して解消してから止める */
+  for(let i=0;i<400&&maxPen()[0]>PEN_TOL*.5;i++){W.step(1/120);enforce();separate();}
+  freeze();
+  return Wp;
+}
+const SLASH={ground:1,pelvisPos:[0,.85,0],'骨盤':[0,.05,0],'腰':[.1,0,0],'胸':[.12,0,0],'頭':[-.12,0,0],
+  '右もも':[-.75,0,0],'右すね':[.55,0,0],'右足':[.15,0,0],
+  '左もも':[.45,0,.02],'左すね':[.15,0,0],'左足':[-.5,0,0],
+  grip:[-.05,1.26,.58],G:[-.15,-.6,.5]}; /* 振り抜き: 前足のひざが曲がり、後ろ足は伸びてかかとが浮く。腕は前へ伸ばし（ひじ164°）、手首は小指側へ約35°（茶巾絞り・無理のない範囲）、拳は胸の高さ、剣先は前下 */
+const RAISE={ground:1,pelvisPos:[0,.9,0],'骨盤':[0,.1,0],'腰':[-.03,-.05,0],'胸':[-.06,-.05,0],'頭':[.05,0,0],
+  '右もも':[-.35,0,0],'右すね':[.3,0,0],'右足':[.05,0,0],
+  '左もも':[.25,0,.02],'左すね':[.3,0,0],'左足':[-.4,0,0],
+  grip:[.05,1.7,.05],G:[-.15,1,-.45]}; /* 振りかぶり: 足は構えのまま、拳は額の上、剣先は後ろ上 */
+const KAMAE={ground:1,pelvisPos:[0,.9,0],'骨盤':[0,.2,0],'腰':[.03,-.08,0],'胸':[.03,-.1,0],'頭':[-.03,-.02,0],
+  '右もも':[-.3,0,0],'右すね':[.3,0,0],'右足':[0,0,0],
+  '左もも':[.22,0,.02],'左すね':[.28,0,0],'左足':[-.35,0,0],
+  grip:[0,1,.25],G:[0,.3,.8]}; /* 中段: 右足前・足幅は狭く、後ろ足のかかとが少し浮く。拳はへその前、剣先はのどの高さで体の中心線 */
+document.getElementById('bSlash').onclick=()=>pose(SLASH);
+document.getElementById('bRaise').onclick=()=>pose(RAISE);
+document.getElementById('bKamae').onclick=()=>pose(KAMAE);
+document.getElementById('bCam').onclick=()=>{cam.position.set(1.5,.75,2.7);ctl.target.set(0,.95,0);ctl.update();};
+/* ---------- めり込み禁止: 体どうし・剣と体は絶対に重ならない ---------- */
+/* 各パーツを「カプセル（線分＋半径）」で近似。毎フレーム押し返し、それでも重なったら直前の形に戻す */
+const CAPS={'骨盤':[[-.06,0,0],[.06,0,0],.085],'腰':[[-.04,0,0],[.04,0,0],.065],'胸':[[-.07,.02,0],[.07,.02,0],.095],'頭':[[0,0,0],[0,.04,0],.085]};
+for(const L of ['左','右'])Object.assign(CAPS,{[L+'上腕']:[[0,-.09,0],[0,.09,0],.045],[L+'前腕']:[[0,-.08,0],[0,.08,0],.036],[L+'手']:[[0,-.01,0],[0,.01,0],.04],
+  [L+'もも']:[[0,-.15,0],[0,.15,0],.06],[L+'すね']:[[0,-.16,0],[0,.16,0],.045],[L+'足']:[[0,0,-.06],[0,0,.13],.035]});
+const SWCAP=[[0,0,.13],[0,0,.86],.02];
+const ADJ=new Set();for(const j of joints){ADJ.add(j.A+'|'+j.B);ADJ.add(j.B+'|'+j.A);}
+const PAIRS=[];{const names=Object.keys(CAPS);for(let i=0;i<names.length;i++)for(let k=i+1;k<names.length;k++){const a=names[i],b=names[k];if(!ADJ.has(a+'|'+b))PAIRS.push([a,b]);}}
+const _a=new CANNON.Vec3(),_b=new CANNON.Vec3(),_c=new CANNON.Vec3(),_d=new CANNON.Vec3();
+function capW(body,cap,o1,o2){body.quaternion.vmult(V(...cap[0]),o1);o1.vadd(body.position,o1);body.quaternion.vmult(V(...cap[1]),o2);o2.vadd(body.position,o2);}
+function segDist(p1,q1,p2,q2){ /* 線分どうしの最近点 */
+  const d1=q1.vsub(p1),d2=q2.vsub(p2),r=p1.vsub(p2);const a=d1.dot(d1),e=d2.dot(d2),f=d2.dot(r);let s_,t_;
+  if(a<1e-9&&e<1e-9){s_=t_=0;}else if(a<1e-9){s_=0;t_=Math.min(1,Math.max(0,f/e));}else{const c=d1.dot(r);
+    if(e<1e-9){t_=0;s_=Math.min(1,Math.max(0,-c/a));}else{const b=d1.dot(d2),den=a*e-b*b;
+      s_=den>1e-9?Math.min(1,Math.max(0,(b*f-c*e)/den)):0;t_=(b*s_+f)/e;
+      if(t_<0){t_=0;s_=Math.min(1,Math.max(0,-c/a));}else if(t_>1){t_=1;s_=Math.min(1,Math.max(0,(b-c)/a));}}}
+  const c1=p1.vadd(d1.scale(s_)),c2=p2.vadd(d2.scale(t_));return [c1.vsub(c2),c1,c2];}
+function contacts(){const out=[];
+  for(const [a,b] of PAIRS){const A=CAPS[a],B=CAPS[b];capW(parts[a].b,A,_a,_b);capW(parts[b].b,B,_c,_d);
+    const [v]=segDist(_a,_b,_c,_d);const L=v.length(),pen=A[2]+B[2]-L;if(pen>0)out.push({a:parts[a].b,b:parts[b].b,n:L>1e-6?v.scale(1/L):V(0,1,0),pen,label:a+'×'+b});}
+  if(swordMesh.visible)for(const n in CAPS){if(/手$/.test(n))continue;const B=CAPS[n];capW(swordBody,SWCAP,_a,_b);capW(parts[n].b,B,_c,_d);
+    const [v]=segDist(_a,_b,_c,_d);const L=v.length(),pen=SWCAP[2]+B[2]-L;if(pen>0)out.push({a:swordBody,b:parts[n].b,n:L>1e-6?v.scale(1/L):V(0,1,0),pen,label:'剣×'+n});}
+  return out;}
+function maxPen(){let m=0,w='';for(const c of contacts())if(c.pen>m){m=c.pen;w=c.label;}return [m,w];}
+function separate(){ /* 重なった分だけ互いに押し返す（速度で） */
+  for(const c of contacts()){const k=Math.min(c.pen*40,3);
+    const ma=c.a===pelvis.b?0:1,mb=c.b===pelvis.b?0:1,t=ma+mb||1;
+    if(ma)c.a.velocity.vadd(c.n.scale(k*ma/t),c.a.velocity);if(mb)c.b.velocity.vsub(c.n.scale(k*mb/t),c.b.velocity);}}
+const PEN_TOL=.004;let msgT=-1e9,lastPrePen=0;
+function snapshot(){const all=[...list.map(p=>p.b),swordBody];return all.map(b=>[b,b.position.clone(),b.quaternion.clone()]);}
+function restore(sn){for(const [b,p,q] of sn){b.position.copy(p);b.quaternion.copy(q);b.velocity.setZero();b.angularVelocity.setZero();}}
+function safeStep(dt,n){const sn=snapshot(),before=maxPen()[0];for(let i=0;i<n;i++){W.step(dt/n);enforce();separate();}
+  const [m,w]=maxPen();if(m>PEN_TOL&&m>before+1e-4){restore(sn);if(drag){info.textContent='ここから先はめり込むので止めました（'+w+'）';msgT=performance.now();}}}
+/* ---------- 3Dアニメーション: 構え→振りかぶり→振り抜き→残心 ---------- */
+/* 剣の向きは「ピッチ角」（前=0°、真上=90°、後ろ上=120°超）で補間する。ベクトルを直線で混ぜると途中で剣が横を向くため */
+/* K3b-c: プロ（剣道八段・ロングソード）に合わせたキー。シスター用＝ロングソード型の斜め斬り＋剣道の踏み込み・前傾 */
+const gP=(deg,yaw=0)=>{const p=deg*Math.PI/180;return [Math.sin(yaw),Math.cos(yaw)*Math.sin(p),Math.cos(yaw)*Math.cos(p)];};
+const LEG_K={'右もも':[-.3,0,0],'右すね':[.3,0,0],'右足':[0,0,0],'左もも':[.22,0,.02],'左すね':[.28,0,0],'左足':[-.35,0,0]};
+const K0={ground:1,pelvisPos:[0,.9,0],'骨盤':[0,.35,0],'腰':[.03,-.05,0],'胸':[.03,-.12,0],'頭':[-.03,-.15,0],...LEG_K,
+  grip:[0,.9,.2],G:gP(22)}; /* 構え: 腰を約20°半身、剣先はのど */
+const K1={ground:1,pelvisPos:[0,.9,0],'骨盤':[0,.3,0],'腰':[.04,-.05,0],'胸':[.06,-.1,0],'頭':[-.06,-.12,0],
+  '右もも':[-.6,0,0],'右すね':[.75,0,0],'右足':[.15,0,0],'左もも':[.28,0,.02],'左すね':[.3,0,0],'左足':[-.45,0,0],
+  grip:[0,1.72,.07],G:gP(112,-.05)}; /* 振りかぶり頂点: 左手は額の上、前足はもう浮いて前へ、体は前傾し始め */
+const K2={ground:1,pelvisPos:[0,.88,0],'骨盤':[0,.05,0],'腰':[.08,0,0],'胸':[.1,.12,0],'頭':[-.1,-.1,0],
+  '右もも':[-.8,0,0],'右すね':[.75,0,0],'右足':[.1,0,0],'左もも':[.45,0,.02],'左すね':[.15,0,0],'左足':[-.55,0,0],
+  grip:[.06,1.6,.25],G:gP(36,-.1)}; /* 振り下ろし中: 腰が先に正面へ、肩（胸）はまだ遅れて半身 */
+const IMPACT={ground:1,pelvisPos:[0,.85,0],'骨盤':[.05,-.05,0],'腰':[.1,-.02,0],'胸':[.13,0,0],'頭':[-.15,0,0],
+  '右もも':[-.95,0,0],'右すね':[.65,0,0],'右足':[.3,0,0],'左もも':[.62,0,.02],'左すね':[.05,0,0],'左足':[-.6,0,0],
+  grip:[-.09,1.33,.33],G:gP(3,-.15)}; /* 打つ瞬間: 前足が着地、後ろ足は伸び切る、前傾約13°、腕はほぼ伸び剣はほぼ水平 */
+const K4={...IMPACT,'骨盤':[.08,-.18,0],'腰':[.12,-.05,0],'胸':[.14,-.08,0],'頭':[-.18,.15,0],
+  grip:[-.02,1.02,.25],G:gP(-50,-.25)}; /* 振り抜き: 止めずに剣が腰〜ひざの低さまで流れ、体も少し回り込む */
+const ZANSHIN={ground:1,pelvisPos:[0,.87,0],'骨盤':[.05,-.12,0],'腰':[.08,-.03,0],'胸':[.08,-.05,0],'頭':[-.12,.1,0],
+  '右もも':[-.7,0,0],'右すね':[.55,0,0],'右足':[.2,0,0],'左もも':[.35,0,.02],'左すね':[.2,0,0],'左足':[-.5,0,0],
+  grip:[0,1.08,.2],G:gP(-20,-.15)}; /* 残心（流れ）: 後ろ足を少し引きつけ、剣先は前下で次に備える */
+const KEYS=[[0,K0,0,'io'],[3,K0,0,'out'],[12,K1,.18,'in'],[16,K2,.42,'io'],[20,IMPACT,.62,'out'],[25,K4,.72,'io'],[31,K4,.74,'io'],[46,ZANSHIN,.78,'io']];
+const NF=47,FPS=24;
+const ease={io:t=>t<.5?2*t*t:1-2*(1-t)*(1-t),in:t=>t*t*t,out:t=>1-(1-t)*(1-t)};
+const pitchOf=G=>Math.atan2(G[1],G[2]),yawOf=G=>Math.asin(G[0]/Math.hypot(...G));
+function shift(def,dz){const d={...def};d.pelvisPos=[def.pelvisPos[0],def.pelvisPos[1],def.pelvisPos[2]+dz];d.grip=[def.grip[0],def.grip[1],def.grip[2]+dz];return d;}
+function gFrom(p,y){return [Math.sin(y),Math.cos(y)*Math.sin(p),Math.cos(y)*Math.cos(p)];}
+function lerpDef(a,b,t){const o={ground:1};const ks=new Set([...Object.keys(a),...Object.keys(b)]);
+  for(const k of ks){if(k==='ground'||k==='G')continue;const x=a[k]||[0,0,0],y=b[k]||[0,0,0];o[k]=x.map((v,i)=>v+(y[i]-v)*t);}
+  let pa=pitchOf(a.G),pb=pitchOf(b.G);o.G=gFrom(pa+(pb-pa)*t,yawOf(a.G)+(yawOf(b.G)-yawOf(a.G))*t);return o;}
+function defAt(f){for(let i=0;i<KEYS.length-1;i++){const [f0,A,z0,e]=KEYS[i],[f1,B,z1]=KEYS[i+1];
+  if(f<=f1){const t=ease[e]((f-f0)/(f1-f0));return lerpDef(shift(A,z0),shift(B,z1),t);}}
+  const k=KEYS[KEYS.length-1];return shift(k[1],k[2]);}
+let FR_OFF=[[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,-0.12,0],[0.3,-0.192,0.06],[0.48,-0.235,0.156],[0.438,-0.311,0.214],[0.563,-0.277,0.298],[0.488,-0.286,0.269],[0.593,-0.232,0.281],[0.656,-0.199,0.289],[0.694,-0.179,0.293],[0.716,-0.167,0.296],[0.73,-0.16,0.298],[0.738,-0.216,0.299],[0.743,-0.25,0.299],[0.746,-0.21,0.299],[0.748,-0.246,0.239],[0.749,-0.268,0.203],[0.749,-0.281,0.002],[0.549,-0.209,-0.039],[0.429,-0.125,-0.063],[0.357,-0.115,-0.078],[0.314,-0.109,-0.087],[0.288,-0.105,-0.092],[0.273,-0.103,-0.095],[0.264,-0.102,-0.097],[0.058,-0.101,-0.098],[0.035,-0.101,-0.099],[0.021,-0.101,-0.099],[0.013,-0.101,-0.099],[0.008,-0.061,-0.059],[0.005,-0.037,-0.035],[0.003,-0.022,-0.021],[0.002,-0.013,-0.013],[0.001,-0.008,-0.008],[0.001,-0.005,-0.005],[0.001,-0.003,-0.003],[0.001,-0.002,-0.002],[0.001,-0.001,-0.001],[0.001,-0.001,-0.001],[0.001,-0.001,-0.001],[0.001,-0.001,-0.001],[0.001,-0.001,-0.001],[0.001,-0.001,-0.001]]; /* [ピッチ補正rad, grip高さ補正, grip前後補正] 全コマ自動調整: 手首40°以内・めり込み0 */
+function applyOff(d,o){if(!o)return d;const p=pitchOf(d.G)+o[0],y=yawOf(d.G);d.G=gFrom(p,y);d.grip=[d.grip[0],d.grip[1]+o[1],d.grip[2]+o[2]];return d;}
+let FR_DEF=[...Array(NF)].map((_,i)=>applyOff(defAt(i),FR_OFF&&FR_OFF[i]));
+function setOff(o){FR_OFF=o;FR_DEF=[...Array(NF)].map((_,i)=>applyOff(defAt(i),FR_OFF&&FR_OFF[i]));FR_CHK=null;}
+let FR_CHK=null,trail=null;
+function wristBend(){const o=[];for(const L of ['右','左']){const f=parts[L+'前腕'].b.quaternion.vmult(V(0,-1,0)),h=parts[L+'手'].b.quaternion.vmult(V(0,-1,0));
+  o.push(Math.acos(Math.max(-1,Math.min(1,f.dot(h))))*180/Math.PI);}return o;}
+function bake(){FR_CHK=[];const pts=[];
+  for(let i=0;i<NF;i++){pose(FR_DEF[i]);const w=wristBend();const G=swordBody.quaternion.vmult(V(0,0,1));
+    const tip=swordBody.position.vadd(G.scale(.86));pts.push(new THREE.Vector3(tip.x,tip.y,tip.z));
+    FR_CHK.push({w:Math.round(Math.max(...w)),pre:Math.round(lastPrePen*1000),pen:Math.round(maxPen()[0]*1000)});}
+  if(trail)S.remove(trail);
+  trail=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0xff9a3c}));S.add(trail);
+  const dots=new THREE.Points(new THREE.BufferGeometry().setFromPoints(pts),new THREE.PointsMaterial({color:0xffd27a,size:.025}));trail.add(dots);
+  return FR_CHK;}
+const animUI=document.createElement('div');animUI.id='anim';
+animUI.style.cssText='position:fixed;bottom:58px;left:10px;right:10px;display:flex;gap:10px;align-items:center;background:#0c1030cc;padding:8px 12px;border-radius:10px;font-size:14px';
+animUI.innerHTML='<button id="aPlay" style="background:#e8c27a;border:0;border-radius:14px;padding:6px 14px;font-size:14px">▶ 再生</button><input id="aSl" type="range" min="0" max="'+(NF-1)+'" value="0" style="flex:1"><span id="aTx" style="min-width:300px"></span><label><input id="aTr" type="checkbox" checked> 剣先の軌跡</label>';
+document.body.appendChild(animUI);
+const aSl=document.getElementById('aSl'),aTx=document.getElementById('aTx'),aPlay=document.getElementById('aPlay');
+const PH=f=>f<3?'構え':f<12?'振りかぶり（踏み込み開始）':f<20?'振り下ろし':f<22?'打つ瞬間':f<31?'振り抜き':'残心';
+function showFrame(i){pose(FR_DEF[i]);aSl.value=i;const c=FR_CHK[i];
+  aTx.innerHTML=`コマ ${i+1}/${NF}　${PH(i)}　手首 ${c.w}°${c.w>40?' <b style="color:#ff7a7a">曲げすぎ</b>':' ✓'}　めり込み ${c.pre}mm${c.pre>4?' <b style="color:#ff7a7a">要注意</b>':' ✓'}`;}
+let playing=null;
+aPlay.onclick=()=>{if(playing){clearInterval(playing);playing=null;aPlay.textContent='▶ 再生';return;}
+  if(!FR_CHK)bake();let i=+aSl.value;if(i>=NF-1)i=0;aPlay.textContent='■ 停止';
+  playing=setInterval(()=>{showFrame(i);i++;if(i>=NF){clearInterval(playing);playing=null;aPlay.textContent='▶ 再生';}},1000/FPS);};
+aSl.oninput=()=>{if(!FR_CHK)bake();showFrame(+aSl.value);};
+document.getElementById('aTr').onchange=e=>{if(trail)trail.visible=e.target.checked;};
+document.getElementById('hint').style.bottom='108px';
+/* ---------- loop ---------- */
+addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();R.setSize(innerWidth,innerHeight);});
+let last=performance.now();
+function tick(now){
+  const dt=Math.min((now-last)/1000,1/30);last=now;
+  /* ポーズ固定: つかんでいる間だけ動かし、離したらその場で完全に止める */
+  if(MODE==='grav'||drag){safeStep(dt,3);}else freeze();
+  for(const p of list){p.mesh.position.copy(p.b.position);p.mesh.quaternion.copy(p.b.quaternion);}
+  if(swordMesh.visible){swordMesh.position.copy(swordBody.position);swordMesh.quaternion.copy(swordBody.quaternion);}
+  if(!drag&&performance.now()-msgT>1500){const k=joints.filter(j=>j.type==='hinge').map(j=>j.label+' '+Math.round(Math.abs(hingeAngle(j))*180/Math.PI)+'°').join('　');info.textContent='曲がり: '+k;}
+  ctl.update();R.render(S,cam);requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+/* test hooks */
+window.__doll_lastPre=()=>lastPrePen;window.__doll={ctl,bake,showFrame,get FR_DEF(){return FR_DEF},setOff,defAt,NF,ZANSHIN,maxPen,contacts,parts,joints,W,setMode,resetPose,cam,pose,SLASH,RAISE,KAMAE,swordBody,
+  scr(n){const v=parts[n].mesh.position.clone().project(cam);return [Math.round((v.x+1)/2*innerWidth),Math.round((1-v.y)/2*innerHeight)]},
+  pull(name,dx,dy,dz,steps=120){const p=parts[name];const c=new CANNON.PointToPointConstraint(p.b,V(0,0,0),mouseBody,V(0,0,0),60);
+    mouseBody.position.set(p.b.position.x+dx,p.b.position.y+dy,p.b.position.z+dz);W.addConstraint(c);
+    for(let i=0;i<steps;i++){safeStep(1/60,3);}W.removeConstraint(c);
+    return joints.filter(j=>j.type==='hinge').map(j=>j.label+':'+Math.round(hingeAngle(j)*180/Math.PI));}};
+</script>
+</body></html>

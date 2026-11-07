@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>3Dの人体モデル（筋肉と物理）</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:radial-gradient(ellipse at 50% 60%,#2a3160 0%,#141a38 55%,#07091a 100%);font-family:system-ui,"Hiragino Sans",sans-serif;color:#dfe4ff}
+canvas{display:block;touch-action:none}
+#panel{position:fixed;top:10px;left:10px;width:330px;max-height:calc(100vh - 20px);overflow:auto;background:#0c1030dd;border:1px solid #3b4590;border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.5}
+#panel h1{font-size:15px;margin:0 0 6px}#panel h2{font-size:13px;margin:10px 0 4px;color:#e8c27a}
+#panel button{background:#1d2450;color:#e8ecff;border:1px solid #6d78c8;border-radius:14px;padding:5px 10px;font-size:13px;cursor:pointer;margin:2px 2px 2px 0}
+#panel button.on{background:#e8c27a;color:#1a1a2a}
+#panel label{display:block}#panel input[type=range]{width:150px;vertical-align:middle}
+#status{position:fixed;bottom:10px;left:350px;right:10px;font-size:13px;background:#0c1030cc;padding:6px 10px;border-radius:8px}
+.lim{background:#3a1d24;border:1px solid #a04a55;border-radius:8px;padding:6px 8px;margin-top:8px}
+</style></head><body data-human-3d-ready>
+<div id="panel">
+<h1>3Dの人体モデル（R5 土台）</h1>
+<div>何もないところをドラッグすると視点が回ります（ホイールで拡大）。計算は平面の人体モデル（<a href="../human-motion/" style="color:#9fb0ff">human-motion</a>）と<b>同じプログラム</b>を使い、その結果を3Dの人形に写しています。</div>
+<h2>筋肉で剣を振る（片手持ちのみ）</h2>
+<label>剣の重さ <input id="swM" type="range" min="0.5" max="3" step="0.5" value="1"> <output id="swMo">1.0</output> kg</label>
+<label>剣の長さ <input id="swL" type="range" min="0.4" max="1" step="0.05" value="0.6"> <output id="swLo">0.60</output> m</label>
+<label>筋力 <input id="swS" type="range" min="30" max="100" step="10" value="100"> <output id="swSo">100</output> %</label>
+<label>床の摩擦 <input id="swMu" type="range" min="0" max="1" step="0.05" value="0.6"> <output id="swMuo">0.60</output></label>
+<label><input type="radio" name="mode" value="なし"> 体幹なし（腕だけ・足は床に固定）</label>
+<label><input type="radio" name="mode" value="同時" checked> 体幹あり・全部同時</label>
+<label><input type="radio" name="mode" value="順番"> 体幹あり・体が先→肩→肘</label>
+<button id="swGo">振る</button><button id="swSlow">ゆっくり（1/4）</button><button id="swCmp">3つの使い方を比べる</button>
+<div id="swOut"></div>
+<h2>歩く（脚の形は決めた動き・前へ進む力は床の摩擦から計算）</h2>
+<label>目標の速さ <input id="wkV" type="range" min="0.5" max="2" step="0.1" value="1.2"> <output id="wkVo">1.2</output> m/s</label>
+<label>床の摩擦 <input id="wkMu" type="range" min="0" max="1" step="0.05" value="0.6"> <output id="wkMuo">0.60</output></label>
+<button id="wkGo">歩く</button>
+<h2>筋肉で右腕を動かす（正面の動き）</h2>
+<button id="armT">腕を真横に上げて止める</button>
+<h2>その他</h2>
+<button id="stand">立ちポーズに戻す</button><button id="camSide">横から見る</button><button id="camFront">正面から見る</button>
+<div class="lim"><b>まだできていないこと：</b>体のひねり（上から見た回転）・手首・両手持ち・転ぶ動きは未計算です（R6〜で追加予定）。腕と体幹の計算は人形の右側の縦の面の中だけで、左腕と頭は体幹についていくだけです。数値は仮の目安です。</div>
+</div>
+<div id="status">立っています</div>
+<script src="../human-motion/muscle.js?v=r5"></script><script src="../human-motion/body.js?v=r5"></script><script src="../human-motion/physics.js?v=r5"></script><script src="../human-motion/motion.js?v=r5"></script><script src="rig3d.js?v=r5"></script>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+const $=q=>document.querySelector(q),Rg=window.Rig3D;
+/* ---------- three（見た目は doll と同じ木の人形） ---------- */
+const R=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});
+R.setPixelRatio(Math.min(devicePixelRatio,2));R.setSize(innerWidth,innerHeight);R.shadowMap.enabled=true;document.body.appendChild(R.domElement);
+const S=new THREE.Scene(),cam=new THREE.PerspectiveCamera(40,innerWidth/innerHeight,.05,60);cam.position.set(3.4,1.5,1.4);
+const ctl=new OrbitControls(cam,R.domElement);ctl.target.set(0,1.05,.4);ctl.enableDamping=true;ctl.minDistance=1;ctl.maxDistance=8;ctl.update();
+S.add(new THREE.HemisphereLight(0xc8d0ff,0x30283a,1.5));const key=new THREE.DirectionalLight(0xfff2dc,3.2);key.position.set(2,4,3);key.castShadow=true;key.shadow.mapSize.set(2048,2048);Object.assign(key.shadow.camera,{left:-3,right:3,top:3,bottom:-2});S.add(key);
+const rim=new THREE.DirectionalLight(0x8fa0ff,2);rim.position.set(-3,2,-3);S.add(rim);
+const floorM=new THREE.Mesh(new THREE.PlaneGeometry(6,12),new THREE.MeshStandardMaterial({color:0x1b2046,roughness:.9}));floorM.rotation.x=-Math.PI/2;floorM.receiveShadow=true;S.add(floorM);
+const grid=new THREE.GridHelper(6,12,0x3b4590,0x2a3170);grid.position.y=.001;S.add(grid);
+addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();R.setSize(innerWidth,innerHeight)});
+const WOOD=new THREE.MeshStandardMaterial({color:0xd9b27c,roughness:.7,flatShading:true}),JOINT=new THREE.MeshStandardMaterial({color:0x8a5a34,roughness:.6,flatShading:true});
+const MUS=new THREE.MeshStandardMaterial({color:0xd25654,roughness:.5,transparent:true,opacity:.85}),STEEL=new THREE.MeshStandardMaterial({color:0xb8c2cc,metalness:.6,roughness:.3});
+const RAD={胴:.11,首:.04,左上腕:.045,左前腕:.037,右上腕:.045,右前腕:.037,左もも:.065,左すね:.048,右もも:.065,右すね:.048,左足:.04,右足:.04};
+const bones=Rg.BONES.map(([a,b,n])=>{const m=new THREE.Mesh(new THREE.CylinderGeometry(1,1,1,8),WOOD);m.castShadow=true;S.add(m);return {a,b,n,m}});
+const jointNames=['lsh','rsh','lelb','relb','lhand','rhand','lhip','rhip','lknee','rknee','lank','rank','pelvis','chest'];
+const balls=jointNames.map(n=>{const m=new THREE.Mesh(new THREE.IcosahedronGeometry(n.endsWith('hand')?.035:n==='pelvis'?.12:n==='chest'?.13:.05,0),JOINT);m.castShadow=true;S.add(m);return {n,m}});
+const headM=new THREE.Mesh(new THREE.IcosahedronGeometry(.1,1),WOOD);headM.scale.set(.85,1.1,.95);headM.castShadow=true;S.add(headM);
+const sword=new THREE.Mesh(new THREE.BoxGeometry(.012,.04,1),STEEL);sword.castShadow=true;S.add(sword);
+const guard=new THREE.Mesh(new THREE.BoxGeometry(.16,.02,.02),JOINT);S.add(guard);
+const target=new THREE.Group();{const post=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,1,8),new THREE.MeshStandardMaterial({color:0xc9a46a}));post.name='post';target.add(post);const ball=new THREE.Mesh(new THREE.SphereGeometry(.05,16,12),new THREE.MeshStandardMaterial({color:0xf3e3c4}));ball.name='ball';target.add(ball)}S.add(target);
+const hitMark=new THREE.Mesh(new THREE.SphereGeometry(.03,12,8),new THREE.MeshBasicMaterial({color:0xe0603a}));S.add(hitMark);
+const trailG=new THREE.BufferGeometry(),trailL=new THREE.Line(trailG,new THREE.LineBasicMaterial({color:0xe69d55}));S.add(trailL);
+const arrow=new THREE.ArrowHelper(new THREE.Vector3(0,0,1),new THREE.Vector3(),.3,0x3a9a55,.08,.06);S.add(arrow);
+// 筋肉の帯（力の入れ具合で太さが変わる）
+const band=()=>{const m=new THREE.Mesh(new THREE.CylinderGeometry(1,1,1,8),MUS);S.add(m);m.visible=false;return m};
+const bands={tf:band(),te:band(),up:band(),down:band(),flex:band(),ext:band()};
+const V3=a=>new THREE.Vector3(a[0],a[1],a[2]);
+function seg(m,a,b,r){const A=V3(a),B=V3(b),d=B.clone().sub(A),L=d.length();m.position.copy(A).add(B).multiplyScalar(.5);m.scale.set(r,L,r);m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize())}
+const off=(p,dx,dy,dz)=>[p[0]+dx,p[1]+dy,p[2]+dz],lerp=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
+let J=Rg.stand();
+function render(){for(const b of bones)seg(b.m,J[b.a],J[b.b],RAD[b.n]);for(const b of balls)b.m.position.copy(V3(J[b.n]));headM.position.copy(V3(J.head));
+ const hasSword=!!J.tip;sword.visible=guard.visible=hasSword;if(hasSword){const h=V3(J.rhand),t=V3(J.tip),d=t.clone().sub(h),L=d.length(),u=d.clone().normalize(),grip=h.clone().sub(u.clone().multiplyScalar(.1));sword.position.copy(grip).add(t).multiplyScalar(.5);sword.scale.set(1,1,L+.1);sword.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),u);guard.position.copy(h).add(u.clone().multiplyScalar(.03));guard.quaternion.copy(sword.quaternion)}}
+/* ---------- 剣 ---------- */
+let sw=null,swOn=false,speedK=1,acc=0,trail=[],prevTip=null,tip3v=0,hit3=null;const DT=.0005;
+const mode=()=>document.querySelector('input[name=mode]:checked').value,load=()=>({sword:{m:+$('#swM').value,c:+$('#swL').value/3,L:+$('#swL').value}});
+function swPose(){const s=sw.s,K=sw.K||Body.bodies([s.x,s.q0,s.q1,s.q2],[0,0,0,0],load());J=Rg.swing(K,s);}
+function swStart(k){stopAll();cam.position.set(3.4,1.5,1.4);ctl.update();sw=Body.makeBodySwing(load(),$('#swS').value/100,{mode:mode(),mu:+$('#swMu').value});speedK=k;acc=0;trail=[];prevTip=null;hit3=null;tip3v=0;swPose();swOn=true;hitMark.visible=false;target.visible=true;
+ const T=sw.target,tp=Rg.sag([T.x,T.y],-Rg.R.SH);target.position.set(tp[0],0,tp[2]);target.getObjectByName('post').scale.y=tp[1];target.getObjectByName('post').position.y=tp[1]/2;target.getObjectByName('ball').position.y=tp[1];}
+function swTick(dt){acc+=dt*speedK;while(acc>=DT&&swOn){acc-=DT;const hadHit=!!sw.hit;sw.step(DT);swPose();
+  // 3Dの剣先の速さ（3Dの座標で測る。平面の速さと同じになるはず）
+  if(prevTip)tip3v=Math.hypot(J.tip[0]-prevTip[0],J.tip[1]-prevTip[1],J.tip[2]-prevTip[2])/DT;prevTip=J.tip;
+  if(!hadHit&&sw.hit){hit3={v:tip3v,p:J.tip};hitMark.position.copy(V3(J.tip));hitMark.visible=true}
+  if(sw.t>2.5){swOn=false}}
+ const T=sw.target;target.position.z=Rg.sag([(sw.hit?sw.hit.x:sw.s.x)+T.x,0])[2];
+ trail.push(V3(J.tip));if(trail.length>400)trail.shift();trailG.setFromPoints(trail);
+ const a=sw.act||{},Jx=J,sh=Jx.rsh,el=Jx.relb,hd=Jx.rhand,pv=Jx.pelvis,ch=Jx.chest;
+ const put=(k,p,q,dx)=>{const v=a[k]||0;bands[k].visible=v>.02;if(v>.02)seg(bands[k],off(p,dx,0,0),off(q,dx,0,0),.012+.03*Math.min(1,v))};
+ put('tf',off(pv,0,0,.1),off(ch,0,-.05,.1),-.05);put('te',off(pv,0,0,-.1),off(ch,0,-.05,-.1),-.05);
+ put('up',off(sh,0,.05,0),lerp(sh,el,.4),-.04);put('down',off(sh,0,-.18,-.08),lerp(sh,el,.35),-.03);put('flex',lerp(sh,el,.15),lerp(el,hd,.2),-.05);put('ext',lerp(sh,el,.1),lerp(el,hd,-.1),-.02);
+ if(sw.mode!=='なし'&&sw.used>.01){arrow.visible=true;arrow.position.set(J.lank[0],.02,J.lank[2]);arrow.setDirection(new THREE.Vector3(0,0,Math.sign(sw.F||1)));arrow.setLength(Math.min(.6,sw.used*.8),.08,.06);arrow.setColor(sw.slip?0xd0453f:0x3a9a55)}else arrow.visible=false;
+ const D=180/Math.PI,act=Object.entries(a).filter(([k,v])=>typeof v==='number'&&v>.05).map(([k,v])=>NAMES[k]+' '+(v*100).toFixed(0)+'%').join('・');
+ $('#status').textContent=`${swOn?'振っています':'終了'} ／ [${MN[sw.mode]}] 段階：${sw.phase} ／ 使っている筋肉：${act||'なし'} ／ 剣先 ${tip3v.toFixed(1)} m/s ／ ${sw.fail?'⚠ 足が滑って踏ん張れず失敗（速さは記録しません）':sw.hit?`目標物を打った瞬間の剣先 ${sw.hit.v.toFixed(1)} m/s（3Dで測っても ${hit3?hit3.v.toFixed(1):'-'} m/s）`:swOn?'':`外れ（一番近づいた距離 ${(sw.minDist*100).toFixed(0)} cm）`} ／ 体の前傾 ${(sw.s.q0*D).toFixed(0)}°・踏み込み ${(sw.s.x*100).toFixed(0)} cm・肩 ${(sw.s.q1*D).toFixed(0)}°・肘 ${(sw.s.q2*D).toFixed(0)}°`}
+const NAMES={tf:'腹筋・腰の筋肉',te:'背筋',up:'三角筋',down:'広背筋・大胸筋',flex:'上腕二頭筋',ext:'上腕三頭筋'},MN={なし:'体幹なし',同時:'体幹あり・全部同時',順番:'体幹あり・体が先→肩→肘'};
+function compare(){const out=['なし','同時','順番'].map(m=>{const r=Body.simulateBody(load(),$('#swS').value/100,{mode:m,mu:+$('#swMu').value});return `${MN[m]}${m==='なし'?'（足は床に固定）':''}：${r.fail?'足が滑って失敗':r.hit?r.hitV.toFixed(1)+' m/s':'外れ（'+(r.minDist*100).toFixed(0)+' cm）'}`});
+ $('#swOut').innerHTML='同じ条件で目標物を打つ瞬間の速さ：<br>'+out.join('<br>');return out.join(' ／ ')}
+/* ---------- 歩く ---------- */
+let walking=false,wState={x:0,v:0},wPhase=0,wInfo=null;
+function wTick(dt){const mu=+$('#wkMu').value,vT=+$('#wkV').value;wPhase+=dt*vT/1.2;const g=Motion.sampleWalk(wPhase);let Jw=Rg.walk(g,wState.x);
+ const grounded=Math.min(Jw.lank[1],Jw.rank[1])<=Rg.R.ANKLE+.01;const r=Physics.walkStep(wState,{mass:70,gravity:9.81,muStatic:mu,muKinetic:mu*.8,drag:3,tau:.5,vTarget:vT},dt,grounded);wState={x:r.x,v:r.v};if(wState.x>4){wState.x-=8}
+ J=Rg.walk(g,wState.x);wInfo=r;ctl.target.z+=(J.pelvis[2]-ctl.target.z)*.1;
+ const f=J[g.stance==='lf'?'lank':'rank'];arrow.visible=Math.abs(r.force)>5;arrow.position.set(f[0],.02,f[2]);arrow.setDirection(new THREE.Vector3(0,0,Math.sign(r.force)));arrow.setLength(Math.min(.6,Math.abs(r.force)/300),.08,.06);arrow.setColor(r.slip?0xd0453f:0x3a9a55);
+ $('#status').textContent=`歩いています ／ 速度 ${r.v.toFixed(2)} m/s ／ 床が押す力 ${r.force.toFixed(0)} N（上限 ${r.limit.toFixed(0)} N）／ ${r.slip?'⚠ 足が滑っています':'しっかり踏めています'}`}
+/* ---------- 右腕 ---------- */
+let arm=null;
+function armTick(dt){for(let i=0;i<20;i++){const o=Muscle.armStep(arm.st,arm.aS,arm.aE,0,dt/20);arm.st={q1:o.q1,w1:o.w1,q2:o.q2,w2:o.w2};arm.info=o}J=Rg.armSide(arm.st.q1,arm.st.q2);
+ $('#status').textContent=`筋肉で右腕 ／ 肩 ${(arm.st.q1*180/Math.PI).toFixed(0)}°・肘 ${(arm.st.q2*180/Math.PI).toFixed(0)}° ／ 三角筋 ${(arm.aS*100).toFixed(0)}%`}
+/* ---------- 共通 ---------- */
+function stopAll(){swOn=false;walking=false;arm=null;$('#wkGo').textContent='歩く';for(const b of Object.values(bands))b.visible=false;arrow.visible=false;target.visible=false;hitMark.visible=false;trail=[];trailG.setFromPoints([]);ctl.target.set(0,1.05,.4)}
+$('#swGo').onclick=()=>swStart(1);$('#swSlow').onclick=()=>swStart(.25);$('#swCmp').onclick=compare;
+$('#wkGo').onclick=()=>{if(walking){stopAll();$('#status').textContent='止まりました';return}stopAll();cam.position.set(3.4,1.5,1.4);ctl.update();walking=true;wState={x:0,v:0};wPhase=0;$('#wkGo').textContent='止める'};
+$('#armT').onclick=()=>{stopAll();const st={q1:Math.PI/2,w1:0,q2:0,w2:0},h=Muscle.holdArm(st.q1,0,0);arm={st,aS:Math.min(1,h.shoulder),aE:0};cam.position.set(0,1.4,3);ctl.update()};
+$('#stand').onclick=()=>{stopAll();J=Rg.stand();$('#status').textContent='立っています'};
+$('#camSide').onclick=()=>{cam.position.set(3,1.3,ctl.target.z);ctl.update()};$('#camFront').onclick=()=>{cam.position.set(0,1.3,ctl.target.z+3);ctl.update()};
+for(const [id,f] of [['swM',1],['swL',2],['swS',0],['swMu',2],['wkV',1],['wkMu',2]]){const e=$('#'+id),o=$('#'+id+'o');e.oninput=()=>o.value=(+e.value).toFixed(f)}
+let last=0;function tick(t){const dt=last?Math.min((t-last)/1000,1/20):0;last=t;if(swOn)swTick(dt);if(walking)wTick(dt);if(arm)armTick(dt);render();ctl.update();R.render(S,cam);requestAnimationFrame(tick)}
+render();requestAnimationFrame(tick);
+window.h3d={J:()=>J,sw:()=>sw&&{hit:sw.hit,fail:sw.fail,phase:sw.phase,minDist:sw.minDist,t:sw.t},hit3:()=>hit3,go:(m,L,s,mu,md,k=1)=>{$('#swM').value=m;$('#swL').value=L;$('#swS').value=s;$('#swMu').value=mu;document.querySelector(`input[name=mode][value=${md}]`).checked=true;swStart(k)},compare,walk:()=>wState,arm:()=>arm&&arm.st,
+ run(sec){/* テスト用：画面を待たずに計算を進める */const n=Math.round(sec/DT);for(let i=0;i<n&&swOn;i++){acc=DT;swTick(0)}return {hit:sw.hit,hit3}}};
+</script>
+</body></html>
