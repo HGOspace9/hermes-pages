@@ -4,20 +4,58 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>3Dの人体モデル（筋肉と物理）</title>
 <style>
-html,body{margin:0;height:100%;overflow:hidden;background:radial-gradient(ellipse at 50% 60%,#2a3160 0%,#141a38 55%,#07091a 100%);font-family:system-ui,"Hiragino Sans",sans-serif;color:#dfe4ff}
+html,body{margin:0;height:100%;overflow:hidden;background:radial-gradient(ellipse at 50% 55%,#2a3160 0%,#1b1f3f 60%,#10132b 100%);font-family:system-ui,"Hiragino Sans",sans-serif;color:#dfe4ff}
 canvas{display:block;touch-action:none}
-#panel{position:fixed;top:10px;left:10px;width:330px;max-height:calc(100vh - 20px);overflow:auto;background:#0c1030dd;border:1px solid #3b4590;border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.5}
-#panel h1{font-size:15px;margin:0 0 6px}#panel h2{font-size:13px;margin:10px 0 4px;color:#e8c27a}
-#panel button{background:#1d2450;color:#e8ecff;border:1px solid #6d78c8;border-radius:14px;padding:5px 10px;font-size:13px;cursor:pointer;margin:2px 2px 2px 0}
-#panel button.on{background:#e8c27a;color:#1a1a2a}
-#panel label{display:block}#panel input[type=range]{width:150px;vertical-align:middle}
-#status{position:fixed;bottom:10px;left:350px;right:10px;font-size:13px;background:#0c1030cc;padding:6px 10px;border-radius:8px}
-.lim{background:#3a1d24;border:1px solid #a04a55;border-radius:8px;padding:6px 8px;margin-top:8px}
+button{font-family:inherit}
+.card{background:#262a50ee;border:1px solid #363b6c;border-radius:14px;box-shadow:0 6px 24px #0006}
+/* ① 入口のタブ（上） */
+#tabs{position:fixed;top:14px;left:50%;transform:translateX(-50%);display:flex;gap:4px;padding:5px;border-radius:26px;background:#262a50ee;border:1px solid #363b6c;z-index:5}
+#tabs button{background:none;border:0;color:#b9c0ea;font-size:15px;font-weight:600;padding:9px 20px;border-radius:20px;cursor:pointer}
+#tabs button.on{background:#f3d89a;color:#1d1f3a}
+/* ② 左の設定パネル（選んだタブの中身だけ） */
+#panel{position:fixed;top:82px;left:20px;width:290px;max-height:calc(100vh - 82px - 120px);overflow:auto;padding:14px 16px;font-size:13px;line-height:1.55;z-index:4}
+#panel h2{font-size:14px;margin:12px 0 6px;color:#f3d89a}#panel h2:first-child{margin-top:0}
+#panel button{background:#323a70;color:#e8ecff;border:1px solid #4b5596;border-radius:10px;padding:6px 11px;font-size:13px;cursor:pointer;margin:2px 2px 2px 0}
+#panel button.on{background:#f3d89a;color:#1d1f3a;border-color:#f3d89a}
+#panel label{display:block}#panel input[type=range]{width:140px;vertical-align:middle;accent-color:#f3d89a}
+.pane{display:none}.pane.on{display:block}
+.motions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px}
+#panel .motions button{height:52px;font-size:13px;padding:0 4px;font-weight:600;border-radius:12px;margin:0}
+.sub{font-size:12px;opacity:.75}.msg{background:#1f3a2a;border:1px solid #3a8a55;border-radius:10px;padding:8px 10px;margin:6px 0;display:none}
+.lim{background:#3a1d24;border:1px solid #a04a55;border-radius:8px;padding:6px 8px;margin-top:10px;font-size:12px}
+/* ③ 見る角度（右上の6マス） */
+#views{position:fixed;top:82px;right:20px;display:grid;grid-template-columns:repeat(3,52px);gap:6px;padding:8px;z-index:4}
+#views button{height:34px;background:#323a70;color:#e8ecff;border:1px solid #4b5596;border-radius:8px;font-size:12px;cursor:pointer;padding:0}
+#views button:hover{background:#3f4890}
+/* ④ 再生バー（下） */
+#bar{position:fixed;left:20px;right:20px;bottom:16px;height:74px;display:flex;align-items:center;gap:12px;padding:0 16px;z-index:5}
+#play{width:50px;height:50px;border-radius:50%;border:0;background:#f3d89a;color:#1d1f3a;font-size:20px;cursor:pointer;flex:none}
+#bar .sm{height:40px;background:#323a70;color:#e8ecff;border:1px solid #4b5596;border-radius:10px;padding:0 12px;font-size:14px;cursor:pointer;flex:none}
+#bar .sm.on{background:#f3d89a;color:#1d1f3a;border-color:#f3d89a}
+#track{position:relative;flex:1;height:52px}
+#scrub{position:absolute;left:0;right:0;top:6px;width:100%;margin:0;accent-color:#f3d89a}
+#marks{position:absolute;left:0;right:0;top:28px;height:20px;font-size:12px;color:#b9c0ea}
+#marks span{position:absolute;transform:translateX(-50%);white-space:nowrap;cursor:pointer}
+#marks span::before{content:"";position:absolute;left:50%;top:-9px;width:2px;height:7px;background:#b9c0ea}
+#marks span.hit{color:#f3d89a;font-weight:600}
+#scrubO{position:absolute;right:0;top:-18px;font-size:12px;color:#b9c0ea}
+#saveMoment{height:46px;background:#323a70;color:#fff;border:1px solid #4b5596;border-radius:10px;padding:0 16px;font-size:14px;font-weight:600;cursor:pointer;flex:none}
+#status{position:fixed;left:50%;transform:translateX(-50%);top:70px;width:min(560px,calc(100vw - 680px));text-align:center;font-size:12px;line-height:1.45;color:#c9cff5;text-shadow:0 1px 3px #000;z-index:3;pointer-events:none;max-height:3.1em;overflow:hidden}
 </style></head><body data-human-3d-ready>
-<div id="panel">
-<h1>3Dの人体モデル（R10 絵を描くための道具）</h1>
-<div>何もないところをドラッグすると視点が回ります（ホイールで拡大）。計算は平面の人体モデル（<a href="../human-motion/" style="color:#9fb0ff">human-motion</a>）と<b>同じプログラム</b>を使い、その結果を3Dの人形に写しています。</div>
-<h2>筋肉で剣を振る</h2>
+<nav id="tabs"><button data-tab="pose">① ポーズを作る</button><button data-tab="move" class="on">② 動きを見る</button><button data-tab="save">③ 保存</button></nav>
+<div id="panel" class="card">
+<div class="pane" id="pane-pose">
+<h2>ポーズを作る</h2>
+<button id="stand">立ちポーズに戻す</button>
+<div class="sub" style="margin:6px 0">関節を直接つかんで動かす機能は、これから付けます。今は「② 動きを見る」で動きを止めて、その瞬間をポーズとして使えます。</div>
+<h2>保存したポーズを呼び出す</h2>
+<select id="poseList" style="width:100%"><option value="">（このブラウザに保存したポーズ）</option></select>
+<button id="poseLoad" style="margin-top:6px">ファイルから読み込む</button><input type="file" id="poseFile" accept=".json,application/json" style="display:none">
+</div>
+<div class="pane on" id="pane-move">
+<h2>どの動き？</h2>
+<div class="motions"><button data-motion="sword" class="on">剣を振る</button><button data-motion="walk">歩く</button><button data-motion="arm">腕を上げる</button></div>
+<div id="set-sword">
 <label><input type="radio" name="hands" value="1"> 片手持ち（右手）</label>
 <label><input type="radio" name="hands" value="2" checked> 両手持ち</label>
 <label>剣の重さ <input id="swM" type="range" min="0.5" max="3" step="0.5" value="1"> <output id="swMo">1.0</output> kg</label>
@@ -38,22 +76,16 @@ canvas{display:block;touch-action:none}
 <label><input type="radio" name="wr" value="hold"> 筋肉でまっすぐ保つ</label>
 <label><input type="radio" name="wr" value="snap" checked> 振りかぶりで倒し、打ち込みで返す</label>
 <div style="font-size:12px;opacity:.8">目標物は頭くらいの球（半径10cm）。刃が球に触れたら当たりです。</div>
-<button id="swGo">振る</button><button id="swSlow">ゆっくり（1/4）</button><button id="swCmp">3つの使い方を比べる</button><button id="twCmp">ひねりの効果を比べる</button><button id="wrCmp">手首の効果を比べる</button><button id="hdCmp">片手と両手を比べる</button><button id="chCmp">順番の効果を比べる（R9）</button>
+<h2>比べる</h2>
+<button id="swCmp">3つの使い方を比べる</button><button id="twCmp">ひねりの効果を比べる</button><button id="wrCmp">手首の効果を比べる</button><button id="hdCmp">片手と両手を比べる</button><button id="chCmp">順番の効果を比べる（R9）</button>
 <div id="swOut"></div>
-<h2>歩く（脚の形は決めた動き・前へ進む力は床の摩擦から計算）</h2>
+</div>
+<div id="set-walk" style="display:none">
 <label>目標の速さ <input id="wkV" type="range" min="0.5" max="2" step="0.1" value="1.2"> <output id="wkVo">1.2</output> m/s</label>
 <label>床の摩擦 <input id="wkMu" type="range" min="0" max="1" step="0.05" value="0.6"> <output id="wkMuo">0.60</output></label>
-<button id="wkGo">歩く</button>
-<h2>筋肉で右腕を動かす（正面の動き）</h2>
-<button id="armT">腕を真横に上げて止める</button>
-<h2>絵を描くための道具</h2>
-<div>動きの途中で止める：<button id="pause">一時停止</button><button id="stepB">◀ 少し戻す</button><button id="stepF">少し進める ▶</button></div>
-<div><input type="range" id="scrub" min="0" max="0" value="0" style="width:95%"><br><span id="scrubO">（剣を振ると、動きを記録してここで好きな瞬間を選べます）</span></div>
-<div>見る角度：<button id="camSide2">横</button><button id="camFront2">正面</button><button id="camBack">後ろ</button><button id="camTop">上</button><button id="camLow">下から</button><button id="camQ">斜め前</button>（マウスで自由に回せます）</div>
-<div><button id="shot">画像を保存（PNG）</button><label><input type="checkbox" id="shotClean" checked> 筋肉の帯・矢印・目標物を隠して保存</label></div>
-<div><button id="poseSave">ポーズを保存</button><button id="poseLoad">ポーズを読み込む</button><input type="file" id="poseFile" accept=".json,application/json" style="display:none"><select id="poseList"><option value="">（このブラウザに保存したポーズ）</option></select></div>
-<h2>その他</h2>
-<button id="stand">立ちポーズに戻す</button>
+<button id="wkGo" style="display:none">歩く</button>
+</div>
+<div id="set-arm" style="display:none"><div class="sub">右腕を筋肉で真横に上げて止めます。下の再生ボタンで始まります。</div><button id="armT" style="display:none">腕を真横に上げて止める</button></div>
 <div class="lim" id="limits"><b>まだできていないこと（限界の一覧）</b><ol style="margin:4px 0 0 18px;padding:0">
 <li><b>順番の効果が出ない：</b>「腰→胸→肩→肘→手首と順に勢いを渡すと速くなる」効果は、4回確かめて一度も出ませんでした（平面版・R6・R8・R9。R9では8通りすべて）。前の部分を止めても勢いが次へ渡らず、待つぶん遅くなります。手首を目標物の手前20°から返すことだけは効きます（毎秒2〜3m速い）。</li>
 <li><b>腰から下が回らない：</b>上から見て回るのは胸から上だけです。腰の役は「体幹を前へ倒す＋踏み込み」で代わりにしています。</li>
@@ -64,7 +96,26 @@ canvas{display:block;touch-action:none}
 <li><b>数値は仮：</b>筋力・体の重さ・関節の動く範囲・床の摩擦などは、一般的な目安から決めた仮の値です。実際の人で測ったものではありません。</li>
 </ol></div>
 </div>
-<div id="status">立っています</div>
+<div class="pane" id="pane-save">
+<h2>保存</h2>
+<div class="msg" id="saveMsg"></div>
+<button id="shot">画像を保存（PNG）</button>
+<label><input type="checkbox" id="shotClean" checked> 筋肉の帯・矢印・目標物を隠す</label>
+<button id="poseSave" style="margin-top:8px">ポーズをファイルに保存</button>
+<div class="sub" style="margin-top:6px">保存したポーズは「① ポーズを作る」から呼び出せます。</div>
+</div>
+</div>
+<div id="views" class="card"><button id="camQ">斜め</button><button id="camFront2">正面</button><button id="camSide2">横</button><button id="camBack">後ろ</button><button id="camTop">上</button><button id="camLow">下</button></div>
+<div id="bar" class="card">
+<button id="play" title="再生／停止">▶</button>
+<button id="slowT" class="sm">ゆっくり</button>
+<button id="stepB" class="sm" title="少し戻す">◀</button><button id="stepF" class="sm" title="少し進める">▶</button>
+<div id="track"><span id="scrubO"></span><input type="range" id="scrub" min="0" max="0" value="0"><div id="marks"></div></div>
+<button id="saveMoment">この瞬間を保存</button>
+<button id="pause" style="display:none">一時停止</button><button id="swGo" style="display:none">振る</button><button id="swSlow" style="display:none">ゆっくり（1/4）</button>
+</div>
+<div id="status">下の ▶ を押すと動き始めます</div>
+
 <script src="../human-motion/muscle.js?v=r5"></script><script src="../human-motion/body.js?v=r5"></script><script src="../human-motion/physics.js?v=r5"></script><script src="../human-motion/motion.js?v=r5"></script><script src="body3d.js?v=r9"></script><script src="rig3d.js?v=r9"></script>
 <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
 <script type="module">
@@ -109,13 +160,13 @@ function render(){for(const b of bones)seg(b.m,J[b.a],(b.b==='rhand'&&J.rwr)?J.r
 let sw=null,swOn=false,speedK=1,acc=0,trail=[],prevTip=null,tip3v=0,hit3=null;const DT=.0005;
 const hdv=()=>+document.querySelector('input[name=hands]:checked').value,wrv=()=>({fix:false,hold:'hold',snap:'snap'})[document.querySelector('input[name=wr]:checked').value],twv=()=>({arm:false,only:'only',both:'both'})[document.querySelector('input[name=tw]:checked').value],mode=()=>document.querySelector('input[name=mode]:checked').value,load=()=>({sword:{m:+$('#swM').value,c:+$('#swL').value/3,L:+$('#swL').value}});
 function swPose(){const s=sw.s,g=sw.g||Body3D.geo([s.x,s.q0,s.q1,s.q2,s.q4,s.q5,s.q6],load());J=Rg.swing3(g,s);}
-function swStart(k){stopAll();cam.position.set(3.4,1.5,1.4);ctl.update();sw=Body3D.makeBodySwing(load(),$('#swS').value/100,{mode:mode(),mu:+$('#swMu').value,twist:twv(),wrist:wrv(),hands:hdv(),snapDeg:$('#snapLate').checked?20:null,targetR:Body3D.TARGET_R});speedK=k;acc=0;trail=[];prevTip=null;hit3=null;tip3v=0;swPose();rec=[];paused=false;swOn=true;hitMark.visible=false;target.visible=true;
+function swStart(k){stopAll();cam.position.set(3.4,1.5,1.4);ctl.update();sw=Body3D.makeBodySwing(load(),$('#swS').value/100,{mode:mode(),mu:+$('#swMu').value,twist:twv(),wrist:wrv(),hands:hdv(),snapDeg:$('#snapLate').checked?20:null,targetR:Body3D.TARGET_R});speedK=k;acc=0;trail=[];prevTip=null;hit3=null;tip3v=0;swPose();rec=[];marks=[];lastPh=null;sec=null;$('#marks').innerHTML='';paused=false;swOn=true;hitMark.visible=false;target.visible=true;
  const T=sw.target,tp=Rg.m3([T.x,T.y,sw.two?0:-Body3D.T3.SH]);target.position.set(tp[0],0,tp[2]);target.getObjectByName('post').scale.y=tp[1];target.getObjectByName('post').position.y=tp[1]/2;target.getObjectByName('ball').position.y=tp[1];}
 function swTick(dt){acc+=dt*speedK;while(acc>=DT&&swOn){acc-=DT;const hadHit=!!sw.hit;sw.step(DT);swPose();
   // 3Dの剣先の速さ（3Dの座標で測る。平面の速さと同じになるはず）
   if(prevTip)tip3v=Math.hypot(J.tip[0]-prevTip[0],J.tip[1]-prevTip[1],J.tip[2]-prevTip[2])/DT;prevTip=J.tip;
   if(!hadHit&&sw.hit){hit3={v:tip3v,p:J.tip};hitMark.position.copy(V3(J.tip));hitMark.visible=true}
-  rec.push({J:JSON.parse(JSON.stringify(J)),t:sw.t,phase:sw.phase,tip:tip3v});if(sw.t>2.5){swOn=false;scrubSync()}}
+  rec.push({J:JSON.parse(JSON.stringify(J)),t:sw.t,phase:sw.phase,tip:tip3v});{const n=rec.length-1,ph=sw.phase;if(ph!==lastPh){secEnd(n);lastPh=ph;if(MK[ph])sec={k:ph,i:n}}if(sw.hit&&!marks.some(m=>m.k==='hit'))addMark('hit',n,n);if(sw.t>2.5)secEnd(n)}if(sw.t>2.5){swOn=false;scrubSync()}}
  const T=sw.target;target.position.z=(sw.hit?sw.hit.x:sw.s.x)+T.x;
  trail.push(V3(J.tip));if(trail.length>400)trail.shift();trailG.setFromPoints(trail);
  const a=sw.act||{},Jx=J,sh=Jx.rsh,el=Jx.relb,hd=Jx.rhand,pv=Jx.pelvis,ch=Jx.chest;
@@ -165,8 +216,8 @@ $('#stand').onclick=()=>{stopAll();J=Rg.stand();$('#status').textContent='立っ
 for(const [id,f] of [['swM',1],['swL',2],['swS',0],['swMu',2],['wkV',1],['wkMu',2]]){const e=$('#'+id),o=$('#'+id+'o');e.oninput=()=>o.value=(+e.value).toFixed(f)}
 // ===== R10 絵を描くための道具 =====
 let rec=[],paused=false,recI=-1;
-function scrubSync(){const e=$('#scrub');e.max=Math.max(0,rec.length-1);if(recI<0||!paused)e.value=rec.length-1}
-function showRec(i){if(!rec.length)return;recI=Math.max(0,Math.min(rec.length-1,i));const r=rec[recI];J=JSON.parse(JSON.stringify(r.J));for(const b of Object.values(bands))b.visible=false;arrow.visible=false;$('#scrub').value=recI;$('#scrubO').textContent=`${r.t.toFixed(3)}秒 ／ 段階：${r.phase} ／ 剣先 ${r.tip.toFixed(1)} m/s`;render()}
+function scrubSync(){const e=$('#scrub');e.max=FULL;if(recI<0||!paused)e.value=Math.max(0,rec.length-1)}
+function showRec(i){if(!rec.length)return;recI=Math.max(0,Math.min(rec.length-1,i));const r=rec[recI];J=JSON.parse(JSON.stringify(r.J));for(const b of Object.values(bands))b.visible=false;arrow.visible=false;$('#scrub').value=recI;$('#scrubO').textContent=`${r.t.toFixed(3)}秒 ／ 段階：${marks.some(m=>m.k==='hit'&&m.i===recI)?'打つ瞬間':r.phase} ／ 剣先 ${r.tip.toFixed(1)} m/s`;render()}
 function pauseSw(on){paused=on;if(sw&&rec.length){if(on){swOn=false;showRec(rec.length-1)}else if(sw.t<=2.5){swOn=true;recI=-1}}$('#pause').textContent=paused?'続ける':'一時停止'}
 $('#pause').onclick=()=>pauseSw(!paused);
 $('#stepB').onclick=()=>{if(!paused)pauseSw(true);showRec((recI<0?rec.length-1:recI)-20)};
@@ -188,7 +239,28 @@ $('#poseList').onchange=e=>{if(e.target.value==='')return;const L=JSON.parse(loc
 $('#poseLoad').onclick=()=>$('#poseFile').click();
 $('#poseFile').onchange=e=>{const f=e.target.files[0];if(!f)return;f.text().then(t=>{try{applyPose(JSON.parse(t))}catch(err){$('#status').textContent='⚠ '+err.message}});e.target.value=''};
 poseListSync();
-let last=0;function tick(t){const dt=last?Math.min((t-last)/1000,1/20):0;last=t;if(swOn)swTick(dt);if(walking)wTick(dt);if(arm)armTick(dt);render();ctl.update();R.render(S,cam);requestAnimationFrame(tick)}
+// ===== U2 画面の骨組み（タブ・動きの選択・再生バー）。計算には触らない =====
+const FULL=Math.round(2.5/DT),MK={'構え':'構え','振りかぶり':'振りかぶり','止め':'止め'};let marks=[],motion='sword',slow=false,lastPh=null,sec=null;
+// 目印：「構え・振りかぶり・止め」は区間の真ん中に、「打つ瞬間」はその瞬間に置く（押すとその区間の始まり／打つ瞬間へ飛ぶ）
+function secEnd(n){if(sec&&!marks.some(m=>m.k===sec.k))addMark(sec.k,sec.k==='構え'?0:Math.round((sec.i+n)/2),sec.i);sec=null}
+function addMark(k,pos,go){marks.push({k,i:go});const s=document.createElement('span');s.textContent=k==='hit'?'打つ瞬間':MK[k];if(k==='hit')s.className='hit';s.style.left=(100*pos/FULL)+'%';if(k==='構え')s.style.transform='none';s.onclick=()=>{if(!paused)pauseSw(true);showRec(go)};$('#marks').appendChild(s)}
+function setTab(t){document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));for(const p of ['pose','move','save'])$('#pane-'+p).classList.toggle('on',p===t)}
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+function setMotion(m){if(m!==motion)stopAll();motion=m;document.querySelectorAll('.motions button').forEach(b=>b.classList.toggle('on',b.dataset.motion===m));for(const k of ['sword','walk','arm'])$('#set-'+k).style.display=k===m?'':'none';$('#track').style.visibility=m==='sword'?'visible':'hidden';$('#saveMoment').disabled=false}
+document.querySelectorAll('.motions button').forEach(b=>b.onclick=()=>setMotion(b.dataset.motion));
+const running=()=>swOn||walking||!!arm;
+function play(){
+ if(motion==='walk'){$('#wkGo').click();return}
+ if(motion==='arm'){if(arm){stopAll();$('#status').textContent='止めました'}else $('#armT').click();return}
+ if(swOn){pauseSw(true);return}
+ if(paused&&sw&&sw.t<=2.5){pauseSw(false);return}
+ swStart(slow?.25:1)}
+$('#play').onclick=play;
+$('#slowT').onclick=()=>{slow=!slow;$('#slowT').classList.toggle('on',slow);if(swOn)speedK=slow?.25:1};
+$('#saveMoment').onclick=()=>{if(swOn)pauseSw(true);const r=recI>=0&&rec[recI]?rec[recI]:(rec.length&&motion==='sword'?rec[rec.length-1]:null);
+ const m=$('#saveMsg');m.style.display='block';m.textContent=r?`止めた瞬間（${r.t.toFixed(2)}秒・${marks.some(m=>m.k==='hit'&&rec[m.i]===r)?'打つ瞬間':r.phase}）を保存できます。下の2つから選んでください。`:'今の姿勢を保存できます。下の2つから選んでください。';setTab('save')};
+function playIcon(){$('#play').textContent=running()?'❚❚':'▶'}
+let last=0;function tick(t){playIcon();const dt=last?Math.min((t-last)/1000,1/20):0;last=t;if(swOn)swTick(dt);if(walking)wTick(dt);if(arm)armTick(dt);render();ctl.update();R.render(S,cam);requestAnimationFrame(tick)}
 render();requestAnimationFrame(tick);
 window.h3d={shot,poseData,applyPose,pauseSw,showRec,rec:()=>rec.length,chCompare,hdCompare,wrCompare,twCompare,J:()=>J,sw:()=>sw&&{hit:sw.hit,fail:sw.fail,phase:sw.phase,minDist:sw.minDist,t:sw.t},hit3:()=>hit3,go:(m,L,s,mu,md,k=1,tw='arm',wr='snap',hd=2)=>{document.querySelector(`input[name=hands][value="${hd}"]`).checked=true;document.querySelector(`input[name=wr][value=${wr}]`).checked=true;document.querySelector(`input[name=tw][value=${tw}]`).checked=true;$('#swM').value=m;$('#swL').value=L;$('#swS').value=s;$('#swMu').value=mu;document.querySelector(`input[name=mode][value=${md}]`).checked=true;swStart(k)},compare,walk:()=>wState,arm:()=>arm&&arm.st,
  run(sec){/* テスト用：画面を待たずに計算を進める */const n=Math.round(sec/DT);for(let i=0;i<n&&swOn;i++){acc=DT;swTick(0)}return {hit:sw.hit,hit3}}};
