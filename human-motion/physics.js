@@ -8,5 +8,7 @@
   if(v!==0 && Math.sign(next)!==Math.sign(v) && Math.abs(force)<=p.muStatic*normal)next=0;
   return {x:x+(v+next)*.5*dt,v:next};
  }
- const api={step};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Physics=api;
+ function footContacts(nodes,floorY,radius){return nodes.filter(n=>(n.id==='lf'||n.id==='rf')&&n.y+radius>=floorY-.5).map(n=>n.id)}
+ function humanStep(state,force,p,dt,grounded){return step(state,force,grounded?p:{...p,muStatic:0,muKinetic:0},dt)}
+ const api={step,footContacts,humanStep};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Physics=api;
 })(globalThis);
