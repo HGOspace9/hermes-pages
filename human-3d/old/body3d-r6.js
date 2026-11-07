@@ -7,7 +7,7 @@
 // 質量行列などは、各部分の位置の式を数値で微分して作る（平面版の手書きの式を3Dに広げる代わり）。
 // 床：前後の力F・左右の力Fl・上から見た回す力Mz を、足と床の摩擦（摩擦×体重）で支える。超えると足が滑る。
 const isNode=typeof module!=='undefined'&&module.exports;
-const Mu=isNode?require('../human-motion/muscle.js'):root.Muscle,Bd=isNode?require('../human-motion/body.js'):root.Body;
+const Mu=isNode?require('../../human-motion/muscle.js'):root.Muscle,Bd=isNode?require('../../human-motion/body.js'):root.Body;
 const {ARM,ARM2,MUS,fv,lengthFactor,momentArm,momentArmS,lengthFactorS,targetFor}=Mu,B=Bd.B,D=Math.PI/180,G=9.81;
 // ひねりの値（仮の目安）：胴の上下の軸まわりの回りにくさ1.2kg·m²、腹斜筋など最大100Nm、最速12rad/s、可動域±45°
 const T3={SH:0.19,Iyaw:1.2,fTw:100,vmaxTw:12,dampTw:5,psMin:-45*D,psMax:45*D,rYaw:0.25,tolLat:0.08,wind:-30*D,brakeAt:-8*D};

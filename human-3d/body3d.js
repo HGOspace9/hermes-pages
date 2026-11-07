@@ -149,7 +149,11 @@ function makeBodySwing(load0,strength=1,opt={}){check(opt);const two=opt.hands==
    else w=holdWr(cock?W3.cock:0,0,s,st.Qg,strength,two);Object.assign(a,w)}
   st.act=a;
   if(wrist==='hold'&&!st.hit&&(st.phase==='振りかぶり'||st.phase==='打ち込み'))st.wristDev=Math.max(st.wristDev,Math.abs(s.q5||0)); // 点検z：保つ間ずっと見張る
-  const swinging=st.phase==='振りかぶり'||st.phase==='打ち込み',r=bodyStep(s,a,load,dt,{...so,guard:mode==='連鎖'?(swinging&&!st.hit):(swinging&&!st.hit)?'watch':'off'});if(r.blew){st.blew=(st.blew||0)+1;if(mode==='連鎖'&&swinging&&!st.hit&&!st.fail){st.fail={t:st.t,phase:st.phase,blew:true};go('止め')}}st.Qg=r.Qg;st.F=r.F;st.Fl=r.Fl;st.Mz=r.Mz;st.slip=r.slip;st.yawSlip=r.yawSlip;st.use=r.use;if(!lock)st.maxFr=Math.max(st.maxFr,r.use);st.used=r.used;if(r.slip)st.slipT+=dt;
+  const swinging=st.phase==='振りかぶり'||st.phase==='打ち込み',so2={...so,guard:mode==='連鎖'?(swinging&&!st.hit):(swinging&&!st.hit)?'watch':'off'};let r=bodyStep(s,a,load,dt,so2);
+  // R10 点検ee：打った後のブレーキ（止め）は、足が滑らない範囲まで弱める（打つ瞬間の速さには影響しない）
+  if(st.phase==='止め'&&!lock&&r.slip&&opt.softStop!==false){const sc=k=>{const b={...a};for(const key of ['tf','te','up','down','flex','ext','tw','tb','wc','wu','wl','wr'])if(b[key])b[key]*=k;return b};
+   if(!bodyStep(s,sc(0),load,dt,so2).slip){let lo=0,hi=1;for(let i=0;i<10;i++){const m=(lo+hi)/2;bodyStep(s,sc(m),load,dt,so2).slip?hi=m:lo=m}a=sc(lo);st.act=a;r=bodyStep(s,a,load,dt,so2)}}
+  if(r.slip){if(st.hit)st.slipAfterT=(st.slipAfterT||0)+dt;else st.slipBeforeT=(st.slipBeforeT||0)+dt}if(r.blew){st.blew=(st.blew||0)+1;if(mode==='連鎖'&&swinging&&!st.hit&&!st.fail){st.fail={t:st.t,phase:st.phase,blew:true};go('止め')}}st.Qg=r.Qg;st.F=r.F;st.Fl=r.Fl;st.Mz=r.Mz;st.slip=r.slip;st.yawSlip=r.yawSlip;st.use=r.use;if(!lock)st.maxFr=Math.max(st.maxFr,r.use);st.used=r.used;if(r.slip)st.slipT+=dt;
   st.s=r.s;const g=geo([r.s.x,r.s.q0,r.s.q1,r.s.q2,r.s.q4,r.s.q5,r.s.q6],load);st.g=g;if(two&&!g.reach)st.reachMiss=(st.reachMiss||0)+dt;
   if(st.prevTip)st.v=Math.hypot(g.tip[0]-st.prevTip[0],g.tip[1]-st.prevTip[1],g.tip[2]-st.prevTip[2])/dt;
   if(!st.hit&&!st.fail&&(st.phase==='振りかぶり'||st.phase==='打ち込み')&&r.slip){st.preSlip=(st.preSlip||0)+dt;if(st.preSlip>=B.slipFail){st.fail={t:st.t,phase:st.phase,yaw:!!r.yawSlip};go('止め')}}
@@ -162,7 +166,7 @@ function makeBodySwing(load0,strength=1,opt={}){check(opt);const two=opt.hands==
   st.prevTip=g.tip;st.t+=dt;st.since+=dt;return st};
  return st}
 function simulateBody(load,strength=1,opt={},sec=2.5,dt=.0005){const sw=makeBodySwing(load,strength,opt);let maxX=0;for(let i=0;i<sec/dt;i++){sw.step(dt);maxX=Math.max(maxX,sw.s.x)}
- return {blew:sw.blew||0,chainT:sw.chainT||null,snapAt:sw.snapAt??null,raiseT:sw.raise?sw.raise.t:null,wristDev:sw.wristDev,wristLost:!!sw.wrist&&sw.wristDev>W3.lostDeg,wristAtHit:sw.hit?sw.hit.q5:null,reachMiss:sw.reachMiss||0,fail:sw.fail||null,hit:sw.hit,hitV:sw.hit?sw.hit.v:0,minDist:sw.hit?0:(sw.fail||sw.minDist>=1e8)?null:sw.minDist,gap:sw.hit?0:(sw.fail||sw.minDist>=1e8)?null:Math.max(0,sw.minDist-(opt.targetR||0)),maxV:sw.maxV,maxUse:sw.maxFr,slipT:sw.slipT,maxW0:sw.maxW0,maxW4:sw.maxW4,maxX,end:sw.s,raise:sw.raise}}
+ return {slipAfterT:sw.slipAfterT||0,slipBeforeT:sw.slipBeforeT||0,blew:sw.blew||0,chainT:sw.chainT||null,snapAt:sw.snapAt??null,raiseT:sw.raise?sw.raise.t:null,wristDev:sw.wristDev,wristLost:!!sw.wrist&&sw.wristDev>W3.lostDeg,wristAtHit:sw.hit?sw.hit.q5:null,reachMiss:sw.reachMiss||0,fail:sw.fail||null,hit:sw.hit,hitV:sw.hit?sw.hit.v:0,minDist:sw.hit?0:(sw.fail||sw.minDist>=1e8)?null:sw.minDist,gap:sw.hit?0:(sw.fail||sw.minDist>=1e8)?null:Math.max(0,sw.minDist-(opt.targetR||0)),maxV:sw.maxV,maxUse:sw.maxFr,slipT:sw.slipT,maxW0:sw.maxW0,maxW4:sw.maxW4,maxX,end:sw.s,raise:sw.raise}}
 const TARGET_R=0.10; // 目標物の半径（頭くらいの球）
 const api={H2,check,W3,TARGET_R,T3,geo,dyn,bodyStep,makeBodySwing,simulateBody,blade};if(isNode)module.exports=api;else root.Body3D=api;
 })(globalThis);

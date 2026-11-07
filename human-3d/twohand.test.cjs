@@ -1,6 +1,6 @@
 // R8：両手持ち（body3d.js）と点検y・z・aa
 const assert=require('node:assert/strict');
-const B3=require('./body3d.js'),R7=require('./body3d-r7.js'),Rg=require('./rig3d.js');
+const B3=require('./body3d.js'),R7=require('./old/body3d-r7.js'),Rg=require('./rig3d.js');
 const S=(m,L=.6)=>({sword:{m,c:L/3,L}}),d3=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]),TR=B3.TARGET_R,D=180/Math.PI;
 let n=0;const ok=(c,msg)=>{assert.ok(c,msg);n++};
 const C=[[1,.6,1],[3,.9,1],[3,.6,.6],[3,.9,.6]],f=r=>r.fail?'失敗':r.hit?r.hitV.toFixed(1)+'m/s':'外れ(あと'+(r.gap*100).toFixed(1)+'cm)';

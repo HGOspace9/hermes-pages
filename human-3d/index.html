@@ -15,7 +15,7 @@ canvas{display:block;touch-action:none}
 .lim{background:#3a1d24;border:1px solid #a04a55;border-radius:8px;padding:6px 8px;margin-top:8px}
 </style></head><body data-human-3d-ready>
 <div id="panel">
-<h1>3Dの人体モデル（R9 剣の振りで確認）</h1>
+<h1>3Dの人体モデル（R10 絵を描くための道具）</h1>
 <div>何もないところをドラッグすると視点が回ります（ホイールで拡大）。計算は平面の人体モデル（<a href="../human-motion/" style="color:#9fb0ff">human-motion</a>）と<b>同じプログラム</b>を使い、その結果を3Dの人形に写しています。</div>
 <h2>筋肉で剣を振る</h2>
 <label><input type="radio" name="hands" value="1"> 片手持ち（右手）</label>
@@ -46,10 +46,23 @@ canvas{display:block;touch-action:none}
 <button id="wkGo">歩く</button>
 <h2>筋肉で右腕を動かす（正面の動き）</h2>
 <button id="armT">腕を真横に上げて止める</button>
+<h2>絵を描くための道具</h2>
+<div>動きの途中で止める：<button id="pause">一時停止</button><button id="stepB">◀ 少し戻す</button><button id="stepF">少し進める ▶</button></div>
+<div><input type="range" id="scrub" min="0" max="0" value="0" style="width:95%"><br><span id="scrubO">（剣を振ると、動きを記録してここで好きな瞬間を選べます）</span></div>
+<div>見る角度：<button id="camSide2">横</button><button id="camFront2">正面</button><button id="camBack">後ろ</button><button id="camTop">上</button><button id="camLow">下から</button><button id="camQ">斜め前</button>（マウスで自由に回せます）</div>
+<div><button id="shot">画像を保存（PNG）</button><label><input type="checkbox" id="shotClean" checked> 筋肉の帯・矢印・目標物を隠して保存</label></div>
+<div><button id="poseSave">ポーズを保存</button><button id="poseLoad">ポーズを読み込む</button><input type="file" id="poseFile" accept=".json,application/json" style="display:none"><select id="poseList"><option value="">（このブラウザに保存したポーズ）</option></select></div>
 <h2>その他</h2>
-<button id="stand">立ちポーズに戻す</button><button id="camSide">横から見る</button><button id="camFront">正面から見る</button>
-<div class="lim"><b>R9で確かめた限界：</b>「腰→胸→肩→肘→手首と順に勢いを渡すと速くなる」効果は、この作りでは出ませんでした（4条件×手首あり・なしの8通りで、速くなったのは0）。前の部分を止めても勢いが次へ渡らず、待つぶん遅くなります。確かめたのは4回目（平面版・R6・R8・R9）で、ここで区切ります。腰から下は回らず、腰の役は「体幹を前へ倒す＋踏み込み」で代わりにしています。<br>また「順に＋手首」の1kg・全力では、腕が伸びきるところで計算が破たんしたため、失敗として扱っています。<br>一方、手首を目標物の手前20°から返すと、全部同時の振りで毎秒2〜3m速くなりました（打つ瞬間に手首がまだ返っている途中のため）。</div>
-<div class="lim"><b>まだできていないこと：</b>転ぶ動きは未計算です。両手持ちは、両腕を「胸の真ん中から伸びる1本の見かけの腕」として計算し、左右の腕はそれぞれの肩から柄へ届く形にしています（左右の腕の力の分け方は計算していません。肩と肘の筋力は片腕の2倍、手首は両手の握りで54Nmとしています）。ひねりは胸から上だけで、腰から下は回りません（足を床につけたまま、床の摩擦でひねりを支えます。腰が先に回る動きはR9で検討）。片手の手首の筋肉（最大12Nm）は弱く、重い剣ではまっすぐ保てず剣先が下がります（そのときは「手首が負けて剣先が下がった」と表示します）。左腕と頭は体についていくだけです。数値は仮の目安です。</div>
+<button id="stand">立ちポーズに戻す</button>
+<div class="lim" id="limits"><b>まだできていないこと（限界の一覧）</b><ol style="margin:4px 0 0 18px;padding:0">
+<li><b>順番の効果が出ない：</b>「腰→胸→肩→肘→手首と順に勢いを渡すと速くなる」効果は、4回確かめて一度も出ませんでした（平面版・R6・R8・R9。R9では8通りすべて）。前の部分を止めても勢いが次へ渡らず、待つぶん遅くなります。手首を目標物の手前20°から返すことだけは効きます（毎秒2〜3m速い）。</li>
+<li><b>腰から下が回らない：</b>上から見て回るのは胸から上だけです。腰の役は「体幹を前へ倒す＋踏み込み」で代わりにしています。</li>
+<li><b>左右の腕の力の分け方がない：</b>両手持ちは、両腕を「胸の真ん中から伸びる1本の見かけの腕」として計算しています。左右の腕は形だけ合わせていて、それぞれが出す力は計算していません。</li>
+<li><b>両手の筋力は仮の値：</b>肩と肘は片腕の2倍、手首は両手の握りで54Nm（片手は12Nm）としています。</li>
+<li><b>関節がありえない速さになる条件が4つ：</b>両手・「体が先→肩→肘」＋ひねり（1kg全力と3kg・0.9m全力）、両手・体幹なし（3kg・0.6m・60%、3kg・0.9m・60%・手首を保つ）。どれも当たっていない条件で、数値はそのままです。「腰→胸→…の順」の振りでは、これが起きたら「計算が破たん」として失敗にします。</li>
+<li><b>転ばない：</b>足が滑ったら「失敗」と表示するだけで、体が崩れて転ぶ動きは計算していません。重い剣では、打った後に剣を止める間に足が滑ることがあります（ブレーキは滑らない範囲まで弱めますが、3kgでは剣の勢いだけで滑ります）。打つ瞬間の速さには影響しません。</li>
+<li><b>数値は仮：</b>筋力・体の重さ・関節の動く範囲・床の摩擦などは、一般的な目安から決めた仮の値です。実際の人で測ったものではありません。</li>
+</ol></div>
 </div>
 <div id="status">立っています</div>
 <script src="../human-motion/muscle.js?v=r5"></script><script src="../human-motion/body.js?v=r5"></script><script src="../human-motion/physics.js?v=r5"></script><script src="../human-motion/motion.js?v=r5"></script><script src="body3d.js?v=r9"></script><script src="rig3d.js?v=r9"></script>
@@ -96,13 +109,13 @@ function render(){for(const b of bones)seg(b.m,J[b.a],(b.b==='rhand'&&J.rwr)?J.r
 let sw=null,swOn=false,speedK=1,acc=0,trail=[],prevTip=null,tip3v=0,hit3=null;const DT=.0005;
 const hdv=()=>+document.querySelector('input[name=hands]:checked').value,wrv=()=>({fix:false,hold:'hold',snap:'snap'})[document.querySelector('input[name=wr]:checked').value],twv=()=>({arm:false,only:'only',both:'both'})[document.querySelector('input[name=tw]:checked').value],mode=()=>document.querySelector('input[name=mode]:checked').value,load=()=>({sword:{m:+$('#swM').value,c:+$('#swL').value/3,L:+$('#swL').value}});
 function swPose(){const s=sw.s,g=sw.g||Body3D.geo([s.x,s.q0,s.q1,s.q2,s.q4,s.q5,s.q6],load());J=Rg.swing3(g,s);}
-function swStart(k){stopAll();cam.position.set(3.4,1.5,1.4);ctl.update();sw=Body3D.makeBodySwing(load(),$('#swS').value/100,{mode:mode(),mu:+$('#swMu').value,twist:twv(),wrist:wrv(),hands:hdv(),snapDeg:$('#snapLate').checked?20:null,targetR:Body3D.TARGET_R});speedK=k;acc=0;trail=[];prevTip=null;hit3=null;tip3v=0;swPose();swOn=true;hitMark.visible=false;target.visible=true;
+function swStart(k){stopAll();cam.position.set(3.4,1.5,1.4);ctl.update();sw=Body3D.makeBodySwing(load(),$('#swS').value/100,{mode:mode(),mu:+$('#swMu').value,twist:twv(),wrist:wrv(),hands:hdv(),snapDeg:$('#snapLate').checked?20:null,targetR:Body3D.TARGET_R});speedK=k;acc=0;trail=[];prevTip=null;hit3=null;tip3v=0;swPose();rec=[];paused=false;swOn=true;hitMark.visible=false;target.visible=true;
  const T=sw.target,tp=Rg.m3([T.x,T.y,sw.two?0:-Body3D.T3.SH]);target.position.set(tp[0],0,tp[2]);target.getObjectByName('post').scale.y=tp[1];target.getObjectByName('post').position.y=tp[1]/2;target.getObjectByName('ball').position.y=tp[1];}
 function swTick(dt){acc+=dt*speedK;while(acc>=DT&&swOn){acc-=DT;const hadHit=!!sw.hit;sw.step(DT);swPose();
   // 3Dの剣先の速さ（3Dの座標で測る。平面の速さと同じになるはず）
   if(prevTip)tip3v=Math.hypot(J.tip[0]-prevTip[0],J.tip[1]-prevTip[1],J.tip[2]-prevTip[2])/DT;prevTip=J.tip;
   if(!hadHit&&sw.hit){hit3={v:tip3v,p:J.tip};hitMark.position.copy(V3(J.tip));hitMark.visible=true}
-  if(sw.t>2.5){swOn=false}}
+  rec.push({J:JSON.parse(JSON.stringify(J)),t:sw.t,phase:sw.phase,tip:tip3v});if(sw.t>2.5){swOn=false;scrubSync()}}
  const T=sw.target;target.position.z=(sw.hit?sw.hit.x:sw.s.x)+T.x;
  trail.push(V3(J.tip));if(trail.length>400)trail.shift();trailG.setFromPoints(trail);
  const a=sw.act||{},Jx=J,sh=Jx.rsh,el=Jx.relb,hd=Jx.rhand,pv=Jx.pelvis,ch=Jx.chest;
@@ -111,7 +124,7 @@ function swTick(dt){acc+=dt*speedK;while(acc>=DT&&swOn){acc-=DT;const hadHit=!!s
  put('up',off(sh,0,.05,0),lerp(sh,el,.4),-.04);put('down',off(sh,0,-.18,-.08),lerp(sh,el,.35),-.03);put('flex',lerp(sh,el,.15),lerp(el,hd,.2),-.05);put('ext',lerp(sh,el,.1),lerp(el,hd,-.1),-.02);
  if(sw.mode!=='なし'&&(sw.use||0)>.01){arrow.visible=true;arrow.position.set(J.lank[0],.02,J.lank[2]);arrow.setDirection(new THREE.Vector3(0,0,Math.sign(sw.F||1)));arrow.setLength(Math.min(.6,sw.use*.8),.08,.06);arrow.setColor(sw.slip?0xd0453f:0x3a9a55)}else arrow.visible=false;
  const D=180/Math.PI,act=Object.entries(a).filter(([k,v])=>typeof v==='number'&&v>.05).map(([k,v])=>NAMES[k]+' '+(v*100).toFixed(0)+'%').join('・');
- $('#status').textContent=`${swOn?'振っています':'終了'} ／ [${MN[sw.mode]}] 段階：${sw.phase} ／ 使っている筋肉：${act||'なし'} ／ 剣先 ${tip3v.toFixed(1)} m/s ／ ${sw.fail&&sw.fail.blew?'⚠ 計算が破たんしたので止めました（速さは記録しません。信用できない結果です）':sw.fail?'⚠ 足が滑って踏ん張れず失敗（速さは記録しません）':sw.hit?`目標物を打った瞬間の剣先 ${sw.hit.v.toFixed(1)} m/s（3Dで測っても ${hit3?hit3.v.toFixed(1):'-'} m/s）`:swOn?'':`外れ（目標物まで${gapTxt(Math.max(0,sw.minDist-Body3D.TARGET_R)).slice(2)}）`} ／ 体の前傾 ${(sw.s.q0*D).toFixed(0)}°・踏み込み ${(sw.s.x*100).toFixed(0)} cm・肩 ${(sw.s.q1*D).toFixed(0)}°・肘 ${(sw.s.q2*D).toFixed(0)}°・ひねり ${(sw.s.q4*D).toFixed(0)}°・手首 ${(sw.s.q5*D).toFixed(0)}°${sw.hit&&sw.hit.q5!=null?`（打つ瞬間 ${(sw.hit.q5*D).toFixed(0)}°）`:''}${sw.wrist==='hold'&&sw.wristDev>Body3D.W3.lostDeg?' ⚠ 手首が負けて剣先が下がった':''} ／ 床の摩擦の使用 ${((sw.use||0)*100).toFixed(0)}%（上限 ${(sw.mu*100).toFixed(0)}%）${sw.slip?' ⚠ 足が滑っています':''}`}
+ $('#status').textContent=`${swOn?'振っています':'終了'} ／ [${MN[sw.mode]}] 段階：${sw.phase} ／ 使っている筋肉：${act||'なし'} ／ 剣先 ${tip3v.toFixed(1)} m/s ／ ${sw.fail&&sw.fail.blew?'⚠ 計算が破たんしたので止めました（速さは記録しません。信用できない結果です）':sw.fail?'⚠ 足が滑って踏ん張れず失敗（速さは記録しません）':sw.hit?`目標物を打った瞬間の剣先 ${sw.hit.v.toFixed(1)} m/s（3Dで測っても ${hit3?hit3.v.toFixed(1):'-'} m/s）`:swOn?'':`外れ（目標物まで${gapTxt(Math.max(0,sw.minDist-Body3D.TARGET_R)).slice(2)}）`} ／ 体の前傾 ${(sw.s.q0*D).toFixed(0)}°・踏み込み ${(sw.s.x*100).toFixed(0)} cm・肩 ${(sw.s.q1*D).toFixed(0)}°・肘 ${(sw.s.q2*D).toFixed(0)}°・ひねり ${(sw.s.q4*D).toFixed(0)}°・手首 ${(sw.s.q5*D).toFixed(0)}°${sw.hit&&sw.hit.q5!=null?`（打つ瞬間 ${(sw.hit.q5*D).toFixed(0)}°）`:''}${sw.wrist==='hold'&&sw.wristDev>Body3D.W3.lostDeg?' ⚠ 手首が負けて剣先が下がった':''} ／ 床の摩擦の使用 ${((sw.use||0)*100).toFixed(0)}%（上限 ${(sw.mu*100).toFixed(0)}%）${sw.slip?(sw.hit?' ⚠ 打った後、剣を止める間に足が滑っています（打つ瞬間の速さには影響しません）':' ⚠ 足が滑っています'):''}${!sw.slip&&sw.slipAfterT>0?` ／ 打った後に足が滑った時間 ${sw.slipAfterT.toFixed(2)}秒`:''}`}
 const gapTxt=g=>g<.01?'あと1cm未満':`あと ${(g*100).toFixed(0)} cm`,wrTxt=r=>r.wristLost?`（手首が負けて剣先が下がった：最大${(r.wristDev*180/Math.PI).toFixed(0)}°）`:'';
 const NAMES={wc:'手首を倒す筋肉',wu:'手首を返す筋肉',wl:'手首（横）',wr:'手首（横）',tw:'腹斜筋など（ひねる）',tb:'ひねりを戻す筋肉',tf:'腹筋・腰の筋肉',te:'背筋',up:'三角筋',down:'広背筋・大胸筋',flex:'上腕二頭筋',ext:'上腕三頭筋'},MN={なし:'体幹なし',同時:'体幹あり・全部同時',連鎖:'腰→胸→肩→肘→手首',順番:'体幹あり・体が先→肩→肘'};
 function compare(){const out=['なし','同時','順番'].map(m=>{const r=Body3D.simulateBody(load(),$('#swS').value/100,{mode:m,mu:+$('#swMu').value,twist:m==='なし'?false:twv(),wrist:wrv(),hands:hdv(),snapDeg:$('#snapLate').checked?20:null,targetR:Body3D.TARGET_R});return `${MN[m]}${m==='なし'?'（足は床に固定）':''}：${r.fail?'足が滑って失敗':r.hit?r.hitV.toFixed(1)+' m/s':'外れ（'+gapTxt(r.gap)+'）'}`});
@@ -149,11 +162,35 @@ $('#swGo').onclick=()=>swStart(1);$('#swSlow').onclick=()=>swStart(.25);$('#swCm
 $('#wkGo').onclick=()=>{if(walking){stopAll();$('#status').textContent='止まりました';return}stopAll();cam.position.set(3.4,1.5,1.4);ctl.update();walking=true;wState={x:0,v:0};wPhase=0;$('#wkGo').textContent='止める'};
 $('#armT').onclick=()=>{stopAll();const st={q1:Math.PI/2,w1:0,q2:0,w2:0},h=Muscle.holdArm(st.q1,0,0);arm={st,aS:Math.min(1,h.shoulder),aE:0};cam.position.set(0,1.4,3);ctl.update()};
 $('#stand').onclick=()=>{stopAll();J=Rg.stand();$('#status').textContent='立っています'};
-$('#camSide').onclick=()=>{cam.position.set(3,1.3,ctl.target.z);ctl.update()};$('#camFront').onclick=()=>{cam.position.set(0,1.3,ctl.target.z+3);ctl.update()};
 for(const [id,f] of [['swM',1],['swL',2],['swS',0],['swMu',2],['wkV',1],['wkMu',2]]){const e=$('#'+id),o=$('#'+id+'o');e.oninput=()=>o.value=(+e.value).toFixed(f)}
+// ===== R10 絵を描くための道具 =====
+let rec=[],paused=false,recI=-1;
+function scrubSync(){const e=$('#scrub');e.max=Math.max(0,rec.length-1);if(recI<0||!paused)e.value=rec.length-1}
+function showRec(i){if(!rec.length)return;recI=Math.max(0,Math.min(rec.length-1,i));const r=rec[recI];J=JSON.parse(JSON.stringify(r.J));for(const b of Object.values(bands))b.visible=false;arrow.visible=false;$('#scrub').value=recI;$('#scrubO').textContent=`${r.t.toFixed(3)}秒 ／ 段階：${r.phase} ／ 剣先 ${r.tip.toFixed(1)} m/s`;render()}
+function pauseSw(on){paused=on;if(sw&&rec.length){if(on){swOn=false;showRec(rec.length-1)}else if(sw.t<=2.5){swOn=true;recI=-1}}$('#pause').textContent=paused?'続ける':'一時停止'}
+$('#pause').onclick=()=>pauseSw(!paused);
+$('#stepB').onclick=()=>{if(!paused)pauseSw(true);showRec((recI<0?rec.length-1:recI)-20)};
+$('#stepF').onclick=()=>{if(!paused)pauseSw(true);showRec((recI<0?rec.length-1:recI)+20)};
+$('#scrub').oninput=e=>{if(!paused)pauseSw(true);showRec(+e.target.value)};
+const camAt=(x,y,z)=>{const t=ctl.target;cam.position.set(t.x+x,t.y+y,t.z+z);ctl.update()};
+$('#camSide2').onclick=()=>camAt(3,.25,0);$('#camFront2').onclick=()=>camAt(0,.25,3);$('#camBack').onclick=()=>camAt(0,.25,-3);$('#camTop').onclick=()=>camAt(0,3.2,.01);$('#camLow').onclick=()=>camAt(.01,-.9,2.6);$('#camQ').onclick=()=>camAt(2.1,.5,2.1);
+function extras(){return [arrow,target,hitMark,trailL,...Object.values(bands)].filter(Boolean)}
+function shot(){const hide=$('#shotClean').checked,ex=extras(),vis=ex.map(o=>o.visible);if(hide)ex.forEach(o=>o.visible=false);render();R.render(S,cam);const url=R.domElement.toDataURL('image/png');ex.forEach((o,i)=>o.visible=vis[i]);
+ const a=document.createElement('a');a.href=url;a.download=`pose-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.png`;document.body.appendChild(a);a.click();a.remove();return url.length}
+$('#shot').onclick=shot;
+function poseData(){return {kind:'human-3d-pose',v:1,J:JSON.parse(JSON.stringify(J)),cam:{p:cam.position.toArray(),t:ctl.target.toArray()},note:sw?`${sw.phase} ${sw.t.toFixed(3)}秒`:''}}
+function applyPose(p){if(!p||p.kind!=='human-3d-pose'||!p.J||!p.J.tip&&!p.J.rsh)throw new Error('ポーズのファイルではありません');stopAll();J=p.J;if(p.cam){cam.position.fromArray(p.cam.p);ctl.target.fromArray(p.cam.t);ctl.update()}render();$('#status').textContent='ポーズを読み込みました'+(p.note?'（'+p.note+'）':'')}
+function poseListSync(){const L=JSON.parse(localStorage.getItem('h3dPoses')||'[]'),s=$('#poseList');s.innerHTML='<option value="">（このブラウザに保存したポーズ）</option>'+L.map((p,i)=>`<option value="${i}">${p.name}</option>`).join('')}
+$('#poseSave').onclick=()=>{const p=poseData(),name=(sw?`${sw.phase} ${(recI>=0&&rec[recI]?rec[recI].t:sw.t).toFixed(2)}秒`:'ポーズ')+' '+new Date().toLocaleTimeString();
+ const L=JSON.parse(localStorage.getItem('h3dPoses')||'[]');L.push({name,p});localStorage.setItem('h3dPoses',JSON.stringify(L.slice(-30)));poseListSync();
+ const a=document.createElement('a');a.href='data:application/json,'+encodeURIComponent(JSON.stringify(p));a.download='pose.json';document.body.appendChild(a);a.click();a.remove();$('#status').textContent='ポーズを保存しました（ファイルとこのブラウザの一覧）'};
+$('#poseList').onchange=e=>{if(e.target.value==='')return;const L=JSON.parse(localStorage.getItem('h3dPoses')||'[]');applyPose(L[+e.target.value].p)};
+$('#poseLoad').onclick=()=>$('#poseFile').click();
+$('#poseFile').onchange=e=>{const f=e.target.files[0];if(!f)return;f.text().then(t=>{try{applyPose(JSON.parse(t))}catch(err){$('#status').textContent='⚠ '+err.message}});e.target.value=''};
+poseListSync();
 let last=0;function tick(t){const dt=last?Math.min((t-last)/1000,1/20):0;last=t;if(swOn)swTick(dt);if(walking)wTick(dt);if(arm)armTick(dt);render();ctl.update();R.render(S,cam);requestAnimationFrame(tick)}
 render();requestAnimationFrame(tick);
-window.h3d={chCompare,hdCompare,wrCompare,twCompare,J:()=>J,sw:()=>sw&&{hit:sw.hit,fail:sw.fail,phase:sw.phase,minDist:sw.minDist,t:sw.t},hit3:()=>hit3,go:(m,L,s,mu,md,k=1,tw='arm',wr='snap',hd=2)=>{document.querySelector(`input[name=hands][value="${hd}"]`).checked=true;document.querySelector(`input[name=wr][value=${wr}]`).checked=true;document.querySelector(`input[name=tw][value=${tw}]`).checked=true;$('#swM').value=m;$('#swL').value=L;$('#swS').value=s;$('#swMu').value=mu;document.querySelector(`input[name=mode][value=${md}]`).checked=true;swStart(k)},compare,walk:()=>wState,arm:()=>arm&&arm.st,
+window.h3d={shot,poseData,applyPose,pauseSw,showRec,rec:()=>rec.length,chCompare,hdCompare,wrCompare,twCompare,J:()=>J,sw:()=>sw&&{hit:sw.hit,fail:sw.fail,phase:sw.phase,minDist:sw.minDist,t:sw.t},hit3:()=>hit3,go:(m,L,s,mu,md,k=1,tw='arm',wr='snap',hd=2)=>{document.querySelector(`input[name=hands][value="${hd}"]`).checked=true;document.querySelector(`input[name=wr][value=${wr}]`).checked=true;document.querySelector(`input[name=tw][value=${tw}]`).checked=true;$('#swM').value=m;$('#swL').value=L;$('#swS').value=s;$('#swMu').value=mu;document.querySelector(`input[name=mode][value=${md}]`).checked=true;swStart(k)},compare,walk:()=>wState,arm:()=>arm&&arm.st,
  run(sec){/* テスト用：画面を待たずに計算を進める */const n=Math.round(sec/DT);for(let i=0;i<n&&swOn;i++){acc=DT;swTick(0)}return {hit:sw.hit,hit3}}};
 </script>
 </body></html>
