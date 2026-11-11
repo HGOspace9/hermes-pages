@@ -201,12 +201,12 @@ function openCustom(){
 }
 function closeCustom(){$("custom").className="box sub";$("custom").innerHTML=""}
 
-// 比べるもの: k年前の同じ時期 / k=0 は「すぐ前の同じ長さ」
-const cmpName=c=>{if(c.k==0)return "すぐ前の同じ長さ";const y=+per.name.slice(0,4);
-  return per.kind=="s"?`${y-c.k} ${per.name.slice(-1)}`:per.kind=="f"?`${y-c.k}年度`:`${c.k}年前の同じ時期`};
+// 比べるもの: k年前の同じ時期（学期・年度はその名前、ほかは「○年の同じ時期」）
+const cmpName=c=>{const y=+per.name.slice(0,4);
+  return per.kind=="s"?`${y-c.k} ${per.name.slice(-1)}`:per.kind=="f"?`${y-c.k}年度`:`${Y0(per.a)-c.k}年の同じ時期`};
 // その期間に（売上の）記録が少しでもあるか
 const hasData=r=>{for(const k of Object.keys(SER.sales.months||{}))if(DN(k+"-01")<=r.b&&monthEnd(+k.slice(0,4),+k.slice(5,7))>=r.a)return true;return false};
-const cmpRange=c=>c.k==0?{a:per.a-(per.b-per.a+1),b:per.a-1}:{a:yearBack(per.a,c.k),b:yearBack(per.b,c.k)};
+const cmpRange=c=>({a:yearBack(per.a,c.k),b:yearBack(per.b,c.k)});
 const fmtR=r=>`${ISO(r.a).replace(/-/g,"/")}〜${ISO(r.a).slice(0,4)==ISO(r.b).slice(0,4)?ISO(r.b).slice(5).replace("-","/"):ISO(r.b).replace(/-/g,"/")}`;
 function render(){
   const all=[{name:per.name,r:per,fixed:true},...cmps.map(c=>({name:cmpName(c),r:cmpRange(c)}))];
@@ -218,9 +218,8 @@ function render(){
   // ＋比較: 記録のある「同じ時期」を年ごとに並べて選ぶ
   if($("add"))$("add").onclick=e=>{e.stopPropagation();const used=cmps.map(c=>c.k),items=[];
     for(let k=1;k<=10;k++){const r=cmpRange({k});if(r.b<FIRST)break;if(!used.includes(k)&&hasData(r))items.push({v:k,t:`${cmpName({k})}<span style="color:var(--sub);font-size:12px">　${fmtR(r)}</span>`})}
-    if(!used.includes(0)&&per.kind!="all"&&hasData(cmpRange({k:0})))items.push({hr:1},{v:0,t:"すぐ前の同じ長さ"});
     if(!items.length)items.push({h:"比べられる同じ時期の記録がありません"});
-    menu($("add"),[{h:"どの時期と比べる？"},...items],v=>{cmps.push({k:+v});render()})};
+    menu($("add"),[{h:"どの年の同じ時期と比べる？"},...items],v=>{cmps.push({k:+v});render()})};
   draw();
 }
 
