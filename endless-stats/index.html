@@ -131,16 +131,14 @@ function start(data){
   // 学期: 春=4/1〜7/31、秋=10/1〜翌1/31
   for(let y=Y0(FIRST)-1;y<=Y0(LAST);y++)for(const s of["春","秋"]){
     const a=s=="春"?Date.UTC(y,3,1)/864e5:Date.UTC(y,9,1)/864e5, b=s=="春"?Date.UTC(y,6,31)/864e5:Date.UTC(y+1,0,31)/864e5;
-    if(b>=FIRST&&a<=LAST)SEMS.push({a,b,name:`${y} ${s}`});
+    if(b>=FIRST&&b<=LAST)SEMS.push({a,b,name:`${y} ${s}`}); // 終わった学期だけ
   }
   // 年度: 4/1〜翌3/31
   for(let y=Y0(FIRST)-1;y<=Y0(LAST);y++){const a=Date.UTC(y,3,1)/864e5,b=Date.UTC(y+1,2,31)/864e5;if(b>=FIRST&&a<=LAST)FYS.push({a,b,name:`${y}年度`})}
-  const presets=[["d7","過去7日間"],["d30","過去30日間"],["d90","過去90日間"],["m12","過去12か月"],["all","はじめから全部"]];
-  const dayOK=k=>{for(let n=LAST-k+1;n<=LAST;n++)if(D[ISO(n)]!=null)return true;return false};
-  const off={d7:!dayOK(7),d30:!dayOK(30),d90:!dayOK(90)};
-  $("per").innerHTML=presets.map(([v,t])=>`<option value="${v}" ${off[v]?"disabled":""}>${t}${off[v]?"（日ごとの記録なし）":""}</option>`).join("")+
+  const presets=[["all","はじめから全部"]];
+  $("per").innerHTML=presets.map(([v,t])=>`<option value="${v}">${t}</option>`).join("")+
     `<optgroup label="年度（4月〜翌3月）">${FYS.map((s,i)=>`<option value="f${i}">${s.name}</option>`).reverse().join("")}</optgroup><optgroup label="学期">${SEMS.map((s,i)=>`<option value="s${i}">${s.name}</option>`).reverse().join("")}</optgroup><option value="custom">期間を指定…</option>`;
-  const first=off.d30?"m12":"d30";$("per").value=first;
+  const first=SEMS.length?"s"+(SEMS.length-1):"all";$("per").value=first;
   $("per").onchange=()=>{if($("per").value=="custom")openCustom();else{closeCustom();setPer($("per").value)}};
   cmps=[{k:1}];
   setPer(first);addEventListener("resize",draw);
