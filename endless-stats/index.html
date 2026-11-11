@@ -15,21 +15,33 @@ header h1{font-size:18px;margin:0;font-weight:700;letter-spacing:.04em}
 header .who{font-size:12px;opacity:.85}
 main{max-width:920px;margin:20px auto 40px;padding:0 16px}
 .box{background:#fff;border:1px solid var(--line);border-radius:10px}
+button{font-family:inherit}
 /* 比べるカード（Googleトレンドの上の段） */
 .cards{display:flex;flex-wrap:wrap;margin-bottom:14px;overflow:hidden}
-.card{flex:1 1 180px;min-width:150px;padding:16px 18px;border-right:1px solid var(--line);position:relative}
+.card{flex:1 1 200px;min-width:160px;padding:16px 34px 14px 18px;border:0;border-right:1px solid var(--line);position:relative;background:#fff;text-align:left;cursor:pointer;color:inherit}
+.card.on{background:#F4F8F5;box-shadow:inset 0 -3px 0 var(--g)}
 .card .dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:8px;vertical-align:-1px}
 .card .name{font-size:17px;font-weight:700}
-.card .kind{font-size:12px;color:var(--sub);margin-top:4px}
-.card select{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:16px}
-.card .x{position:absolute;right:8px;top:8px;border:0;background:none;color:var(--sub);font-size:18px;cursor:pointer;z-index:2;padding:2px 6px}
-.add{flex:1 1 150px;min-width:130px;padding:16px 18px;color:var(--g);font-weight:700;font-size:16px;cursor:pointer;position:relative;display:flex;align-items:center;gap:8px}
-.add select{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:16px}
+.card .kind{font-size:12px;color:var(--sub);margin-top:4px;display:flex;align-items:center;gap:4px}
+.card .x{position:absolute;right:6px;top:8px;border:0;background:none;color:var(--sub);font-size:18px;cursor:pointer;padding:2px 6px}
+.add{flex:1 1 140px;min-width:120px;padding:16px 18px;color:var(--g);font-weight:700;font-size:16px;cursor:pointer;border:0;background:#fff;display:flex;align-items:center;gap:8px}
 .add .plus{font-size:22px;line-height:1}
+/* 期間を選ぶ箱 */
+#edit{display:none;padding:16px 18px;margin:-6px 0 14px}
+#edit.open{display:block}
+#edit .ttl{font-size:14px;font-weight:700;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+#edit .range{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:15px}
+#edit select{font-size:16px;padding:8px 10px;border:1px solid #C9C9C0;border-radius:8px;background:#fff;font-family:inherit;color:inherit}
+#edit .quick{margin-top:12px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+#edit .quick span{font-size:12px;color:var(--sub);margin-right:4px}
+#edit .q{border:1px solid var(--line);background:var(--cream);border-radius:16px;padding:5px 12px;font-size:13px;cursor:pointer;color:inherit}
+#edit .q.on{background:var(--g);color:#fff;border-color:var(--g)}
+#edit .done{margin-left:auto;border:0;background:var(--g);color:#fff;border-radius:8px;padding:8px 16px;font-size:14px;cursor:pointer}
 /* 絞り込みの丸いボタン */
 .chips{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
 .chip{position:relative;display:flex;align-items:center;gap:10px;padding:9px 16px;border:1px solid #C9C9C0;border-radius:8px;background:#fff;font-size:15px}
-.chip svg{width:18px;height:18px;stroke:var(--text);fill:none;stroke-width:1.8}
+.chip svg,.kind svg{width:18px;height:18px;stroke:var(--text);fill:none;stroke-width:1.8}
+.kind svg{width:13px;height:13px;stroke:var(--sub)}
 .chip .tri{width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid var(--text);margin-left:4px}
 .chip select{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:16px}
 .panel{padding:18px 20px 14px}
@@ -45,9 +57,10 @@ main{max-width:920px;margin:20px auto 40px;padding:0 16px}
 #lock{max-width:360px;margin:60px auto;padding:28px 24px;text-align:center}
 #lock h2{font-size:17px;margin:0 0 4px;color:var(--g)}
 #lock input{width:100%;font-size:16px;padding:11px 12px;border:1px solid #C9C9C0;border-radius:8px;margin:14px 0 10px;font-family:inherit}
-#lock button{width:100%;font-size:15px;font-weight:700;padding:11px;border:0;border-radius:8px;background:var(--g);color:#fff;cursor:pointer;font-family:inherit}
+#lock button{width:100%;font-size:15px;font-weight:700;padding:11px;border:0;border-radius:8px;background:var(--g);color:#fff;cursor:pointer}
 #lock .err{color:#B7472A;font-size:13px;min-height:1.2em;margin-top:10px}
 #app{display:none}
+@media(max-width:560px){.card{flex-basis:100%;border-right:0;border-bottom:1px solid var(--line)}}
 svg text{font-family:inherit}
 </style></head><body>
 <header><h1>endores 統計</h1><div class="who">メンバー専用</div></header>
@@ -60,15 +73,16 @@ svg text{font-family:inherit}
  </div>
  <div id="app">
   <div class="box cards" id="cards"></div>
+  <div class="box" id="edit"></div>
   <div class="chips">
    <label class="chip"><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg><span>売上</span><span class="tri"></span>
-    <select id="what" aria-label="見るもの"><option value="sales">売上</option></select></label>
-   <label class="chip"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>月ごと</span><span class="tri"></span>
-    <select id="unit" aria-label="細かさ"><option value="m">月ごと</option></select></label>
+    <select aria-label="見るもの"><option>売上</option></select></label>
+   <label class="chip"><svg viewBox="0 0 24 24"><path d="M12 7v5l3 2"/><circle cx="12" cy="12" r="9"/></svg><span>月ごと</span><span class="tri"></span>
+    <select aria-label="細かさ"><option>月ごと</option></select></label>
   </div>
   <div class="box panel">
    <h2>時間の流れ<span class="badge" id="badge" hidden>仮の数字</span></h2>
-   <p class="hint">線にふれると、その月の金額が出ます</p>
+   <p class="hint">カードを押すと「何月から何月まで」を変えられます。線にふれると、その月の金額が出ます</p>
    <div id="chart"></div>
    <div class="note">春＝4〜7月　秋＝10〜翌1月</div>
   </div>
@@ -89,57 +103,86 @@ $("f").onsubmit=async e=>{
   try{start(await unlock($("pw").value))}catch(_){$("err").textContent="パスワードが違います"}
 };
 
+// 月は「通し番号」で扱う: n = 年*12 + (月-1)
+const N=(y,m)=>y*12+m-1, Y=n=>Math.floor(n/12), M=n=>n%12+1;
+const key=n=>`${Y(n)}-${String(M(n)).padStart(2,"0")}`;
+const jp=n=>`${Y(n)}年${M(n)}月`;
 // 学期: 春=4〜7月、秋=10〜翌1月
-const SEM={春:[[0,4],[0,5],[0,6],[0,7]],秋:[[0,10],[0,11],[0,12],[1,1]]};
+const semOf=(y,s)=>s=="春"?{a:N(y,4),b:N(y,7)}:{a:N(y,10),b:N(y+1,1)};
 const COLORS=["var(--c1)","var(--c2)","var(--c3)"], MAX=3;
-let D,ALL=[],picked=[];
-const mk=(y,m)=>`${y}-${String(m).padStart(2,"0")}`;
-const vals=t=>SEM[t.s].map(([dy,m])=>D.months[mk(t.y+dy,m)]??null);
-const name=t=>`${t.y} ${t.s}`;
+let D,MONTHS=[],SEMS=[],picked=[],editing=-1;
+const val=n=>D.months[key(n)]??null;
+function semName(p){for(const t of SEMS)if(t.a==p.a&&t.b==p.b)return t.name;return null}
+function label(p){return semName(p)||(Y(p.a)==Y(p.b)?`${Y(p.a)}年${M(p.a)}〜${M(p.b)}月`:`${jp(p.a)}〜${jp(p.b)}`)}
+const len=p=>p.b-p.a+1;
+
 function start(data){
   D=data;$("lock").style.display="none";$("app").style.display="block";
   $("badge").hidden=!/仮/.test(D.note||"");
-  const ys=[...new Set(Object.keys(D.months).map(k=>+k.slice(0,4)))].sort();
-  for(const y of ys)for(const s of["春","秋"]){const t={y,s};if(vals(t).some(v=>v!=null))ALL.push(t)}
-  const last=ALL[ALL.length-1], prev=ALL.find(t=>t.y==last.y-1&&t.s==last.s);
-  picked=prev?[last,prev]:[last];
+  const ns=Object.keys(D.months).map(k=>N(+k.slice(0,4),+k.slice(5,7))).sort((a,b)=>a-b);
+  for(let y=Y(ns[0])-1;y<=Y(ns[ns.length-1]);y++)for(const s of["春","秋"]){
+    const p=semOf(y,s);let has=false;for(let n=p.a;n<=p.b;n++)if(val(n)!=null)has=true;
+    if(has)SEMS.push({...p,name:`${y} ${s}`});
+  }
+  for(let n=Math.min(ns[0],SEMS[0].a);n<=Math.max(ns[ns.length-1],SEMS[SEMS.length-1].b);n++)MONTHS.push(n);
+  const last=SEMS[SEMS.length-1];
+  picked=[{a:last.a,b:last.b},{a:last.a-12,b:last.b-12}];
   render();addEventListener("resize",draw);
 }
-function opts(sel){return ALL.map((t,i)=>`<option value="${i}" ${sel===t?"selected":""}>${name(t)}</option>`).join("")}
 function render(){
-  let h=picked.map((t,i)=>`<div class="card"><span class="dot" style="background:${COLORS[i]}"></span><span class="name">${name(t)}</span><div class="kind">学期</div>
-    <select data-i="${i}" aria-label="学期を選ぶ">${opts(t)}</select>${picked.length>1?`<button class="x" data-x="${i}" aria-label="外す">×</button>`:""}</div>`).join("");
-  if(picked.length<MAX)h+=`<label class="add"><span class="plus">＋</span>比較<select id="addSel" aria-label="比べる学期を足す"><option value="" selected disabled>学期を選ぶ</option>${opts(null)}</select></label>`;
+  const cal=`<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>`;
+  let h=picked.map((p,i)=>`<button class="card ${editing==i?"on":""}" data-i="${i}"><span class="dot" style="background:${COLORS[i]}"></span><span class="name">${label(p)}</span>
+    <div class="kind">${cal}${len(p)}か月　▾ 期間を変える</div>${picked.length>1?`<span class="x" data-x="${i}" role="button" aria-label="外す">×</span>`:""}</button>`).join("");
+  if(picked.length<MAX)h+=`<button class="add" id="add"><span class="plus">＋</span>比較</button>`;
   $("cards").innerHTML=h;
-  $("cards").querySelectorAll("select[data-i]").forEach(s=>s.onchange=()=>{picked[s.dataset.i]=ALL[s.value];render()});
-  $("cards").querySelectorAll("[data-x]").forEach(b=>b.onclick=e=>{e.preventDefault();picked.splice(b.dataset.x,1);render()});
-  if($("addSel"))$("addSel").onchange=e=>{picked.push(ALL[e.target.value]);render()};
-  draw();
+  $("cards").querySelectorAll(".card").forEach(c=>c.onclick=e=>{
+    if(e.target.dataset.x!=null){picked.splice(+e.target.dataset.x,1);editing=-1}
+    else editing=editing==+c.dataset.i?-1:+c.dataset.i;
+    render()});
+  if($("add"))$("add").onclick=()=>{const p=picked[picked.length-1];picked.push({a:p.a-12,b:p.b-12});editing=picked.length-1;render()};
+  renderEdit();draw();
+}
+function renderEdit(){
+  const el=$("edit");if(editing<0){el.className="box";el.innerHTML="";return}
+  const p=picked[editing], o=sel=>MONTHS.map(n=>`<option value="${n}" ${n==sel?"selected":""}>${jp(n)}</option>`).join("");
+  el.className="box open";
+  el.innerHTML=`<p class="ttl"><span class="dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${COLORS[editing]}"></span>期間を選ぶ</p>
+   <div class="range"><select id="ea" aria-label="いつから">${o(p.a)}</select>から<select id="eb" aria-label="いつまで">${o(p.b)}</select>まで
+   <button class="done" id="ed">決める</button></div>
+   <div class="quick"><span>学期</span>${SEMS.map((t,i)=>`<button class="q ${t.a==p.a&&t.b==p.b?"on":""}" data-s="${i}">${t.name}</button>`).join("")}</div>`;
+  const set=(a,b)=>{if(a>b)[a,b]=[b,a];picked[editing]={a,b};render()};
+  $("ea").onchange=()=>set(+$("ea").value,picked[editing].b);
+  $("eb").onchange=()=>set(picked[editing].a,+$("eb").value);
+  el.querySelectorAll("[data-s]").forEach(b=>b.onclick=()=>{const t=SEMS[b.dataset.s];set(t.a,t.b)});
+  $("ed").onclick=()=>{editing=-1;render()};
 }
 function draw(){
   const box=$("chart"), W=Math.max(320,Math.min(880,box.clientWidth||880)), H=W<520?260:320;
   const L=W<520?56:72,R=W-(W<520?34:40),T=16,B=H-40;
-  const series=picked.map(vals), all=series.flat().filter(v=>v!=null);
+  const n=Math.max(...picked.map(len));
+  const series=picked.map(p=>Array.from({length:n},(_,i)=>i<len(p)?val(p.a+i):null));
+  const all=series.flat().filter(v=>v!=null);
   const max=Math.max(1,...all), step=nice(max/4), top=Math.ceil(max/step)*step;
-  const sameSeason=picked.every(t=>t.s==picked[0].s);
-  const labels=sameSeason?SEM[picked[0].s].map(([,m])=>m+"月"):["1か月目","2か月目","3か月目","4か月目"];
-  const x=i=>L+(R-L)*(i/3), y=v=>B-(v/top)*(B-T);
+  const sameMonths=picked.every(p=>M(p.a)==M(picked[0].a)&&len(p)==len(picked[0]));
+  const labels=Array.from({length:n},(_,i)=>sameMonths?M(picked[0].a+i)+"月":(i+1)+"か月目");
+  const x=i=>n==1?(L+R)/2:L+(R-L)*(i/(n-1)), y=v=>B-(v/top)*(B-T);
+  const every=Math.ceil(n/(W<520?5:10));
   let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="月ごとの売上の比較">`;
   for(let v=0;v<=top;v+=step)s+=`<line x1="${L}" x2="${R}" y1="${y(v)}" y2="${y(v)}" stroke="${v?"#ECECE4":"#B9B9B0"}"/><text x="${L-10}" y="${y(v)+4}" font-size="12" fill="#7A7F7C" text-anchor="end">${v.toLocaleString()}</text>`;
-  labels.forEach((l,i)=>s+=`<text x="${x(i)}" y="${B+24}" font-size="13" fill="#434343" text-anchor="middle">${l}</text>`);
+  labels.forEach((l,i)=>{if(i%every==0)s+=`<text x="${x(i)}" y="${B+24}" font-size="13" fill="#434343" text-anchor="middle">${l}</text>`});
   series.slice().reverse().forEach((vs,ri)=>{const i=series.length-1-ri;
     let d="",pen=false;vs.forEach((v,j)=>{if(v==null){pen=false;return}d+=(pen?"L":"M")+x(j)+","+y(v);pen=true});
     s+=`<path d="${d}" fill="none" stroke="${COLORS[i]}" stroke-width="${i?2.5:3.5}" stroke-linejoin="round" stroke-linecap="round"/>`;
-    vs.forEach((v,j)=>{if(v!=null)s+=`<circle cx="${x(j)}" cy="${y(v)}" r="${i?3.5:4.5}" fill="${COLORS[i]}"/>`});
+    if(n<=16)vs.forEach((v,j)=>{if(v!=null)s+=`<circle cx="${x(j)}" cy="${y(v)}" r="${i?3.5:4.5}" fill="${COLORS[i]}"/>`});
   });
   s+=`<line id="cur" y1="${T}" y2="${B}" stroke="#B9B9B0" stroke-dasharray="3 3" visibility="hidden"/>`;
-  labels.forEach((l,i)=>s+=`<rect data-j="${i}" x="${x(i)-(R-L)/6}" y="${T}" width="${(R-L)/3}" height="${B-T}" fill="transparent"/>`);
+  const cw=n==1?(R-L):(R-L)/(n-1);
+  labels.forEach((l,i)=>s+=`<rect data-j="${i}" x="${x(i)-cw/2}" y="${T}" width="${cw}" height="${B-T}" fill="transparent"/>`);
   box.innerHTML=s+`</svg><div id="tip"></div>`;
   const svg=box.querySelector("svg"),tip=$("tip"),cur=svg.querySelector("#cur");
   const show=j=>{
     cur.setAttribute("x1",x(j));cur.setAttribute("x2",x(j));cur.setAttribute("visibility","visible");
-    tip.innerHTML=`<b>${labels[j]}</b>`+picked.map((t,i)=>{const [dy,m]=SEM[t.s][j];const v=series[i][j];
-      return `<div><i style="background:${COLORS[i]}"></i>${t.y+dy}年${m}月　${v==null?"―":v.toLocaleString()+"円"}</div>`}).join("");
+    tip.innerHTML=`<b>${labels[j]}</b>`+picked.map((p,i)=>j<len(p)?`<div><i style="background:${COLORS[i]}"></i>${jp(p.a+j)}　${series[i][j]==null?"―":series[i][j].toLocaleString()+"円"}</div>`:"").join("");
     tip.style.display="block";const k=box.clientWidth/W, px=x(j)*k;
     tip.style.left=Math.min(Math.max(0,px+12),box.clientWidth-tip.offsetWidth)+"px";tip.style.top=(T*k+4)+"px";
   };
