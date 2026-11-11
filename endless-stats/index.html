@@ -47,7 +47,13 @@ button{font-family:inherit}
 .panel h2 small{font-size:12px;color:var(--sub);font-weight:400}
 .badge{font-size:11px;color:#fff;background:#B7472A;border-radius:3px;padding:2px 6px;font-weight:400}
 .hint{font-size:12px;color:var(--sub);margin:0 0 6px}
-#chart{position:relative}
+#chart,#sc{position:relative}
+#ctip{position:absolute;pointer-events:none;background:#fff;border:1px solid var(--line);border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.12);padding:8px 10px;font-size:13px;display:none;white-space:nowrap;z-index:3}
+.cpanel{margin-top:14px}
+.chips.in{margin:10px 0 8px}
+.chips .lab{font-size:13px;color:var(--sub);align-self:center}
+.strength{font-size:18px;font-weight:700;margin:6px 0 2px}
+.strength small{font-size:12px;color:var(--sub);font-weight:400;margin-left:8px}
 #tip{position:absolute;pointer-events:none;background:#fff;border:1px solid var(--line);border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.12);padding:8px 10px;font-size:13px;display:none;white-space:nowrap;z-index:3}
 #tip b{display:block;margin-bottom:4px}
 #tip i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
@@ -91,6 +97,17 @@ svg text{font-family:inherit}
    <p class="hint"><span id="hintW">線</span>にふれると数字が出ます。休みの日は省き、長い休みは <b>≈</b> で飛ばしています</p>
    <div id="chart"></div>
    <div class="note" id="mnote"></div><div class="note" id="upto"></div>
+  </div>
+  <div class="box panel cpanel">
+   <h2>2つの関係<small>（相関）期間は上で選んだもの</small></h2>
+   <div class="chips in">
+    <span class="lab">横</span><button class="chip" id="cxB" aria-label="横の項目"><span id="cxL"></span><span class="tri"></span></button>
+    <span class="lab">縦</span><button class="chip" id="cyB" aria-label="縦の項目"><span id="cyL"></span><span class="tri"></span></button>
+   </div>
+   <div class="strength" id="cstr"></div>
+   <p class="hint" id="chint"></p>
+   <div id="sc"></div>
+   <div class="note">※関係が強くても、片方が原因とは限りません（例: 暑い月は学期の終わりでもある）</div>
   </div>
  </div>
 </main>
@@ -141,7 +158,7 @@ function start(data){
   $("badge").hidden=!/仮/.test(data.note||"");
   SER=data.series||{sales:{label:"売上",unit:"円",months:data.months,days:data.days}};
   setMeasure("sales");
-  $("whatB").onclick=e=>{e.stopPropagation();menu($("whatB"),Object.entries(SER).map(([k,v])=>({v:k,t:v.label,on:k==CUR})),k=>{setMeasure(k);render()})};
+  $("whatB").onclick=e=>{e.stopPropagation();menu($("whatB"),Object.entries(SER).filter(([k,v])=>!v.env).map(([k,v])=>({v:k,t:v.label,on:k==CUR})),k=>{setMeasure(k);render()})};
   const ks=Object.keys(D).sort(), ms=Object.keys(MO).sort();
   DF=ks.length?DN(ks[0]):Infinity;DL=ks.length?DN(ks[ks.length-1]):-Infinity;
   FIRST=Math.min(DF,DN(ms[0]+"-01"));
@@ -163,6 +180,9 @@ function start(data){
     v=>{if(v=="custom")openCustom();else{closeCustom();setPer(v)}})};
   const first=SEMS.length?"s"+(SEMS.length-1):"all";
   cmps=[{k:1}];
+  const cpick=(btn,key)=>e=>{e.stopPropagation();const L=(f)=>Object.entries(SER).filter(([k,v])=>f(v)).map(([k,v])=>({v:k,t:v.label+(v.unit=="円"||v.unit=="杯"?"":`（${v.unit}）`),on:k==C[key]}));
+    menu($(btn),[{h:"お店の数字"},...L(v=>!v.env),{h:"まわりの様子"},...L(v=>v.env)],v=>{C[key]=v;drawCorr()})};
+  $("cxB").onclick=cpick("cxB","x");$("cyB").onclick=cpick("cyB","y");
   setPer(first);addEventListener("resize",draw);
 }
 // 見るもの（売上・純利益など）を切り替える。日ごとの記録が無いものは月ごとだけ
@@ -250,6 +270,7 @@ function points(r,u){
   return ps;
 }
 function draw(){
+  drawCorr();
   const ranges=[per,...cmps.map(cmpRange)], u=unitFor(ranges);
   $("unitL").textContent={d:"日ごと",w:"週ごと",m:"月ごと"}[u]+(u!="m"&&DNOTE?"（推定）":""); const S=ranges.map(r=>points(r,u)), P=S[0];
   // 月ごとの時は、比べる線を「期間の何か月目か」でそろえる（記録の無い月があってもずれないように）
@@ -315,6 +336,48 @@ function draw(){
   };
   svg.querySelectorAll("rect[data-j]").forEach(r=>{r.onmouseenter=r.onclick=()=>show(+r.dataset.j)});
   svg.onmouseleave=()=>{tip.style.display="none";cur.setAttribute("visibility","hidden")};
+}
+// ---- 2つの関係（相関）: 同じ日（または月）の2つの数字を点にする ----
+const C={x:"temp",y:"sales"};
+function drawCorr(){
+  if(!SER[C.x])C.x=Object.keys(SER).find(k=>SER[k].env)||"cups";
+  const X=SER[C.x],Y=SER[C.y];$("cxL").textContent=X.label;$("cyL").textContent=Y.label;
+  // 期間が4か月くらいまでで、日ごとの記録が両方に5日以上あれば日ごと。ほかは月ごと
+  let pts=[];
+  if(per.b-per.a<=130)for(let n=per.a;n<=per.b;n++){const k=ISO(n),a=(X.days||{})[k],b=(Y.days||{})[k];if(a!=null&&b!=null)pts.push({lab:ymd(n),x:a,y:b})}
+  let unit="日";
+  if(pts.length<5){unit="か月";pts=[];const d0=DT(per.a),d1=DT(per.b);
+    for(let k=d0.getUTCFullYear()*12+d0.getUTCMonth();k<=d1.getUTCFullYear()*12+d1.getUTCMonth();k++){
+      const ym=`${Math.floor(k/12)}-${String(k%12+1).padStart(2,"0")}`,a=(X.months||{})[ym],b=(Y.months||{})[ym];
+      if(a!=null&&b!=null)pts.push({lab:`${Math.floor(k/12)}年${k%12+1}月`,x:a,y:b})}}
+  const box=$("sc"),n=pts.length;
+  if(n<2){$("cstr").textContent="";$("chint").textContent="";box.innerHTML=`<p style="text-align:center;color:var(--sub);padding:40px 0">この期間に、2つがそろった記録がありません</p>`;return}
+  // 相関の強さ（ピアソンの r）と、まっすぐな傾きの線
+  const mx=pts.reduce((a,p)=>a+p.x,0)/n,my=pts.reduce((a,p)=>a+p.y,0)/n;
+  let sxy=0,sxx=0,syy=0;pts.forEach(p=>{sxy+=(p.x-mx)*(p.y-my);sxx+=(p.x-mx)**2;syy+=(p.y-my)**2});
+  const r=sxx&&syy?sxy/Math.sqrt(sxx*syy):0,ar=Math.abs(r);
+  const word=ar>=.7?"強い":ar>=.4?"中くらい":ar>=.2?"弱い":"ほとんど無い";
+  const dir=ar<.2?"":r>0?"（片方が増えると、もう片方も増える）":"（片方が増えると、もう片方は減る）";
+  $("cstr").innerHTML=`関係: ${word}${dir}<small>r＝${r.toFixed(2)}・点${n}個</small>`;
+  $("chint").textContent=`点1つ＝1${unit}。点にふれると中身が出ます`+(n<6?"。点が少ないので、強さはあてになりません":"");
+  const W=Math.max(320,Math.min(880,box.clientWidth||880)),H=W<520?260:300,L=W<520?56:72,R=W-20,T=26,B=H-44;
+  const ax=v=>{const lo=Math.min(...v),hi=Math.max(...v),st=nice((hi-lo||Math.abs(hi)||1)/4);return{lo:Math.floor(lo/st)*st,hi:Math.ceil(hi/st)*st||st,st}};
+  const gx=ax(pts.map(p=>p.x)),gy=ax(pts.map(p=>p.y));if(gx.hi==gx.lo)gx.hi+=gx.st;if(gy.hi==gy.lo)gy.hi+=gy.st;
+  const x=v=>L+(v-gx.lo)/(gx.hi-gx.lo)*(R-L),y=v=>B-(v-gy.lo)/(gy.hi-gy.lo)*(B-T);
+  const f=v=>Math.abs(v)>=1000?Math.round(v).toLocaleString():+v.toFixed(1)+"";
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="2つの関係">`;
+  for(let v=gy.lo;v<=gy.hi+1e-9;v+=gy.st)s+=`<line x1="${L}" x2="${R}" y1="${y(v)}" y2="${y(v)}" stroke="#ECECE4"/><text x="${L-10}" y="${y(v)+4}" font-size="12" fill="#7A7F7C" text-anchor="end">${f(v)}</text>`;
+  for(let v=gx.lo;v<=gx.hi+1e-9;v+=gx.st)s+=`<text x="${x(v)}" y="${B+20}" font-size="12" fill="#7A7F7C" text-anchor="middle">${f(v)}</text>`;
+  s+=`<text x="${L-10}" y="${T-14}" font-size="11" fill="#7A7F7C" text-anchor="end">${Y.unit}</text><line x1="${L}" x2="${R}" y1="${B}" y2="${B}" stroke="#B9B9B0"/><text x="${(L+R)/2}" y="${B+38}" font-size="12.5" fill="#434343" text-anchor="middle">${X.label}（${X.unit}）→</text>`;
+  if(n>=3&&sxx){const b=sxy/sxx,a=my-b*mx;s+=`<line x1="${x(gx.lo)}" y1="${y(a+b*gx.lo)}" x2="${x(gx.hi)}" y2="${y(a+b*gx.hi)}" stroke="#8C9A93" stroke-width="1.5" stroke-dasharray="5 4"/>`}
+  s=s.replace("<svg ",`<svg `);
+  pts.forEach((p,i)=>s+=`<circle data-i="${i}" cx="${x(p.x)}" cy="${y(p.y)}" r="${n>40?4:5.5}" fill="var(--c1)" opacity=".75"/>`);
+  box.innerHTML=s+`</svg><div id="ctip"></div>`;
+  const tip=$("ctip");
+  box.querySelectorAll("circle").forEach(c=>{c.onmouseenter=c.onclick=()=>{const p=pts[c.dataset.i],k=box.clientWidth/W;
+    tip.innerHTML=`<b>${p.lab}</b><div>${X.label}　${f(p.x)}${X.unit}</div><div>${Y.label}　${f(p.y)}${Y.unit}</div>`;tip.style.display="block";
+    const px=+c.getAttribute("cx")*k;tip.style.left=(px+12+tip.offsetWidth>box.clientWidth?px-12-tip.offsetWidth:px+12)+"px";tip.style.top=(+c.getAttribute("cy")*k-10)+"px"}});
+  box.querySelector("svg").onmouseleave=()=>tip.style.display="none";
 }
 function nice(x){const p=10**Math.floor(Math.log10(x)),n=x/p;return (n<=1?1:n<=2?2:n<=5?5:10)*p}
 </script>
