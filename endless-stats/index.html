@@ -83,6 +83,7 @@ svg text{font-family:inherit}
   <div class="chips">
    <button class="chip" id="whatB" aria-label="見るもの"><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg><span id="whatL">売上</span><span class="tri"></span></button>
    <button class="chip" id="perB" aria-label="期間"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span id="perL"></span><span class="tri"></span></button>
+   <button class="chip" id="kindB" aria-label="グラフの種類"><svg viewBox="0 0 24 24"><path d="M3 17l5-6 4 3 7-8"/><path d="M3 21h18"/></svg><span id="kindL">おまかせ</span><span class="tri"></span></button>
   </div>
   <div class="box sub" id="custom"></div>
   <div class="box panel">
@@ -120,7 +121,9 @@ const yearBack=(n,k)=>{const d=DT(n),y=d.getUTCFullYear()-k,m=d.getUTCMonth(),la
 const COLORS=["var(--c1)","var(--c2)","var(--c3)"], MAX=3;
 let SER,CUR="sales",FYS=[],D,MO,DNOTE,FIRST,LAST,DF,DL,SEMS=[],per,cmps=[],editing=-1;
 const monthEnd=(y,m)=>Date.UTC(y,m,0)/864e5; // m=1..12 の月末
-let PERV="all";
+let PERV="all",KIND="auto";
+// グラフの種類: おまかせ＝点が8個以下なら棒、多いと折れ線
+const KINDS=[["auto","おまかせ"],["line","折れ線グラフ"],["bar","棒グラフ"],["area","面グラフ（線の下をぬる）"],["dot","点グラフ（点だけ）"]];
 // items: [{h:"見出し"}|{hr:1}|{v,t,on}]  押した物を pick(v) に渡す
 function menu(anchor,items,pick){
   closeMenu();const m=document.createElement("div");m.className="menu";m.id="menu";
@@ -152,6 +155,7 @@ function start(data){
   // 年度: 4/1〜翌3/31
   for(let y=Y0(FIRST)-1;y<=Y0(LAST);y++){const a=Date.UTC(y,3,1)/864e5,b=Date.UTC(y+1,2,31)/864e5;if(b>=FIRST&&a<=LAST)FYS.push({a,b,name:`${y}年度`})}
   // 期間の選び箱: 学期 → 年度 → はじめから全部・期間を指定（下に開く）
+  $("kindB").onclick=e=>{e.stopPropagation();menu($("kindB"),KINDS.map(([v,t])=>({v,t,on:v==KIND})),v=>{KIND=v;$("kindL").textContent=KINDS.find(k=>k[0]==v)[1].replace(/（.*）/,"");draw()})};
   $("perB").onclick=e=>{e.stopPropagation();menu($("perB"),[
     {h:"学期（春＝4〜7月・秋＝10〜翌1月）"},...SEMS.map((t,i)=>({v:"s"+i,t:t.name,on:PERV=="s"+i})).reverse(),
     {h:"年度（4月〜翌3月）"},...FYS.map((t,i)=>({v:"f"+i,t:t.name,on:PERV=="f"+i})).reverse(),
@@ -259,12 +263,12 @@ function draw(){
   if(!P.length){box.innerHTML=`<p style="text-align:center;color:var(--sub);padding:60px 0">この期間の「${SER[CUR].label}」の記録はありません</p>`;return}
   const all=Sv.flat().map(p=>p.v), max=Math.max(1,...all), mn=Math.min(0,...all), step=nice((max-mn)/4), top=Math.ceil(max/step)*step, bot=Math.floor(mn/step)*step;
   // 点が8個以下なら棒グラフ（折れ線だとスカスカで見づらい）
-  const BAR=n<=8;
+  const BAR=KIND=="bar"||(KIND=="auto"&&n<=8), AREA=KIND=="area", DOT=KIND=="dot";
   const G=4*W/Math.max(1,box.clientWidth||W), isGap=j=>!!(P[j]&&P[j].gap), ng=P.filter(p=>p.gap).length;
   const unit=BAR?(R-L-ng*G)/n:n==1?0:(R-L-ng*G)/Math.max(1,n-1-ng), XS=[BAR?L+unit/2:L];
   for(let j=1;j<n;j++)XS.push(XS[j-1]+(isGap(j)?G+(BAR?unit:0):unit));
   const x=i=>!BAR&&n==1?(L+R)/2:XS[i], y=v=>B-((v-bot)/(top-bot))*(B-T);
-  $("hintW").textContent=BAR?"棒":"線";
+  $("hintW").textContent=BAR?"棒":DOT?"点":"線";
   let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="売上の流れ">`;
   for(let v=bot;v<=top;v+=step)s+=`<line x1="${L}" x2="${R}" y1="${y(v)}" y2="${y(v)}" stroke="${v?"#ECECE4":"#B9B9B0"}"/><text x="${L-10}" y="${y(v)+4}" font-size="12" fill="#7A7F7C" text-anchor="end">${v.toLocaleString()}</text>`;
   // 横の目盛り（間引く）
@@ -292,10 +296,11 @@ function draw(){
   // 線（休みのところで切る）
   if(!BAR)S.slice().reverse().forEach((ps,ri)=>{const i=S.length-1-ri;let d="";
     ps.forEach((p,j)=>{if(!p)return;d+=(j==0||p.gap||!ps[j-1]?"M":"L")+x(j)+","+y(p.v)});
-    if(i==0){let seg=[];const flush=()=>{if(seg.length>1)s+=`<path d="M${seg[0].split(",")[0]},${y(0)}L${seg.join("L")}L${seg[seg.length-1].split(",")[0]},${y(0)}Z" fill="${COLORS[0]}" opacity=".07"/>`;seg=[]};
-      ps.forEach((p,j)=>{if(p.gap)flush();seg.push(x(j)+","+y(p.v))});flush()}
-    s+=`<path d="${d}" fill="none" stroke="${COLORS[i]}" stroke-width="${i?1.8:2.6}" ${i?'opacity=".8"':''} stroke-linejoin="round" stroke-linecap="round"/>`;
-    if(n<=14)ps.forEach((p,j)=>p&&(s+=`<circle cx="${x(j)}" cy="${y(p.v)}" r="${i?2.6:3.6}" fill="${COLORS[i]}"/>`));
+    // 線の下の面: 面グラフなら全部の線、ふだんは今の期間だけうすく
+    if(!DOT&&(i==0||AREA)){let seg=[];const flush=()=>{if(seg.length>1)s+=`<path d="M${seg[0].split(",")[0]},${y(0)}L${seg.join("L")}L${seg[seg.length-1].split(",")[0]},${y(0)}Z" fill="${COLORS[i]}" opacity="${AREA?.16:.07}"/>`;seg=[]};
+      ps.forEach((p,j)=>{if(!p||p.gap)flush();if(p)seg.push(x(j)+","+y(p.v))});flush()}
+    if(!DOT)s+=`<path d="${d}" fill="none" stroke="${COLORS[i]}" stroke-width="${i?1.8:2.6}" ${i?'opacity=".8"':''} stroke-linejoin="round" stroke-linecap="round"/>`;
+    if(DOT||(!AREA&&n<=14))ps.forEach((p,j)=>p&&(s+=`<circle cx="${x(j)}" cy="${y(p.v)}" r="${DOT?(i?3.4:4.4):(i?2.6:3.6)}" fill="${COLORS[i]}"/>`));
   });
   s+=`<line id="cur" y1="${T}" y2="${B}" stroke="#B9B9B0" stroke-dasharray="3 3" visibility="hidden"/>`;
   for(let i=0;i<n;i++){const l=BAR?x(i)-unit/2:n==1?L:x(i)-half(i),r=BAR?x(i)+unit/2:n==1?R:i==n-1?x(i):x(i)+half(i+1);s+=`<rect data-j="${i}" x="${l}" y="${T}" width="${Math.max(1,r-l)}" height="${B-T}" fill="transparent"/>`}
