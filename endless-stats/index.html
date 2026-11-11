@@ -113,7 +113,7 @@ const md=n=>{const d=DT(n);return `${d.getUTCMonth()+1}/${d.getUTCDate()}`};
 const ymd=n=>{const d=DT(n);return `${d.getUTCFullYear()}年${d.getUTCMonth()+1}月${d.getUTCDate()}日(${WD[d.getUTCDay()]})`};
 const yearBack=(n,k)=>{const d=DT(n),y=d.getUTCFullYear()-k,m=d.getUTCMonth(),last=new Date(Date.UTC(y,m+1,0)).getUTCDate();return Date.UTC(y,m,Math.min(d.getUTCDate(),last))/864e5};
 const COLORS=["var(--c1)","var(--c2)","var(--c3)"], MAX=3;
-let D,MO,DNOTE,FIRST,LAST,DF,DL,SEMS=[],per,cmps=[],editing=-1;
+let FYS=[],D,MO,DNOTE,FIRST,LAST,DF,DL,SEMS=[],per,cmps=[],editing=-1;
 const monthEnd=(y,m)=>Date.UTC(y,m,0)/864e5; // m=1..12 の月末
 
 function start(data){
@@ -131,11 +131,13 @@ function start(data){
     const a=s=="春"?Date.UTC(y,3,1)/864e5:Date.UTC(y,9,1)/864e5, b=s=="春"?Date.UTC(y,6,31)/864e5:Date.UTC(y+1,0,31)/864e5;
     if(b>=FIRST&&a<=LAST)SEMS.push({a,b,name:`${y} ${s}`});
   }
+  // 年度: 4/1〜翌3/31
+  for(let y=Y0(FIRST)-1;y<=Y0(LAST);y++){const a=Date.UTC(y,3,1)/864e5,b=Date.UTC(y+1,2,31)/864e5;if(b>=FIRST&&a<=LAST)FYS.push({a,b,name:`${y}年度`})}
   const presets=[["d7","過去7日間"],["d30","過去30日間"],["d90","過去90日間"],["m12","過去12か月"],["all","はじめから全部"]];
   const dayOK=k=>{for(let n=LAST-k+1;n<=LAST;n++)if(D[ISO(n)]!=null)return true;return false};
   const off={d7:!dayOK(7),d30:!dayOK(30),d90:!dayOK(90)};
   $("per").innerHTML=presets.map(([v,t])=>`<option value="${v}" ${off[v]?"disabled":""}>${t}${off[v]?"（日ごとの記録なし）":""}</option>`).join("")+
-    `<optgroup label="学期">${SEMS.map((s,i)=>`<option value="s${i}">${s.name}</option>`).reverse().join("")}</optgroup><option value="custom">期間を指定…</option>`;
+    `<optgroup label="年度（4月〜翌3月）">${FYS.map((s,i)=>`<option value="f${i}">${s.name}</option>`).reverse().join("")}</optgroup><optgroup label="学期">${SEMS.map((s,i)=>`<option value="s${i}">${s.name}</option>`).reverse().join("")}</optgroup><option value="custom">期間を指定…</option>`;
   const first=off.d30?"m12":"d30";$("per").value=first;
   $("per").onchange=()=>{if($("per").value=="custom")openCustom();else{closeCustom();setPer($("per").value)}};
   cmps=[{k:1}];
@@ -149,6 +151,7 @@ function setPer(v,a,b){
   else if(v=="m12")per={a:yearBack(LAST,1)+1,b:LAST,name:"過去12か月"};
   else if(v=="all")per={a:FIRST,b:LAST,name:"はじめから全部"};
   else if(v[0]=="s"){const s=SEMS[+v.slice(1)];per={a:s.a,b:s.b,name:s.name}}
+  else if(v[0]=="f"){const s=FYS[+v.slice(1)];per={a:s.a,b:s.b,name:s.name}}
   else per={a,b,name:`${md(a)}〜${md(b)}`};
   $("perL").textContent=v=="custom"?fmtR({a,b}):opt.text;
   render();
@@ -163,7 +166,7 @@ function openCustom(){
 function closeCustom(){$("custom").className="box sub";$("custom").innerHTML=""}
 
 // 比べるもの: k年前の同じ時期 / k=0 は「すぐ前の同じ長さ」
-const cmpName=c=>c.k==0?"すぐ前の同じ長さ":`${c.k}年前の同じ時期`;
+const cmpName=c=>c.k==0?"すぐ前の同じ長さ":c.k==1?(/年度$/.test(per.name)?"前年度":"前年の同じ時期"):`${c.k}年前の同じ時期`;
 const cmpRange=c=>c.k==0?{a:per.a-(per.b-per.a+1),b:per.a-1}:{a:yearBack(per.a,c.k),b:yearBack(per.b,c.k)};
 const fmtR=r=>`${ISO(r.a).replace(/-/g,"/")}〜${ISO(r.a).slice(0,4)==ISO(r.b).slice(0,4)?ISO(r.b).slice(5).replace("-","/"):ISO(r.b).replace(/-/g,"/")}`;
 function render(){
@@ -260,7 +263,8 @@ function draw(){
   const svg=box.querySelector("svg"),tip=$("tip"),cur=svg.querySelector("#cur");
   const show=j=>{
     cur.setAttribute("x1",x(j));cur.setAttribute("x2",x(j));cur.setAttribute("visibility","visible");
-    tip.innerHTML=S.map((ps,i)=>ps[j]?`<div><i style="background:${COLORS[i]}"></i>${ps[j].full}　${ps[j].v.toLocaleString()}円</div>`:"").join("");
+    const pct=(a,b)=>{const r=Math.round((a/b-1)*100);return r>0?`▲${r}%`:r<0?`▼${-r}%`:"±0%"};
+    tip.innerHTML=S.map((ps,i)=>ps[j]?`<div><i style="background:${COLORS[i]}"></i>${ps[j].full}　${ps[j].v.toLocaleString()}円${i&&S[0][j]&&ps[j].v?`<span style="color:var(--sub)">　→ いまは ${pct(S[0][j].v,ps[j].v)}</span>`:""}</div>`:"").join("");
     tip.style.display="block";const k=box.clientWidth/W, px=x(j)*k;
     tip.style.left=(px+12+tip.offsetWidth>box.clientWidth?px-12-tip.offsetWidth:px+12)+"px";tip.style.top=(T*k+4)+"px";
   };
