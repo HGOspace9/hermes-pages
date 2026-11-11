@@ -2,61 +2,76 @@
 <html lang="ja"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<title>エンドレス 統計</title>
+<title>endores 統計</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sawarabi+Gothic&display=swap" rel="stylesheet">
 <style>
-:root{--navy:#1A5CA8;--light:#8FB0DA;--pink:#D6336C;--line:#E3E6EB;--text:#222;--sub:#6B7280;--bg:#F3F5F8}
+:root{--g:#0B6444;--cream:#FFFDF5;--text:#434343;--sub:#7A7F7C;--line:#DCDCD4;
+ --c1:#0B6444;--c2:#D9932B;--c3:#8C9A93}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);font-family:"Hiragino Sans","Noto Sans JP",sans-serif;color:var(--text)}
-header{background:#fff;border-bottom:3px solid var(--navy);padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
-header h1{font-size:18px;margin:0}
-header .who{font-size:12px;color:var(--sub)}
-main{max-width:880px;margin:20px auto;padding:0 12px}
-.card{background:#fff;border:1px solid var(--line);border-radius:6px;padding:22px 24px 26px}
-h2{font-size:18px;margin:0 0 18px;padding-left:10px;border-left:5px solid var(--navy);line-height:1.3}
-.label{font-size:12px;color:var(--sub);margin:0 0 6px}
-.tabs{display:flex;gap:6px;border-bottom:3px solid var(--navy);margin-bottom:16px;overflow-x:auto}
-.tab{flex:none;padding:8px 16px;font-size:14px;font-weight:700;color:var(--navy);border:1px solid var(--navy);border-bottom:none;border-radius:4px 4px 0 0;background:#fff;cursor:pointer;font-family:inherit}
-.tab.on{background:var(--navy);color:#fff}
-.row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px}
-.toggle{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;cursor:pointer;user-select:none;background:none;border:0;padding:0;font-family:inherit;color:inherit}
-.sw{width:40px;height:22px;border-radius:11px;background:#C9CED6;position:relative;transition:.2s}
-.sw::after{content:"";position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s}
-.toggle[aria-pressed=true] .sw{background:var(--navy)}
-.toggle[aria-pressed=true] .sw::after{left:21px}
-.legend{display:flex;gap:16px;font-size:12px;color:var(--sub)}
-.legend i{display:inline-block;width:12px;height:12px;margin-right:5px;vertical-align:-1px}
-.ctitle{text-align:center;font-weight:700;font-size:14px;margin:10px 0 4px}
-.msg{font-size:12px;color:var(--sub);text-align:center;min-height:1em;margin:4px 0}
-.note{font-size:11px;color:var(--sub);text-align:right;margin-top:6px}
-.badge{font-size:11px;color:#fff;background:var(--pink);border-radius:3px;padding:2px 6px;margin-left:8px;vertical-align:2px}
+body{margin:0;background:var(--cream);font-family:"Sawarabi Gothic","Hiragino Sans",sans-serif;color:var(--text)}
+header{background:var(--g);color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
+header h1{font-size:18px;margin:0;font-weight:700;letter-spacing:.04em}
+header .who{font-size:12px;opacity:.85}
+main{max-width:920px;margin:20px auto 40px;padding:0 16px}
+.box{background:#fff;border:1px solid var(--line);border-radius:10px}
+/* 比べるカード（Googleトレンドの上の段） */
+.cards{display:flex;flex-wrap:wrap;margin-bottom:14px;overflow:hidden}
+.card{flex:1 1 180px;min-width:150px;padding:16px 18px;border-right:1px solid var(--line);position:relative}
+.card .dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:8px;vertical-align:-1px}
+.card .name{font-size:17px;font-weight:700}
+.card .kind{font-size:12px;color:var(--sub);margin-top:4px}
+.card select{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:16px}
+.card .x{position:absolute;right:8px;top:8px;border:0;background:none;color:var(--sub);font-size:18px;cursor:pointer;z-index:2;padding:2px 6px}
+.add{flex:1 1 150px;min-width:130px;padding:16px 18px;color:var(--g);font-weight:700;font-size:16px;cursor:pointer;position:relative;display:flex;align-items:center;gap:8px}
+.add select{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:16px}
+.add .plus{font-size:22px;line-height:1}
+/* 絞り込みの丸いボタン */
+.chips{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.chip{position:relative;display:flex;align-items:center;gap:10px;padding:9px 16px;border:1px solid #C9C9C0;border-radius:8px;background:#fff;font-size:15px}
+.chip svg{width:18px;height:18px;stroke:var(--text);fill:none;stroke-width:1.8}
+.chip .tri{width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid var(--text);margin-left:4px}
+.chip select{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:16px}
+.panel{padding:18px 20px 14px}
+.panel h2{font-size:16px;margin:0 0 4px;display:flex;align-items:center;gap:8px}
+.badge{font-size:11px;color:#fff;background:#B7472A;border-radius:3px;padding:2px 6px;font-weight:400}
+.hint{font-size:12px;color:var(--sub);margin:0 0 6px}
+#chart{position:relative}
+#tip{position:absolute;pointer-events:none;background:#fff;border:1px solid var(--line);border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.12);padding:8px 10px;font-size:13px;display:none;white-space:nowrap}
+#tip b{display:block;margin-bottom:4px}
+#tip i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
+.note{font-size:11px;color:var(--sub);text-align:right;margin-top:4px}
 /* 鍵の画面 */
-#lock{max-width:360px;margin:60px auto;text-align:center}
-#lock input{width:100%;font-size:16px;padding:10px 12px;border:1px solid #B8C0CC;border-radius:4px;margin:12px 0}
-#lock button{width:100%;font-size:15px;font-weight:700;padding:10px;border:0;border-radius:4px;background:var(--navy);color:#fff;cursor:pointer;font-family:inherit}
-#lock .err{color:var(--pink);font-size:13px;min-height:1.2em;margin-top:10px}
+#lock{max-width:360px;margin:60px auto;padding:28px 24px;text-align:center}
+#lock h2{font-size:17px;margin:0 0 4px;color:var(--g)}
+#lock input{width:100%;font-size:16px;padding:11px 12px;border:1px solid #C9C9C0;border-radius:8px;margin:14px 0 10px;font-family:inherit}
+#lock button{width:100%;font-size:15px;font-weight:700;padding:11px;border:0;border-radius:8px;background:var(--g);color:#fff;cursor:pointer;font-family:inherit}
+#lock .err{color:#B7472A;font-size:13px;min-height:1.2em;margin-top:10px}
 #app{display:none}
 svg text{font-family:inherit}
 </style></head><body>
-<header><h1>エンドレス 統計</h1><div class="who">メンバー専用</div></header>
+<header><h1>endores 統計</h1><div class="who">メンバー専用</div></header>
 <main>
- <div id="lock" class="card">
-  <h2 style="text-align:left">パスワード</h2>
+ <div id="lock" class="box">
+  <h2>パスワードを入れてください</h2>
   <form id="f"><input id="pw" type="password" autocomplete="current-password" placeholder="パスワード" required>
   <button>開く</button></form>
   <div class="err" id="err"></div>
  </div>
- <div id="app" class="card">
-  <h2>売上<span class="badge" id="badge" hidden>仮の数字</span></h2>
-  <p class="label">期間</p>
-  <div class="tabs" id="tabs"></div>
-  <div class="row">
-   <button class="toggle" id="cmp" aria-pressed="false"><span class="sw"></span>前年と比べる</button>
-   <div class="legend" id="legend"></div>
+ <div id="app">
+  <div class="box cards" id="cards"></div>
+  <div class="chips">
+   <label class="chip"><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg><span>売上</span><span class="tri"></span>
+    <select id="what" aria-label="見るもの"><option value="sales">売上</option></select></label>
+   <label class="chip"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>月ごと</span><span class="tri"></span>
+    <select id="unit" aria-label="細かさ"><option value="m">月ごと</option></select></label>
   </div>
-  <div class="ctitle">月ごとの売上（円）</div>
-  <div id="chart"></div>
-  <div class="msg" id="msg"></div>
-  <div class="note">春＝4〜7月　秋＝10〜翌1月</div>
+  <div class="box panel">
+   <h2>時間の流れ<span class="badge" id="badge" hidden>仮の数字</span></h2>
+   <p class="hint">線にふれると、その月の金額が出ます</p>
+   <div id="chart"></div>
+   <div class="note">春＝4〜7月　秋＝10〜翌1月</div>
+  </div>
  </div>
 </main>
 <script>
@@ -71,50 +86,66 @@ async function unlock(pw){
 }
 $("f").onsubmit=async e=>{
   e.preventDefault();$("err").textContent="確かめています…";
-  try{start(await unlock($("pw").value))}
-  catch(_){$("err").textContent="パスワードが違います"}
+  try{start(await unlock($("pw").value))}catch(_){$("err").textContent="パスワードが違います"}
 };
 
 // 学期: 春=4〜7月、秋=10〜翌1月
 const SEM={春:[[0,4],[0,5],[0,6],[0,7]],秋:[[0,10],[0,11],[0,12],[1,1]]};
-let D,cur,cmp=false;
-const key=(y,m)=>`${y}-${String(m).padStart(2,"0")}`;
-const vals=(y,s)=>SEM[s].map(([dy,m])=>D.months[key(y+dy,m)]??null);
-const has=(y,s)=>vals(y,s).some(v=>v!=null);
+const COLORS=["var(--c1)","var(--c2)","var(--c3)"], MAX=3;
+let D,ALL=[],picked=[];
+const mk=(y,m)=>`${y}-${String(m).padStart(2,"0")}`;
+const vals=t=>SEM[t.s].map(([dy,m])=>D.months[mk(t.y+dy,m)]??null);
+const name=t=>`${t.y} ${t.s}`;
 function start(data){
   D=data;$("lock").style.display="none";$("app").style.display="block";
   $("badge").hidden=!/仮/.test(D.note||"");
   const ys=[...new Set(Object.keys(D.months).map(k=>+k.slice(0,4)))].sort();
-  const list=[];
-  for(const y of ys)for(const s of["春","秋"])if(has(y,s)&&!list.some(t=>t.y==y&&t.s==s))list.push({y,s});
-  $("tabs").innerHTML=list.map((t,i)=>`<button class="tab" data-i="${i}">${t.y} ${t.s}</button>`).join("");
-  $("tabs").onclick=e=>{const b=e.target.closest(".tab");if(b){cur=list[b.dataset.i];draw()}};
-  cur=list[list.length-1];
-  setTimeout(()=>{const t=$("tabs");t.scrollLeft=t.scrollWidth},0);
-  $("cmp").onclick=()=>{cmp=!cmp;$("cmp").setAttribute("aria-pressed",cmp);draw()};
+  for(const y of ys)for(const s of["春","秋"]){const t={y,s};if(vals(t).some(v=>v!=null))ALL.push(t)}
+  const last=ALL[ALL.length-1], prev=ALL.find(t=>t.y==last.y-1&&t.s==last.s);
+  picked=prev?[last,prev]:[last];
+  render();addEventListener("resize",draw);
+}
+function opts(sel){return ALL.map((t,i)=>`<option value="${i}" ${sel===t?"selected":""}>${name(t)}</option>`).join("")}
+function render(){
+  let h=picked.map((t,i)=>`<div class="card"><span class="dot" style="background:${COLORS[i]}"></span><span class="name">${name(t)}</span><div class="kind">学期</div>
+    <select data-i="${i}" aria-label="学期を選ぶ">${opts(t)}</select>${picked.length>1?`<button class="x" data-x="${i}" aria-label="外す">×</button>`:""}</div>`).join("");
+  if(picked.length<MAX)h+=`<label class="add"><span class="plus">＋</span>比較<select id="addSel" aria-label="比べる学期を足す"><option value="" selected disabled>学期を選ぶ</option>${opts(null)}</select></label>`;
+  $("cards").innerHTML=h;
+  $("cards").querySelectorAll("select[data-i]").forEach(s=>s.onchange=()=>{picked[s.dataset.i]=ALL[s.value];render()});
+  $("cards").querySelectorAll("[data-x]").forEach(b=>b.onclick=e=>{e.preventDefault();picked.splice(b.dataset.x,1);render()});
+  if($("addSel"))$("addSel").onchange=e=>{picked.push(ALL[e.target.value]);render()};
   draw();
 }
 function draw(){
-  document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("on",b.textContent==`${cur.y} ${cur.s}`));
-  const now=vals(cur.y,cur.s), prevOk=has(cur.y-1,cur.s), prev=cmp&&prevOk?vals(cur.y-1,cur.s):null;
-  $("msg").textContent=cmp&&!prevOk?`${cur.y-1} ${cur.s}のデータはありません`:"";
-  $("legend").innerHTML=`<span><i style="background:var(--navy)"></i>${cur.y} ${cur.s}</span>`+(prev?`<span><i style="background:var(--light)"></i>${cur.y-1} ${cur.s}</span>`:"");
-  const labels=SEM[cur.s].map(([,m])=>m+"月");
-  const max=Math.max(1,...now,...(prev||[]).filter(v=>v!=null));
-  const step=niceStep(max/4), top=Math.ceil(max/step)*step;
-  const W=Math.max(340,Math.min(800,$("chart").clientWidth||800)),H=W<500?260:300,L=W<500?58:70,R=W-10,T=20,B=H-50,y=v=>B-(v/top)*(B-T);
-  let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="月ごとの売上">`;
-  for(let v=0;v<=top;v+=step)s+=`<line x1="${L}" x2="${R}" y1="${y(v)}" y2="${y(v)}" stroke="${v?"#E3E6EB":"#999"}"/><text x="${L-8}" y="${y(v)+4}" font-size="12" fill="#555" text-anchor="end">${v.toLocaleString()}</text>`;
-  const gw=(R-L)/4, bw=Math.min(prev?44:64,gw*(prev?.36:.5));
-  labels.forEach((lab,i)=>{
-    const c=L+gw*(i+.5);
-    if(prev&&prev[i]!=null)s+=`<rect x="${c-bw-4}" y="${y(prev[i])}" width="${bw}" height="${B-y(prev[i])}" fill="#8FB0DA"/>`;
-    if(now[i]!=null)s+=`<rect x="${prev?c+4:c-bw/2}" y="${y(now[i])}" width="${bw}" height="${B-y(now[i])}" fill="#1A5CA8"/>`;
-    s+=`<text x="${c}" y="${B+22}" font-size="13" fill="#444" text-anchor="middle">${lab}</text>`;
+  const box=$("chart"), W=Math.max(320,Math.min(880,box.clientWidth||880)), H=W<520?260:320;
+  const L=W<520?56:72,R=W-(W<520?34:40),T=16,B=H-40;
+  const series=picked.map(vals), all=series.flat().filter(v=>v!=null);
+  const max=Math.max(1,...all), step=nice(max/4), top=Math.ceil(max/step)*step;
+  const sameSeason=picked.every(t=>t.s==picked[0].s);
+  const labels=sameSeason?SEM[picked[0].s].map(([,m])=>m+"月"):["1か月目","2か月目","3か月目","4か月目"];
+  const x=i=>L+(R-L)*(i/3), y=v=>B-(v/top)*(B-T);
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="月ごとの売上の比較">`;
+  for(let v=0;v<=top;v+=step)s+=`<line x1="${L}" x2="${R}" y1="${y(v)}" y2="${y(v)}" stroke="${v?"#ECECE4":"#B9B9B0"}"/><text x="${L-10}" y="${y(v)+4}" font-size="12" fill="#7A7F7C" text-anchor="end">${v.toLocaleString()}</text>`;
+  labels.forEach((l,i)=>s+=`<text x="${x(i)}" y="${B+24}" font-size="13" fill="#434343" text-anchor="middle">${l}</text>`);
+  series.slice().reverse().forEach((vs,ri)=>{const i=series.length-1-ri;
+    let d="",pen=false;vs.forEach((v,j)=>{if(v==null){pen=false;return}d+=(pen?"L":"M")+x(j)+","+y(v);pen=true});
+    s+=`<path d="${d}" fill="none" stroke="${COLORS[i]}" stroke-width="${i?2.5:3.5}" stroke-linejoin="round" stroke-linecap="round"/>`;
+    vs.forEach((v,j)=>{if(v!=null)s+=`<circle cx="${x(j)}" cy="${y(v)}" r="${i?3.5:4.5}" fill="${COLORS[i]}"/>`});
   });
-  $("chart").innerHTML=s+"</svg>";
+  s+=`<line id="cur" y1="${T}" y2="${B}" stroke="#B9B9B0" stroke-dasharray="3 3" visibility="hidden"/>`;
+  labels.forEach((l,i)=>s+=`<rect data-j="${i}" x="${x(i)-(R-L)/6}" y="${T}" width="${(R-L)/3}" height="${B-T}" fill="transparent"/>`);
+  box.innerHTML=s+`</svg><div id="tip"></div>`;
+  const svg=box.querySelector("svg"),tip=$("tip"),cur=svg.querySelector("#cur");
+  const show=j=>{
+    cur.setAttribute("x1",x(j));cur.setAttribute("x2",x(j));cur.setAttribute("visibility","visible");
+    tip.innerHTML=`<b>${labels[j]}</b>`+picked.map((t,i)=>{const [dy,m]=SEM[t.s][j];const v=series[i][j];
+      return `<div><i style="background:${COLORS[i]}"></i>${t.y+dy}年${m}月　${v==null?"―":v.toLocaleString()+"円"}</div>`}).join("");
+    tip.style.display="block";const k=box.clientWidth/W, px=x(j)*k;
+    tip.style.left=Math.min(Math.max(0,px+12),box.clientWidth-tip.offsetWidth)+"px";tip.style.top=(T*k+4)+"px";
+  };
+  svg.querySelectorAll("rect[data-j]").forEach(r=>{r.onmouseenter=r.onclick=()=>show(+r.dataset.j)});
+  svg.onmouseleave=()=>{tip.style.display="none";cur.setAttribute("visibility","hidden")};
 }
-addEventListener("resize",()=>D&&draw());
-function niceStep(x){const p=10**Math.floor(Math.log10(x)),n=x/p;return (n<=1?1:n<=2?2:n<=5?5:10)*p}
+function nice(x){const p=10**Math.floor(Math.log10(x)),n=x/p;return (n<=1?1:n<=2?2:n<=5?5:10)*p}
 </script>
 </body></html>
