@@ -106,31 +106,40 @@ $("f").onsubmit=async e=>{
 // ---- 日付は「通し日数」(1970-01-01からの日数) で扱う ----
 const DN=s=>Date.UTC(+s.slice(0,4),+s.slice(5,7)-1,+s.slice(8,10))/864e5;
 const DT=n=>new Date(n*864e5);
+const Y0=n=>DT(n).getUTCFullYear();
 const ISO=n=>DT(n).toISOString().slice(0,10);
 const WD="日月火水木金土";
 const md=n=>{const d=DT(n);return `${d.getUTCMonth()+1}/${d.getUTCDate()}`};
 const ymd=n=>{const d=DT(n);return `${d.getUTCFullYear()}年${d.getUTCMonth()+1}月${d.getUTCDate()}日(${WD[d.getUTCDay()]})`};
 const yearBack=(n,k)=>{const d=DT(n),y=d.getUTCFullYear()-k,m=d.getUTCMonth(),last=new Date(Date.UTC(y,m+1,0)).getUTCDate();return Date.UTC(y,m,Math.min(d.getUTCDate(),last))/864e5};
 const COLORS=["var(--c1)","var(--c2)","var(--c3)"], MAX=3;
-let D,FIRST,LAST,SEMS=[],per,cmps=[],editing=-1;
+let D,MO,DNOTE,FIRST,LAST,DF,DL,SEMS=[],per,cmps=[],editing=-1;
+const monthEnd=(y,m)=>Date.UTC(y,m,0)/864e5; // m=1..12 の月末
 
 function start(data){
-  D=data.days;$("lock").style.display="none";$("app").style.display="block";
+  D=data.days||{};DNOTE=data.daysNote||"";$("lock").style.display="none";$("app").style.display="block";
   $("badge").hidden=!/仮/.test(data.note||"");
-  const ks=Object.keys(D).sort();FIRST=DN(ks[0]);LAST=DN(ks[ks.length-1]);
-  $("upto").textContent=`データは ${ymd(LAST)} まで`;
+  // 月ごとの数字（無ければ日ごとから足し上げる）
+  MO=data.months;if(!MO){MO={};for(const [k,v] of Object.entries(D))MO[k.slice(0,7)]=(MO[k.slice(0,7)]||0)+v}
+  const ks=Object.keys(D).sort(), ms=Object.keys(MO).sort();
+  DF=ks.length?DN(ks[0]):Infinity;DL=ks.length?DN(ks[ks.length-1]):-Infinity;
+  FIRST=Math.min(DF,DN(ms[0]+"-01"));
+  const lm=ms[ms.length-1];LAST=Math.max(DL,monthEnd(+lm.slice(0,4),+lm.slice(5,7)));
+  $("upto").textContent=`データは ${DL>=LAST-31&&ks.length?ymd(DL):lm.replace("-","年").replace(/^(\d+年)0?/,"$1")+"月"} まで`+(ks.length?`（日ごとの記録は ${ISO(DF).replace(/-/g,"/")}〜${ISO(DL).replace(/-/g,"/")}）`:"");
   // 学期: 春=4/1〜7/31、秋=10/1〜翌1/31
-  for(let y=+ks[0].slice(0,4)-1;y<=+ks[ks.length-1].slice(0,4);y++)for(const s of["春","秋"]){
+  for(let y=Y0(FIRST)-1;y<=Y0(LAST);y++)for(const s of["春","秋"]){
     const a=s=="春"?Date.UTC(y,3,1)/864e5:Date.UTC(y,9,1)/864e5, b=s=="春"?Date.UTC(y,6,31)/864e5:Date.UTC(y+1,0,31)/864e5;
     if(b>=FIRST&&a<=LAST)SEMS.push({a,b,name:`${y} ${s}`});
   }
   const presets=[["d7","過去7日間"],["d30","過去30日間"],["d90","過去90日間"],["m12","過去12か月"],["all","はじめから全部"]];
-  $("per").innerHTML=presets.map(([v,t])=>`<option value="${v}">${t}</option>`).join("")+
+  const dayOK=k=>{for(let n=LAST-k+1;n<=LAST;n++)if(D[ISO(n)]!=null)return true;return false};
+  const off={d7:!dayOK(7),d30:!dayOK(30),d90:!dayOK(90)};
+  $("per").innerHTML=presets.map(([v,t])=>`<option value="${v}" ${off[v]?"disabled":""}>${t}${off[v]?"（日ごとの記録なし）":""}</option>`).join("")+
     `<optgroup label="学期">${SEMS.map((s,i)=>`<option value="s${i}">${s.name}</option>`).reverse().join("")}</optgroup><option value="custom">期間を指定…</option>`;
-  $("per").value="d30";
+  const first=off.d30?"m12":"d30";$("per").value=first;
   $("per").onchange=()=>{if($("per").value=="custom")openCustom();else{closeCustom();setPer($("per").value)}};
   cmps=[{k:1}];
-  setPer("d30");addEventListener("resize",draw);
+  setPer(first);addEventListener("resize",draw);
 }
 function setPer(v,a,b){
   const opt=[...$("per").options].find(o=>o.value==v);
@@ -179,9 +188,20 @@ function render(){
 }
 
 // ---- まとめ方: 92日まで=日ごと、400日まで=週ごと、それより長い=月ごと ----
-function unitFor(r){const n=r.b-r.a+1;return n<=92?"d":n<=400?"w":"m"}
+// 日ごと・週ごとにできるのは、比べる期間もふくめて全部に日ごとの記録があるときだけ
+function unitFor(rs){const n=rs[0].b-rs[0].a+1;
+  const has=r=>{for(let k=Math.max(r.a,DF);k<=Math.min(r.b,DL);k++)if(D[ISO(k)]!=null)return true;return false};
+  const inside=r=>r.a>=DF-31&&r.b<=DL+31;
+  if(n<=92&&rs.every(has))return "d";
+  if(n<=400&&rs.every(r=>has(r)&&inside(r)))return "w";
+  return "m"}
 function points(r,u){
   const g=new Map();
+  if(u=="m"){const d0=DT(r.a),d1=DT(r.b);
+    for(let k=d0.getUTCFullYear()*12+d0.getUTCMonth();k<=d1.getUTCFullYear()*12+d1.getUTCMonth();k++){
+      const y=Math.floor(k/12),m=k%12+1,v=MO[`${y}-${String(m).padStart(2,"0")}`];
+      if(v!=null)g.set(k,{k,lab:`${m}月`,full:`${y}年${m}月`,v,y})}
+  }else
   for(let n=r.a;n<=r.b;n++){const v=D[ISO(n)];if(v==null)continue;
     const d=DT(n);let k,lab,full;
     if(u=="d"){k=n;lab=md(n);full=ymd(n)}
@@ -195,9 +215,8 @@ function points(r,u){
   return ps;
 }
 function draw(){
-  const u=unitFor(per);
-  $("unitL").textContent={d:"日ごと",w:"週ごと",m:"月ごと"}[u];
-  const ranges=[per,...cmps.map(cmpRange)], S=ranges.map(r=>points(r,u)), P=S[0];
+  const ranges=[per,...cmps.map(cmpRange)], u=unitFor(ranges);
+  $("unitL").textContent={d:"日ごと",w:"週ごと",m:"月ごと"}[u]+(u!="m"&&DNOTE?"（推定）":""); const S=ranges.map(r=>points(r,u)), P=S[0];
   const box=$("chart"), W=Math.max(320,Math.min(880,box.clientWidth||880)), H=W<520?260:320;
   const L=W<520?56:72,R=W-(W<520?24:30),T=16,B=H-40;
   const n=Math.max(1,...S.map(s=>s.length));
@@ -210,8 +229,17 @@ function draw(){
   let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="売上の流れ">`;
   for(let v=0;v<=top;v+=step)s+=`<line x1="${L}" x2="${R}" y1="${y(v)}" y2="${y(v)}" stroke="${v?"#ECECE4":"#B9B9B0"}"/><text x="${L-10}" y="${y(v)+4}" font-size="12" fill="#7A7F7C" text-anchor="end">${v.toLocaleString()}</text>`;
   // 横の目盛り（間引く）
-  const every=Math.ceil(n/(W<520?5:9));
-  P.forEach((p,i)=>{if(i%every==0){const yr=u=="m"&&(i==0||p.y!=P[i-1].y)?`${p.y}年`:"";s+=`<text x="${x(i)}" y="${B+24}" font-size="12.5" fill="#434343" text-anchor="middle">${yr}${p.lab}</text>`}});
+  // 横の目盛り: 前の字と重なるときは省く（字の幅をおおよそで見積もる）
+  const k2=W/Math.max(1,box.clientWidth||W), LB=[];
+  P.forEach((p,i)=>{const prev=LB[LB.length-1];
+    const yr=u=="m"&&(!prev||p.y!=prev.y)?`${p.y}年`:"";const t=yr+p.lab;
+    const w=[...t].reduce((a,c)=>a+(c<"\u0100"?7:12.5),0)*k2, l=x(i)-w/2, me={i,t,l,r:l+w,y:p.y};
+    if(prev&&l<prev.r+10*k2){
+      // 重なるとき: 休み明けの月と最後の月を優先して、前の字を外す
+      if((p.gap||i==P.length-1)&&LB.length>1){LB.pop();const pp=LB[LB.length-1];if(pp&&l<pp.r+10*k2)return;LB.push(me)}
+      return}
+    LB.push(me)});
+  LB.forEach(o=>s+=`<text x="${x(o.i)}" y="${B+24}" font-size="12.5" fill="#434343" text-anchor="middle">${o.t}</text>`);
   // 長い休みの ≈ 印（1本目の期間で判断）
   const half=j=>n==1?(R-L)/2:j<=0?0:(x(j)-x(j-1))/2;
   P.forEach((p,i)=>{if(!p.gap)return;const gx=(x(i)+x(i-1))/2;
@@ -221,6 +249,8 @@ function draw(){
   // 線（休みのところで切る）
   S.slice().reverse().forEach((ps,ri)=>{const i=S.length-1-ri;let d="";
     ps.forEach((p,j)=>{d+=(j==0||p.gap?"M":"L")+x(j)+","+y(p.v)});
+    // 休みをまたぐ所は細い線でつなぐ
+    ps.forEach((p,j)=>{if(j>0&&p.gap)s+=`<line x1="${x(j-1)}" y1="${y(ps[j-1].v)}" x2="${x(j)}" y2="${y(p.v)}" stroke="${COLORS[i]}" stroke-width="1"/>`});
     s+=`<path d="${d}" fill="none" stroke="${COLORS[i]}" stroke-width="${i?2.2:3}" stroke-linejoin="round" stroke-linecap="round"/>`;
     if(n<=31)ps.forEach((p,j)=>{if(j==0||p.gap||!ps[j+1]||ps[j+1].gap||n<=12)s+=`<circle cx="${x(j)}" cy="${y(p.v)}" r="${i?3:4}" fill="${COLORS[i]}"/>`});
   });
