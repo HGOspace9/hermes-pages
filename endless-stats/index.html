@@ -189,7 +189,7 @@ function setPer(v,a,b){
   else per={a,b,name:fmtR({a,b}),kind:"c"};
   $("perL").textContent=per.name;
   // 比べる期間が記録の外になったら外す
-  cmps=cmps.filter(c=>hasData(cmpRange(c)));
+  cmps=per.kind=="all"?[]:cmps.filter(c=>hasData(cmpRange(c)));
   render();
 }
 function openCustom(){
@@ -202,8 +202,7 @@ function openCustom(){
 function closeCustom(){$("custom").className="box sub";$("custom").innerHTML=""}
 
 // 比べるもの: k年前の同じ時期（学期・年度はその名前、ほかは「○年の同じ時期」）
-const cmpName=c=>{const y=+per.name.slice(0,4);
-  return per.kind=="s"?`${y-c.k} ${per.name.slice(-1)}`:per.kind=="f"?`${y-c.k}年度`:`${Y0(per.a)-c.k}年の同じ時期`};
+const cmpName=c=>`${c.k}年前の同じ時期`;
 // その期間に（売上の）記録が少しでもあるか
 const hasData=r=>{for(const k of Object.keys(SER.sales.months||{}))if(DN(k+"-01")<=r.b&&monthEnd(+k.slice(0,4),+k.slice(5,7))>=r.a)return true;return false};
 const cmpRange=c=>({a:yearBack(per.a,c.k),b:yearBack(per.b,c.k)});
@@ -216,7 +215,7 @@ function render(){
   $("cards").innerHTML=h;
   $("cards").querySelectorAll("[data-x]").forEach(x=>x.onclick=()=>{cmps.splice(+x.dataset.x,1);render()});
   // ＋比較: 記録のある「同じ時期」を年ごとに並べて選ぶ
-  if($("add"))$("add").onclick=e=>{e.stopPropagation();const used=cmps.map(c=>c.k),items=[];
+  if($("add"))$("add").onclick=e=>{e.stopPropagation();if(per.kind=="all")return;const used=cmps.map(c=>c.k),items=[];
     for(let k=1;k<=10;k++){const r=cmpRange({k});if(r.b<FIRST)break;if(!used.includes(k)&&hasData(r))items.push({v:k,t:`${cmpName({k})}<span style="color:var(--sub);font-size:12px">　${fmtR(r)}</span>`})}
     if(!items.length)items.push({h:"比べられる同じ時期の記録がありません"});
     menu($("add"),[{h:"どの年の同じ時期と比べる？"},...items],v=>{cmps.push({k:+v});render()})};
