@@ -203,18 +203,21 @@ function draw(){
   const n=Math.max(1,...S.map(s=>s.length));
   if(!P.length){box.innerHTML=`<p style="text-align:center;color:var(--sub);padding:60px 0">この期間は営業した日がありません</p>`;return}
   const all=S.flat().map(p=>p.v), max=Math.max(1,...all), step=nice(max/4), top=Math.ceil(max/step)*step;
-  const x=i=>n==1?(L+R)/2:L+(R-L)*(i/(n-1)), y=v=>B-(v/top)*(B-T);
+  const G=10*W/Math.max(1,box.clientWidth||W), isGap=j=>!!(P[j]&&P[j].gap), ng=P.filter(p=>p.gap).length;
+  const unit=n==1?0:(R-L-ng*G)/Math.max(1,n-1-ng), XS=[L];
+  for(let j=1;j<n;j++)XS.push(XS[j-1]+(isGap(j)?G:unit));
+  const x=i=>n==1?(L+R)/2:XS[i], y=v=>B-(v/top)*(B-T);
   let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="売上の流れ">`;
   for(let v=0;v<=top;v+=step)s+=`<line x1="${L}" x2="${R}" y1="${y(v)}" y2="${y(v)}" stroke="${v?"#ECECE4":"#B9B9B0"}"/><text x="${L-10}" y="${y(v)+4}" font-size="12" fill="#7A7F7C" text-anchor="end">${v.toLocaleString()}</text>`;
   // 横の目盛り（間引く）
   const every=Math.ceil(n/(W<520?5:9));
   P.forEach((p,i)=>{if(i%every==0){const yr=u=="m"&&(i==0||p.y!=P[i-1].y)?`${p.y}年`:"";s+=`<text x="${x(i)}" y="${B+24}" font-size="12.5" fill="#434343" text-anchor="middle">${yr}${p.lab}</text>`}});
   // 長い休みの ≈ 印（1本目の期間で判断）
-  const cw=n==1?(R-L):(R-L)/(n-1);
+  const half=j=>n==1?(R-L)/2:j<=0?0:(x(j)-x(j-1))/2;
   P.forEach((p,i)=>{if(!p.gap)return;const gx=(x(i)+x(i-1))/2;
     s+=`<line x1="${gx}" x2="${gx}" y1="${T}" y2="${B}" stroke="#D5D5CC" stroke-dasharray="2 4"/>`+
-       `<rect x="${gx-7}" y="${B-7}" width="14" height="14" fill="#fff"/>`+
-       [-3,3].map(o=>`<path d="M${gx-6+o},${B+6} q3,-4 6,-6 t6,-6" fill="none" stroke="#7A7F7C" stroke-width="1.6"/>`).join("")});
+       `<rect x="${gx-4}" y="${B-7}" width="8" height="14" fill="#fff"/>`+
+       [-2,2].map(o=>`<path d="M${gx-4+o},${B+5} q2,-3 4,-5 t4,-5" fill="none" stroke="#7A7F7C" stroke-width="1.4"/>`).join("")});
   // 線（休みのところで切る）
   S.slice().reverse().forEach((ps,ri)=>{const i=S.length-1-ri;let d="";
     ps.forEach((p,j)=>{d+=(j==0||p.gap?"M":"L")+x(j)+","+y(p.v)});
@@ -222,7 +225,7 @@ function draw(){
     if(n<=31)ps.forEach((p,j)=>{if(j==0||p.gap||!ps[j+1]||ps[j+1].gap||n<=12)s+=`<circle cx="${x(j)}" cy="${y(p.v)}" r="${i?3:4}" fill="${COLORS[i]}"/>`});
   });
   s+=`<line id="cur" y1="${T}" y2="${B}" stroke="#B9B9B0" stroke-dasharray="3 3" visibility="hidden"/>`;
-  for(let i=0;i<n;i++)s+=`<rect data-j="${i}" x="${x(i)-cw/2}" y="${T}" width="${cw}" height="${B-T}" fill="transparent"/>`;
+  for(let i=0;i<n;i++){const l=n==1?L:x(i)-half(i),r=n==1?R:i==n-1?x(i):x(i)+half(i+1);s+=`<rect data-j="${i}" x="${l}" y="${T}" width="${Math.max(1,r-l)}" height="${B-T}" fill="transparent"/>`}
   box.innerHTML=s+`</svg><div id="tip"></div>`;
   const svg=box.querySelector("svg"),tip=$("tip"),cur=svg.querySelector("#cur");
   const show=j=>{
