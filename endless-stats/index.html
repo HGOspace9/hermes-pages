@@ -124,7 +124,7 @@ function start(data){
   const ks=Object.keys(D).sort(), ms=Object.keys(MO).sort();
   DF=ks.length?DN(ks[0]):Infinity;DL=ks.length?DN(ks[ks.length-1]):-Infinity;
   FIRST=Math.min(DF,DN(ms[0]+"-01"));
-  const lm=ms[ms.length-1];LAST=Math.max(DL,monthEnd(+lm.slice(0,4),+lm.slice(5,7)));
+  const lm=ms[ms.length-1];LAST=ks.length&&ISO(DL).slice(0,7)>=lm?DL:monthEnd(+lm.slice(0,4),+lm.slice(5,7));
   $("upto").textContent=`データは ${DL>=LAST-31&&ks.length?ymd(DL):lm.replace("-","年").replace(/^(\d+年)0?/,"$1")+"月"} まで`+(ks.length?`（日ごとの記録は ${ISO(DF).replace(/-/g,"/")}〜${ISO(DL).replace(/-/g,"/")}）`:"");
   // 学期: 春=4/1〜7/31、秋=10/1〜翌1/31
   for(let y=Y0(FIRST)-1;y<=Y0(LAST);y++)for(const s of["春","秋"]){
@@ -190,13 +190,13 @@ function render(){
   draw();
 }
 
-// ---- まとめ方: 92日まで=日ごと、400日まで=週ごと、それより長い=月ごと ----
+// ---- まとめ方: 31日まで=日ごと、130日まで=週ごと、それより長い=月ごと ----
 // 日ごと・週ごとにできるのは、比べる期間もふくめて全部に日ごとの記録があるときだけ
 function unitFor(rs){const n=rs[0].b-rs[0].a+1;
   const has=r=>{for(let k=Math.max(r.a,DF);k<=Math.min(r.b,DL);k++)if(D[ISO(k)]!=null)return true;return false};
   const inside=r=>r.a>=DF-31&&r.b<=DL+31;
-  if(n<=92&&rs.every(has))return "d";
-  if(n<=400&&rs.every(r=>has(r)&&inside(r)))return "w";
+  if(n<=31&&rs.every(has))return "d";
+  if(n<=130&&rs.every(r=>has(r)&&inside(r)))return "w";
   return "m"}
 function points(r,u){
   const g=new Map();
@@ -225,7 +225,7 @@ function draw(){
   const n=Math.max(1,...S.map(s=>s.length));
   if(!P.length){box.innerHTML=`<p style="text-align:center;color:var(--sub);padding:60px 0">この期間は営業した日がありません</p>`;return}
   const all=S.flat().map(p=>p.v), max=Math.max(1,...all), step=nice(max/4), top=Math.ceil(max/step)*step;
-  const G=10*W/Math.max(1,box.clientWidth||W), isGap=j=>!!(P[j]&&P[j].gap), ng=P.filter(p=>p.gap).length;
+  const G=4*W/Math.max(1,box.clientWidth||W), isGap=j=>!!(P[j]&&P[j].gap), ng=P.filter(p=>p.gap).length;
   const unit=n==1?0:(R-L-ng*G)/Math.max(1,n-1-ng), XS=[L];
   for(let j=1;j<n;j++)XS.push(XS[j-1]+(isGap(j)?G:unit));
   const x=i=>n==1?(L+R)/2:XS[i], y=v=>B-(v/top)*(B-T);
@@ -246,16 +246,16 @@ function draw(){
   // 長い休みの ≈ 印（1本目の期間で判断）
   const half=j=>n==1?(R-L)/2:j<=0?0:(x(j)-x(j-1))/2;
   P.forEach((p,i)=>{if(!p.gap)return;const gx=(x(i)+x(i-1))/2;
-    s+=`<line x1="${gx}" x2="${gx}" y1="${T}" y2="${B}" stroke="#D5D5CC" stroke-dasharray="2 4"/>`+
-       `<rect x="${gx-4}" y="${B-7}" width="8" height="14" fill="#fff"/>`+
-       [-2,2].map(o=>`<path d="M${gx-4+o},${B+5} q2,-3 4,-5 t4,-5" fill="none" stroke="#7A7F7C" stroke-width="1.4"/>`).join("")});
+    s+=`<line x1="${gx}" x2="${gx}" y1="${T}" y2="${B}" stroke="#E4E4DC" stroke-dasharray="2 4"/>`+
+       `<rect x="${gx-3}" y="${B-6}" width="6" height="12" fill="#fff"/>`+
+       [-1.5,1.5].map(o=>`<path d="M${gx-3+o},${B+4} q1.5,-2 3,-4 t3,-4" fill="none" stroke="#7A7F7C" stroke-width="1.2"/>`).join("")});
   // 線（休みのところで切る）
   S.slice().reverse().forEach((ps,ri)=>{const i=S.length-1-ri;let d="";
     ps.forEach((p,j)=>{d+=(j==0||p.gap?"M":"L")+x(j)+","+y(p.v)});
-    // 休みをまたぐ所は細い線でつなぐ
-    ps.forEach((p,j)=>{if(j>0&&p.gap)s+=`<line x1="${x(j-1)}" y1="${y(ps[j-1].v)}" x2="${x(j)}" y2="${y(p.v)}" stroke="${COLORS[i]}" stroke-width="1"/>`});
-    s+=`<path d="${d}" fill="none" stroke="${COLORS[i]}" stroke-width="${i?2.2:3}" stroke-linejoin="round" stroke-linecap="round"/>`;
-    if(n<=31)ps.forEach((p,j)=>{if(j==0||p.gap||!ps[j+1]||ps[j+1].gap||n<=12)s+=`<circle cx="${x(j)}" cy="${y(p.v)}" r="${i?3:4}" fill="${COLORS[i]}"/>`});
+    if(i==0){let seg=[];const flush=()=>{if(seg.length>1)s+=`<path d="M${seg[0]},${B}L${seg.map(q=>q).join("L")}L${seg[seg.length-1].split(",")[0]},${B}Z" fill="${COLORS[0]}" opacity=".07"/>`;seg=[]};
+      ps.forEach((p,j)=>{if(p.gap)flush();seg.push(x(j)+","+y(p.v))});flush()}
+    s+=`<path d="${d}" fill="none" stroke="${COLORS[i]}" stroke-width="${i?1.8:2.6}" ${i?'opacity=".8"':''} stroke-linejoin="round" stroke-linecap="round"/>`;
+    if(n<=14)ps.forEach((p,j)=>s+=`<circle cx="${x(j)}" cy="${y(p.v)}" r="${i?2.6:3.6}" fill="${COLORS[i]}"/>`);
   });
   s+=`<line id="cur" y1="${T}" y2="${B}" stroke="#B9B9B0" stroke-dasharray="3 3" visibility="hidden"/>`;
   for(let i=0;i<n;i++){const l=n==1?L:x(i)-half(i),r=n==1?R:i==n-1?x(i):x(i)+half(i+1);s+=`<rect data-j="${i}" x="${l}" y="${T}" width="${Math.max(1,r-l)}" height="${B-T}" fill="transparent"/>`}
