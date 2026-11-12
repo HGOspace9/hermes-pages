@@ -351,7 +351,8 @@ function drawCorr(){
       const ym=`${Math.floor(k/12)}-${String(k%12+1).padStart(2,"0")}`,a=(X.months||{})[ym],b=(Y.months||{})[ym];
       if(a!=null&&b!=null)pts.push({lab:`${Math.floor(k/12)}年${k%12+1}月`,x:a,y:b})}}
   const box=$("sc"),n=pts.length;
-  if(n<2){$("cstr").textContent="";$("chint").textContent="";box.innerHTML=`<p style="text-align:center;color:var(--sub);padding:40px 0">この期間に、2つがそろった記録がありません</p>`;return}
+  // 点が5個以下は、強さがあてにならないので出さない
+  if(n<=5){$("cstr").textContent="";$("chint").textContent="";box.innerHTML=`<p style="text-align:center;color:var(--sub);padding:40px 16px">${n?`2つがそろった記録が${n}${unit=="日"?"日":"か月"}分しかないので、出していません（点が6個以上で出ます）。<br>期間を年度か「はじめから全部」にすると増えます`:"この期間に、2つがそろった記録がありません"}</p>`;return}
   // 相関の強さ（ピアソンの r）と、まっすぐな傾きの線
   const mx=pts.reduce((a,p)=>a+p.x,0)/n,my=pts.reduce((a,p)=>a+p.y,0)/n;
   let sxy=0,sxx=0,syy=0;pts.forEach(p=>{sxy+=(p.x-mx)*(p.y-my);sxx+=(p.x-mx)**2;syy+=(p.y-my)**2});
@@ -359,7 +360,7 @@ function drawCorr(){
   const word=ar>=.7?"強い":ar>=.4?"中くらい":ar>=.2?"弱い":"ほとんど無い";
   const dir=ar<.2?"":r>0?"（片方が増えると、もう片方も増える）":"（片方が増えると、もう片方は減る）";
   $("cstr").innerHTML=`関係: ${word}${dir}<small>r＝${r.toFixed(2)}・点${n}個</small>`;
-  $("chint").textContent=`点1つ＝1${unit}。点にふれると中身が出ます`+(n<6?"。点が少ないので、強さはあてになりません":"");
+  $("chint").textContent=`点1つ＝1${unit}。点にふれると中身が出ます`;
   const W=Math.max(320,Math.min(880,box.clientWidth||880)),H=W<520?260:300,L=W<520?56:72,R=W-20,T=26,B=H-44;
   const ax=v=>{const lo=Math.min(...v),hi=Math.max(...v),st=nice((hi-lo||Math.abs(hi)||1)/4);return{lo:Math.floor(lo/st)*st,hi:Math.ceil(hi/st)*st||st,st}};
   const gx=ax(pts.map(p=>p.x)),gy=ax(pts.map(p=>p.y));if(gx.hi==gx.lo)gx.hi+=gx.st;if(gy.hi==gy.lo)gy.hi+=gy.st;
