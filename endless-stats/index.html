@@ -53,6 +53,12 @@ button{font-family:inherit}
 .chips.in{margin:10px 0 8px}
 .chips .lab{font-size:13px;color:var(--sub);align-self:center}
 .strength{font-size:18px;font-weight:700;margin:6px 0 2px}
+.sure{font-size:14px;margin:2px 0 4px}
+.tg{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;background:none;border:0;padding:0 4px;color:inherit;font-family:inherit}
+.tg .sw{width:36px;height:20px;border-radius:10px;background:#C9C9C0;position:relative;transition:.2s}
+.tg .sw::after{content:"";position:absolute;left:3px;top:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:.2s}
+.tg[aria-pressed=true] .sw{background:var(--g)}
+.tg[aria-pressed=true] .sw::after{left:19px}
 .strength small{font-size:12px;color:var(--sub);font-weight:400;margin-left:8px}
 #tip{position:absolute;pointer-events:none;background:#fff;border:1px solid var(--line);border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.12);padding:8px 10px;font-size:13px;display:none;white-space:nowrap;z-index:3}
 #tip b{display:block;margin-bottom:4px}
@@ -108,6 +114,19 @@ svg text{font-family:inherit}
    <p class="hint" id="chint"></p>
    <div id="sc"></div>
    <div class="note">※関係が強くても、片方が原因とは限りません（例: 暑い月は学期の終わりでもある）</div>
+  </div>
+  <div class="box panel cpanel">
+   <h2>ある日と無い日をくらべる<small>（原因をさぐる）期間は上で選んだもの</small></h2>
+   <div class="chips in">
+    <button class="chip" id="kfB" aria-label="何の日"><span id="kfL"></span><span class="tri"></span></button>
+    <span class="lab">の</span><button class="chip" id="kmB" aria-label="見るもの"><span id="kmL"></span><span class="tri"></span></button>
+    <button class="tg" id="kwd" aria-pressed="true"><span class="sw"></span>同じ曜日どうしで比べる</button>
+   </div>
+   <div class="strength" id="kstr"></div>
+   <p class="sure" id="ksure"></p>
+   <p class="hint" id="khint"></p>
+   <div id="kc"></div>
+   <div class="note">※「同じ曜日どうし」は、曜日による差を取りのぞいて比べます。天気・時期などほかの条件の差は残ります</div>
   </div>
  </div>
 </main>
@@ -183,6 +202,10 @@ function start(data){
   const cpick=(btn,key)=>e=>{e.stopPropagation();const L=(f)=>Object.entries(SER).filter(([k,v])=>f(v)).map(([k,v])=>({v:k,t:v.label+(v.unit=="円"||v.unit=="杯"?"":`（${v.unit}）`),on:k==C[key]}));
     menu($(btn),[{h:"お店の数字"},...L(v=>!v.env),{h:"まわりの様子"},...L(v=>v.env)],v=>{C[key]=v;drawCorr()})};
   $("cxB").onclick=cpick("cxB","x");$("cyB").onclick=cpick("cyB","y");
+  FLAGS=data.flags||{};
+  $("kfB").onclick=e=>{e.stopPropagation();menu($("kfB"),Object.entries(FLAGS).map(([k,v])=>({v:k,t:v.on,on:k==K.f})),v=>{K.f=v;drawCause()})};
+  $("kmB").onclick=e=>{e.stopPropagation();menu($("kmB"),Object.entries(SER).filter(([k,v])=>!v.env&&Object.keys(v.days||{}).length).map(([k,v])=>({v:k,t:v.label,on:k==K.m})),v=>{K.m=v;drawCause()})};
+  $("kwd").onclick=()=>{K.wd=!K.wd;$("kwd").setAttribute("aria-pressed",K.wd);drawCause()};
   setPer(first);addEventListener("resize",draw);
 }
 // 見るもの（売上・純利益など）を切り替える。日ごとの記録が無いものは月ごとだけ
@@ -270,7 +293,7 @@ function points(r,u){
   return ps;
 }
 function draw(){
-  drawCorr();
+  drawCorr();drawCause();
   const ranges=[per,...cmps.map(cmpRange)], u=unitFor(ranges);
   $("unitL").textContent={d:"日ごと",w:"週ごと",m:"月ごと"}[u]+(u!="m"&&DNOTE?"（推定）":""); const S=ranges.map(r=>points(r,u)), P=S[0];
   // 月ごとの時は、比べる線を「期間の何か月目か」でそろえる（記録の無い月があってもずれないように）
@@ -336,6 +359,54 @@ function draw(){
   };
   svg.querySelectorAll("rect[data-j]").forEach(r=>{r.onmouseenter=r.onclick=()=>show(+r.dataset.j)});
   svg.onmouseleave=()=>{tip.style.display="none";cur.setAttribute("visibility","hidden")};
+}
+// ---- ある日と無い日をくらべる（因果をさぐる）----
+let FLAGS={};const K={f:"event",m:"sales",wd:true};
+function drawCause(){
+  if(!FLAGS[K.f])K.f=Object.keys(FLAGS)[0];
+  const box=$("kc");
+  if(!K.f){box.innerHTML="";$("kstr").textContent="";$("ksure").textContent="";return}
+  const F=FLAGS[K.f],M=SER[K.m];$("kfL").textContent=F.on;$("kmL").textContent=M.label;
+  // 期間の中で、印と数字がそろった日
+  const ds=[];for(let n=per.a;n<=per.b;n++){const k=ISO(n),f=F.days[k],v=(M.days||{})[k];if(f!=null&&v!=null)ds.push({n,k,f,v,w:DT(n).getUTCDay()})}
+  const A=ds.filter(d=>d.f),B=ds.filter(d=>!d.f);
+  const clear=msg=>{$("kstr").textContent="";$("ksure").textContent="";$("khint").textContent="";box.innerHTML=`<p style="text-align:center;color:var(--sub);padding:30px 16px">${msg}</p>`};
+  if(!ds.length)return clear(`この期間には日ごとの記録がありません。日ごとの記録があるのは ${ISO(DF).replace(/-/g,"/")}〜${ISO(DL).replace(/-/g,"/")} だけです`);
+  if(A.length<2||B.length<2)return clear(`「${F.on}」が${A.length}日、「${F.off}」が${B.length}日なので、くらべられません`);
+  // 差: そのまま、または同じ曜日どうし（ある日の曜日の分だけ、無い日の平均を重みをつけて使う）
+  const mean=a=>a.reduce((s,d)=>s+d.v,0)/a.length;
+  function effect(arr){const a=arr.filter(d=>d.f),b=arr.filter(d=>!d.f);
+    if(!K.wd)return{ma:mean(a),mb:mean(b),na:a.length};
+    let sa=0,sb=0,na=0;for(let w=0;w<7;w++){const aw=a.filter(d=>d.w==w),bw=b.filter(d=>d.w==w);if(!aw.length||!bw.length)continue;sa+=aw.length*mean(aw);sb+=aw.length*mean(bw);na+=aw.length}
+    return na?{ma:sa/na,mb:sb/na,na}:null}
+  const e=effect(ds);
+  if(!e)return clear("同じ曜日の「無い日」がないので、くらべられません。「同じ曜日どうし」を外してください");
+  const pct=Math.round((e.ma/e.mb-1)*100);
+  $("kstr").innerHTML=`${F.on}は、${K.wd?"同じ曜日の":""}${F.off}より 1日あたり${pct>0?`▲${pct}%多い`:pct<0?`▼${-pct}%少ない`:"同じくらい"}<small>${F.on.replace(/（.*）/,"")} ${A.length}日・${F.off} ${B.length}日</small>`;
+  // 偶然でも出る差か: 印をでたらめに入れかえて（同じ曜日の中で）2000回やり直す
+  const obs=Math.abs(e.ma-e.mb);let hit=0;const T=2000;
+  for(let t=0;t<T;t++){const sh=ds.map(d=>({...d}));
+    const groups=K.wd?[0,1,2,3,4,5,6].map(w=>sh.filter(d=>d.w==w)):[sh];
+    for(const g of groups){const fs=g.map(d=>d.f);for(let i=fs.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[fs[i],fs[j]]=[fs[j],fs[i]]}g.forEach((d,i)=>d.f=fs[i])}
+    const r=effect(sh);if(r&&Math.abs(r.ma-r.mb)>=obs-1e-9)hit++}
+  const pv=hit/T;
+  $("ksure").textContent=(pv<0.05?"→ 偶然とは考えにくい差です":pv<0.2?"→ 偶然でも出るかもしれない差です":"→ 偶然でも十分に出る差です（はっきりした違いとは言えません）")+(Math.min(A.length,B.length)<5?"（日数が少ないので目安）":"");
+  $("khint").textContent="点1つ＝1日。棒は1日あたりの平均。棒や点にふれると中身が出ます";
+  // 図: 2本の棒（ある日＝緑、無い日＝灰）と、1日ずつの点
+  const W=Math.max(320,Math.min(880,box.clientWidth||880)),H=260,L=W<520?56:72,R=W-20,T0=16,Bt=H-40;
+  const vmax=Math.max(e.ma,e.mb,...ds.map(d=>d.v)),st=nice(vmax/4),top=Math.ceil(vmax/st)*st,y=v=>Bt-v/top*(Bt-T0);
+  const cols=[{lab:F.on,arr:A,m:e.ma,c:"var(--c1)"},{lab:(K.wd?"同じ曜日の":"")+F.off,arr:B,m:e.mb,c:"var(--c3)"}];
+  const cw=(R-L)/2,bw=Math.min(90,cw*.4);let sv=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="ある日と無い日の比較">`;
+  for(let v=0;v<=top;v+=st)sv+=`<line x1="${L}" x2="${R}" y1="${y(v)}" y2="${y(v)}" stroke="${v?"#ECECE4":"#B9B9B0"}"/><text x="${L-10}" y="${y(v)+4}" font-size="12" fill="#7A7F7C" text-anchor="end">${v.toLocaleString()}</text>`;
+  cols.forEach((c,i)=>{const cx=L+cw*(i+.5);
+    sv+=`<rect x="${cx-bw/2}" y="${y(c.m)}" width="${bw}" height="${Bt-y(c.m)}" fill="${c.c}" opacity=".35" data-t="${c.lab}｜1日あたり平均 ${Math.round(c.m).toLocaleString()}${M.unit}"/>`;
+    sv+=`<line x1="${cx-bw/2}" x2="${cx+bw/2}" y1="${y(c.m)}" y2="${y(c.m)}" stroke="${c.c}" stroke-width="3"/>`;
+    c.arr.forEach((d,j)=>{const jx=cx+((j*37)%21-10)/10*bw*.4;sv+=`<circle cx="${jx}" cy="${y(d.v)}" r="3.5" fill="${c.c}" data-t="${ymd(d.n)}｜${d.v.toLocaleString()}${M.unit}"/>`});
+    sv+=`<text x="${cx}" y="${Bt+24}" font-size="13" fill="#434343" text-anchor="middle">${c.lab}</text>`});
+  box.innerHTML=sv+`</svg><div id="ktip" class="ktip"></div>`;box.style.position="relative";
+  const tip=$("ktip");tip.style.cssText="position:absolute;display:none;pointer-events:none;background:#fff;border:1px solid var(--line);border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.12);padding:6px 10px;font-size:13px;white-space:nowrap";
+  box.querySelectorAll("[data-t]").forEach(el=>{el.onmouseenter=el.onclick=ev=>{const [a,b]=el.dataset.t.split("｜");tip.innerHTML=`<b>${a}</b><br>${b}`;tip.style.display="block";
+    const r=box.getBoundingClientRect();let x=ev.clientX-r.left+12;if(x+tip.offsetWidth>box.clientWidth)x-=tip.offsetWidth+24;tip.style.left=x+"px";tip.style.top=(ev.clientY-r.top-10)+"px"};el.onmouseleave=()=>tip.style.display="none"});
 }
 // ---- 2つの関係（相関）: 同じ日（または月）の2つの数字を点にする ----
 const C={x:"temp",y:"sales"};
