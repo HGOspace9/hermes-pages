@@ -18,6 +18,7 @@ header{flex-wrap:wrap;gap:6px 18px}
 .nav button{background:none;border:0;color:#fff;opacity:.75;font-family:inherit;font-size:15px;padding:6px 12px;border-radius:6px;cursor:pointer}
 .nav button.on{opacity:1;background:rgba(255,255,255,.16);font-weight:700}
 .tab{display:none}.tab.on{display:block}
+.chip.on{background:var(--g);color:#fff;border-color:var(--g)}
 .guide h3{font-size:15px;margin:18px 0 6px;color:var(--g)}
 .guide p,.guide li{font-size:14px;line-height:1.8;margin:0}
 .guide ul{margin:0;padding-left:1.2em}
@@ -113,7 +114,7 @@ svg text{font-family:inherit}
   <h3>グラフ</h3>
   <p>Googleシート「Endless 売上生データ」の経営ダッシュボードにあるグラフの写真です。いちばん上のボタンでシートを開けます（見るには持ち主の許可が要ります）。</p>
   <h3>フォーム</h3>
-  <p>準備中です。</p>
+  <p>売上報告などのGoogleフォームに、このページから答えられます。フォームが増えたら、上のボタンで選びます。</p>
   <h3>数字について</h3>
   <ul>
    <li>売上・杯数は生協レジの月の合計（イベント込み）。日ごとの数字は2026年4〜7月だけで、推定です</li>
@@ -129,7 +130,9 @@ svg text{font-family:inherit}
  </div></section>
  <section class="tab" id="t-form"><div class="box panel">
   <h2>フォーム</h2>
-  <p class="hint">準備中です</p>
+  <div class="chips in" id="flist"></div>
+  <p class="hint">うまく出ないときは <a id="fopen" href="#" target="_blank" rel="noopener">新しい画面で開く ↗</a></p>
+  <iframe id="fframe" title="フォーム" style="width:100%;height:1100px;border:1px solid var(--line);border-radius:8px;background:#fff" loading="lazy"></iframe>
  </div></section>
  <section class="tab" id="t-look">
   <div class="box cards" id="cards"></div>
@@ -234,8 +237,14 @@ function start(data){
   setPer(first);addEventListener("resize",()=>{draw();drawCorr()});
   // グラフ（シートの写真）
   const G=data.charts||[];
-  $("gimgs").innerHTML=G.length?G.map(g=>`<figure class="gimg" style="margin:14px 0 0"><img src="${g.src}" alt="${g.title}" loading="lazy"></figure>`).join(""):`<p style="text-align:center;color:var(--sub);padding:40px 16px">${/仮/.test(data.note||"")?"仮の数字のあいだは、シートのグラフは出していません":"グラフはまだありません"}</p>`;
+  $("gimgs").innerHTML=G.length?G.map(g=>`<figure class="gimg" style="margin:14px 0 0"><img src="${g.src}" alt="${g.title}" loading="lazy"></figure>`).join(""):`<p style="text-align:center;color:var(--sub);padding:40px 16px">グラフはまだありません</p>`;
   $("gnote").textContent=data.chartsAt?`シートから写した日: ${data.chartsAt}`:"";
+  // フォーム（data.forms。増えたら上にボタンが並ぶ）
+  const FM=data.forms||[];let fcur=0;
+  const fshow=i=>{fcur=i;const f=FM[i];if(!f)return;$("fframe").src=f.url+(f.url.includes("?")?"&":"?")+"embedded=true";$("fopen").href=f.url;
+    $("flist").innerHTML=FM.length>1?FM.map((x,j)=>`<button class="chip ${j==fcur?"on":""}" data-f="${j}">${x.title}</button>`).join(""):`<span style="font-size:15px;font-weight:700">${f.title}</span>`};
+  $("flist").onclick=e=>{const b=e.target.closest("[data-f]");if(b)fshow(+b.dataset.f)};
+  if(FM.length)fshow(0);else $("t-form").querySelector(".panel").innerHTML='<h2>フォーム</h2><p class="hint">まだありません</p>';
   // 上の4つの場所
   $("nav").style.display="flex";
   const show=t=>{document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x.id=="t-"+t));document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.t==t));if(t=="look"){draw();drawCorr()}};
