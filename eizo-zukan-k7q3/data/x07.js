@@ -5,6 +5,8 @@
 const X07 = {
   v: o => Cam(Object.assign({ z: -4.6, f: 32, y: .85 }, o)),
   fix: (t, bad, o) => X07.v(Object.assign({ tr: { B: X07.v(bad), clip: 'wipe', u: 1 - ease(seg(t, .12, .6)) } }, o)),
+  // 赤・緑・青の物（色の変わり方を見る見本）
+  rgb: [{ t: 'ball', x: -1.7, z: .4, s: .6, col: '#d9483b' }, { t: 'box', x: 1.3, z: .6, s: .6, col: '#3d9a4a' }, { t: 'ball', x: 2.2, z: 1.8, s: .6, col: '#3a63c8' }],
   keep: (tint, o, top) => { const k = {}; for (const n of ['x', 'y', 'z', 'f', 'ax', 'ay']) if (n in o) k[n] = o[n]; return X07.v(Object.assign({ tint, over: X07.v(Object.assign({ plain: 'none' }, k, top || {})) }, o)); },
 };
 XF('07', {
@@ -33,13 +35,14 @@ XF('07', {
   // 世界と青いねこは色が抜け、橙のねこだけが元の色で残る
   '1色だけ残す': { dur: 4.5, fn: t => { const a = ease(seg(t, .15, .55)); return X07.v({ keep: a, cats: [[-1.6, 2], [1.7, 3]], cap: a > .4 ? '橙だけ残す' : '元の色' }); } },
   // 赤と青緑の2色だけ：空の青が出ず、くすんだ緑になる
-  '2色': { dur: 4, fn: t => GR(t, { f: 'saturate(1.15) contrast(1.1)', ov: [['rgb(255,255,135)', 'darken'], ['rgba(255,110,80,.22)', 'soft-light']] }, { sat: 1.15, con: 1.1, temp: .3 }, '2色：空の青が出ない') },
+  // 赤い玉・緑の箱・青い玉を並べる：左（2色）では赤と肌は出るが、青い玉と空はくすむ
+  '2色': { dur: 4, fn: t => GR(t, { f: 'saturate(1.15) contrast(1.1)', ov: [['rgb(255,255,135)', 'darken'], ['rgba(255,110,80,.22)', 'soft-light']] }, { sat: 1.15, con: 1.1, temp: .3 }, '2色：青が出ない', { props: X07.rgb }) },
   // 明るく、差を弱く、色うすく、少し桃色
   'パステル（Pastel）': { dur: 4, fn: t => GR(t, { f: 'brightness(1.18) contrast(.7) saturate(.55)', ov: [['rgba(255,190,215,.2)', 'screen']] }, { sat: .55, con: .7, temp: .2 }, 'パステル') },
   // 中間に緑をうっすら、影は暗い緑
   '緑がかった世界（Green tint）': { dur: 4, fn: t => GR(t, { f: 'saturate(.85) contrast(1.1)', ov: [['rgba(70,210,90,.38)', 'soft-light'], ['rgba(30,90,40,.12)', 'multiply']] }, { sat: .85, con: 1.1, temp: -.2 }, '緑がかった世界') },
-  // 青いねこを並べ、赤・緑・青がにごらず濃く分かれる
-  'テクニカラー風（Technicolor look）': { dur: 4, fn: t => GR(t, { f: 'saturate(1.55) contrast(1.2) brightness(1.05)' }, { sat: 1.55, con: 1.2, temp: 0 }, 'こってり原色', { cats: [[-1.5, 1.5], [1.5, 2.5]] }) },
+  // 赤い玉・緑の箱・青い玉と青いねこ。左から、赤・緑・青がにごらず濃く分かれる
+  'テクニカラー風（Technicolor look）': { dur: 4, fn: t => GR(t, { f: 'saturate(1.55) contrast(1.2) brightness(1.05)' }, { sat: 1.55, con: 1.2, temp: 0 }, 'こってり原色', { cats: [[-1.1, 2.6]], props: X07.rgb }) },
   // きれいなデジタル → 粒・明るい所の赤いにじみ・少し黄ばむ
   'フィルム風（粒・ハレーション）': { dur: 4.5, fn: t => { const on = t > .4, u = ease(seg(t, .4, .6)); return X07.v({ grade: on ? { f: 'contrast(.95) sepia(.12)', ov: [[`rgba(255,70,30,${(.14 * u).toFixed(2)})`, 'screen']] } : null, grain: .6 * u, glow: .3 * u, vig: .3 * u, cap: on ? 'フィルム風' : 'デジタルのまま' }); } },
   // 世界を青に、主役は橙のまま。色の輪の反対どうしで主役が飛び出す
@@ -50,12 +53,12 @@ XF('07', {
   '3色（トライアド）（Triadic colors）': { dur: 4.5, fn: t => { const a = .38 * ease(seg(t, .15, .55)), C = [[-1.4, 1.5]]; return X07.keep(`245,205,30,${a.toFixed(2)}`, { cats: C, grade: { f: 'saturate(1.3)' }, cap: '黄・赤・青' }, { cats: C }); } },
   // 色あいを橙1つにして、明るさだけ残す
   '単色（モノクロマティック）（Monochromatic）': { dur: 4, fn: t => GR(t, { f: 'contrast(1.1)', ov: [['rgb(230,125,40)', 'color']] }, { sat: .8, con: 1.1, temp: .7 }, '橙ひと色') },
-  // 4つの場面を決めた色で並べる。下の帯が色の台本
-  'カラースクリプト（場面ごとの色の台本）': { dur: 7, fn: t => { const s = seq(t, [1, 1, 1, 1], [0, 1, 2, 3]), G = [{ ov: [['rgba(255,150,60,.4)', 'soft-light']] }, { f: 'brightness(.85)', ov: [['rgba(40,90,230,.4)', 'soft-light']] }, { f: 'saturate(.3) brightness(.8)' }, { f: 'saturate(1.4) contrast(1.2)', ov: [['rgba(255,60,40,.3)', 'soft-light']] }]; return X07.v({ x: [-1, 1, 0, 0][s.i], z: [-5, -4.2, -6, -3.6][s.i], grade: G[s.i], tl: s.tl, cap: ['1 出会い 暖', '2 不安 青', '3 喪失 灰', '4 決戦 赤'][s.i] }); } },
-  // 彩度の倍率が気持ちに合わせて 1.2→1.0→0.5→1.2 と動く。下の波が彩度
-  '彩度で気持ちを語る（Saturation as emotion）': { dur: 7, fn: t => { const S = x => x < .25 ? 1.2 : x < .4 ? lerp(1.2, 1, seg(x, .25, .4)) : x < .55 ? lerp(1, .5, seg(x, .4, .55)) : x < .8 ? .5 : lerp(.5, 1.2, seg(x, .8, 1)), s = S(t); return X07.v({ grade: { f: `saturate(${s.toFixed(2)})` }, gv: { sat: s, con: 1, temp: 0 }, snd: { rows: [{ label: '彩度', amp: x => S(x) / 1.3 }], t }, cap: s > 1.1 ? '幸せ 120%' : s < .6 ? '喪失 50%' : 'ふつう' }); } },
+  // 4つの場面を決めた色で並べる（空の色も場面ごと：夕焼け・夜・曇り＋雨・赤い空＋火花）。下の帯が色の台本
+  'カラースクリプト（場面ごとの色の台本）': { dur: 7, fn: t => { const s = seq(t, [1, 1, 1, 1], [0, 1, 2, 3]), G = [{ ov: [['rgba(255,150,60,.4)', 'soft-light']] }, { f: 'brightness(.85)', ov: [['rgba(40,90,230,.4)', 'soft-light']] }, { f: 'saturate(.3) brightness(.8)' }, { f: 'saturate(1.4) contrast(1.2)', ov: [['rgba(255,60,40,.3)', 'soft-light']] }], K = [['#f6a96b', '#ffe2b0', '#c98a6a'], ['#0d1840', '#3a4f8f', '#2a3560'], ['#7d8288', '#c4c6c8', '#93979c'], ['#4a0c10', '#e0482c', '#4a1a1a']]; return X07.v({ x: [-1, 1, 0, 0][s.i], z: [-5, -4.2, -6, -3.6][s.i], sky: K[s.i], cats: s.i === 0 ? [[1.3, .5, -.7]] : null, face: s.i === 0 ? .6 : 0, eye: s.i === 2 ? .55 : s.i === 3 ? 1.3 : 1, part: s.i === 2 ? { type: 'rain', u: s.u } : s.i === 3 ? { type: 'spark', u: s.u } : null, grade: G[s.i], tl: s.tl, cap: ['1 出会い 暖', '2 不安 青', '3 喪失 灰', '4 決戦 赤'][s.i] }); } },
+  // 彩度の倍率が気持ちに合わせて 1.2→1.0→0.5→1.2 と動く。ねこの顔も同じ向きに（笑う・目に光→うつむき目を細める）。下の波が彩度
+  '彩度で気持ちを語る（Saturation as emotion）': { dur: 7, fn: t => { const S = x => x < .25 ? 1.2 : x < .4 ? lerp(1.2, 1, seg(x, .25, .4)) : x < .55 ? lerp(1, .5, seg(x, .4, .55)) : x < .8 ? .5 : lerp(.5, 1.2, seg(x, .8, 1)), s = S(t), j = clamp((s - .5) / .7); return X07.v({ grade: { f: `saturate(${s.toFixed(2)})` }, gv: { sat: s, con: 1, temp: 0 }, mouth: .5 * clamp((s - 1) * 5), eye: lerp(.5, 1.15, j), hl: j, face: s < .6 ? -.35 : 0, ay: s > 1.1 ? .15 * jump((t * 6) % 1) : 0, snd: { rows: [{ label: '彩度', amp: x => S(x) / 1.3 }], t }, cap: s > 1.1 ? '幸せ 120%' : s < .6 ? '喪失 50%' : 'ふつう' }); } },
   // 話A＝黄、話B＝青。くり返すと色だけでどちらの話か分かる
   '色の意味づけ（Color symbolism / Color coding）': { dur: 6, fn: t => { const s = seq(t, [1, 1, 1, 1], [0, 1, 0, 1]), A = s.i % 2 === 0; return X07.v({ x: A ? -.8 : 1, z: A ? -4.6 : -3.8, f: A ? 32 : 40, cats: A ? null : [[-1.2, 2]], grade: A ? { ov: [['rgba(255,200,30,.45)', 'soft-light']] } : { f: 'brightness(.9)', ov: [['rgba(40,100,240,.45)', 'soft-light']] }, tl: s.tl, cap: A ? '話A＝黄' : '話B＝青' }); } },
-  // ずっと白黒→ねこがとび上がった瞬間に、1回だけ一気に色が流れこむ
-  '白黒から色へ切り替え（B&W to color transition）': { dur: 5, fn: t => { const g = 1 - ease(seg(t, .55, .75)); return X07.v({ ay: jump(seg(t, .4, .8)), grade: { f: `grayscale(${g.toFixed(2)}) contrast(${(1 + .15 * g).toFixed(2)})` }, gv: { sat: 1 - g, con: 1, temp: 0 }, cap: g > .5 ? '白黒の世界' : '色がつく！' }); } },
+  // ずっと白黒→ねこがとび上がった瞬間に、1回だけ一気に色が流れこむ（顔も目を見開いて口が開く）
+  '白黒から色へ切り替え（B&W to color transition）': { dur: 5, fn: t => { const g = 1 - ease(seg(t, .55, .75)); return X07.v({ ay: jump(seg(t, .4, .8)), eye: lerp(1, 1.5, 1 - g), mouth: .6 * (1 - g), hl: 1 - g, grade: { f: `grayscale(${g.toFixed(2)}) contrast(${(1 + .15 * g).toFixed(2)})` }, gv: { sat: 1 - g, con: 1, temp: 0 }, cap: g > .5 ? '白黒の世界' : '色がつく！' }); } },
 });

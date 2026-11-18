@@ -15,8 +15,8 @@ XF('17', {
   '1.85:1（アメリカンビスタ）': { dur: 4, fn: t => { const u = ease(seg(t, .3, .55)); return X17.v({ x: .4, z: -5, f: 32, cats: [[1.3, .3]], aspect: u > 0 ? lerp(16 / 9 + .002, 1.85, u) : 0, cap: u < .5 ? '16:9' : '1.85 上下に細い帯' }); } },
   // 2.39 のまま横に並ぶねこを広く流し、最後は顔の寄りで額とあごが切れる
   '2.39:1（シネマスコープ、シネスコ）': { dur: 5, fn: t => t < .62 ? X17.v({ x: lerp(-1, 1, ease(t / .62)), z: -6.5, f: 24, cats: [[-2, 1], [2, 1]], aspect: 2.39, cap: '2.39:1 横に広い' }) : aimHead(X17.v({ z: -2.1, f: 55, y: .85, aspect: 2.39, cap: '顔は額が切れる' })) },
-  // ふつうの 2.39 → 見せ場で上下に画面が広がり 1.43。下から見上げて高さを見せる
-  'IMAX 1.43:1': { dur: 5, fn: t => { const u = ease(seg(t, .35, .65)); return X17.v({ z: -5, y: .4, f: 24, pitch: .22 * u, aspect: lerp(2.39, 1.43, u), cap: u < .5 ? 'ふつう 2.39' : 'IMAX 上下に広がる' }); } },
+  // ふつうの 2.39 では奥の高い塔の上が切れている→見せ場で上下に画面が広がり 1.43、見上げると塔のてっぺんまで入る
+  'IMAX 1.43:1': { dur: 5, fn: t => { const u = ease(seg(t, .35, .65)); return X17.v({ z: -5, y: .4, f: 24, pitch: .22 * u, aspect: lerp(2.39, 1.43, u), props: [{ t: 'box', x: 1.5, z: 4, w: 1.2, h: 5.4, col: '#7d8ba0' }, { t: 'box', x: -2, z: 6, w: 1, h: 4.6, col: '#6d7a8e' }, { t: 'glow', x: 1.5, y: 5.6, z: 4, s: .5, col: '255,90,70' }], cap: u < .5 ? 'ふつう 2.39' : 'IMAX 上下に広がる' }); } },
   // 横の絵の真ん中を切り抜いて縦にし、上へとぶ動きで縦を使う
   '縦 9:16': { dur: 4.4, fn: t => t < .35 ? X17.v({ z: -5, cap: '横の素材' }) : X17.v({ z: -5, aspect: V, dz: 1.35, oy: -.03, ay: jump(seg(t, .5, .9)) * 1.2, cap: '9:16 中央を切抜き' }) },
   // 真四角の真ん中に主役。ゆっくり寄って近さを出す
@@ -40,8 +40,8 @@ XF('17', {
   'VHS': { ref: 'vhs' },
   // 4:3 のブラウン管：走査線、流れる帯、周りが暗い丸み、少し青い光
   '走査線・ブラウン管': { dur: 4.5, fn: t => { const on = t > .3; return X17.v({ aspect: 4 / 3, scan: on ? 1 : 0, vig: on ? .9 : 0, glow: on ? .25 : 0, grade: on ? { f: 'contrast(1.2) saturate(1.25)', ov: [['rgba(80,140,255,.18)', 'screen']] } : null, cap: on ? 'ブラウン管' : 'ふつうの画面' }); } },
-  // 前半：暗い夜を高感度で撮ったざらつき。後半：通信の乱れで帯がずれる
-  'デジタルノイズ': { dur: 5, fn: t => cutOf(t, 2) ? X17.v({ glitch: (t * 2 - 1) % .5 < .3 ? 1 : 0, cap: '通信の乱れ' }) : X17.v({ tint: '15,25,70,.5', grain: 1.8, grade: { f: 'brightness(1.3) saturate(.7)' }, cap: '高感度のざらつき' }) },
+  // 前半：街灯だけの暗い夜空を高感度で撮ったざらつき。後半：通信の乱れで帯がずれる
+  'デジタルノイズ': { dur: 5, fn: t => cutOf(t, 2) ? X17.v({ glitch: (t * 2 - 1) % .5 < .3 ? 1 : 0, cap: '通信の乱れ' }) : X17.v({ sky: ['#05081a', '#1b2442', '#141a2c'], tint: '15,25,70,.45', props: [{ t: 'glow', x: -2.4, y: 2.4, z: 3, s: .7, col: '255,200,120' }, { t: 'line', x: -2.4, y: 0, z: 3, x2: -2.4, y2: 2.4, z2: 3, w: .05 }], grain: 1.8, grade: { f: 'brightness(1.3) saturate(.7)' }, cap: '高感度のざらつき' }) },
   // ぼかし＋強いコントラストを段々に強めて、色の面を大きくまとめる（四角い升は描けないので近い絵）
   'ドット絵化': { dur: 4.5, fn: t => { const s = Math.min(4, Math.floor(seg(t, .2, .8) * 5)); return X17.v({ pixel: [0, 160, 96, 56, 32][s], grade: s ? { f: 'saturate(1.25) contrast(1.1)' } : null, grain: 0, cap: s ? `横${[0, 160, 96, 56, 32][s]}マス` : 'ふつう' }); } },
   // 白黒 → 染色（白まで青＝夜）→ 調色（黒だけ赤茶、白は白のまま）
@@ -50,6 +50,6 @@ XF('17', {
   '手彩色・ステンシル彩色【足した技法】': { dur: 4.5, fn: t => { const f = Math.floor(t * 72), on = t > .3; return X17.v({ tint: '150,150,150,.8', grain: .5, aspect: 4 / 3, over: on ? X17.v({ plain: 'none', ax: (hsh(f) - .5) * .05, ay: (hsh(f + 9) - .5) * .03 }) : null, cap: on ? 'ねこだけ手で色' : '白黒に近い絵' }); } },
   // 8mm の絵に、橙の光が0.5秒ふわっと入り（光漏れ）、最後は巻の端が白く焼ける
   '光漏れ・フィルムの焼け・枠見せ（Light Leak / Film Burn）【足した技法】': { dur: 5, fn: t => { const a = bump(t, .35, .09), b = ease(seg(t, .75, 1)); return X17.v({ aspect: 4 / 3, grain: .8, sun: [70, 20], flare: .45 * a, glow: .2 * a, flash: .35 * b, tint: `255,${Math.round(120 + 60 * b)},40,${(.45 * Math.max(a, b)).toFixed(2)}`, cap: t < .7 ? '光漏れ' : '巻の端が焼ける' }); } },
-  // 太陽の入った同じ絵：SDR は空も影も平たい／HDR は明るい所だけまぶしく、暗い所はそのまま
-  'HDR（High Dynamic Range）': { dur: 5, fn: t => { const h = cutOf(t, 2); return Cam({ z: -7, y: .6, f: 24, pitch: .08, sun: [30, 28], glow: h ? .22 : 0, flare: h ? .18 : 0, grade: { f: h ? 'contrast(1.2) saturate(1.35)' : 'contrast(.8) saturate(.8) brightness(1.08)' }, cap: h ? 'HDR 1000ニト' : 'SDR 100ニト' }); } },
+  // 太陽の入った同じ絵を左右に並べる：左 SDR は空も影も平たく白っぽい／右 HDR は空が深い青で、太陽のまわりだけまぶしい
+  'HDR（High Dynamic Range）': { dur: 5, fn: t => { const S = h => Cam({ z: -7, y: .6, f: 24, pitch: .08, sun: [30, 28], sky: h ? ['#1d4fb0', '#ffd9a0'] : ['#c3ccd6', '#dedcd4'], glow: h ? .22 * ease(seg(t, .2, .6)) : 0, flare: h ? .18 * ease(seg(t, .2, .6)) : 0, grade: { f: h ? 'contrast(1.2) saturate(1.35)' : 'contrast(.8) saturate(.8) brightness(1.08)' } }); return Cam({ plain: '#111', noA: true, pip: [{ cam: S(0), x: .02, y: .2, w: .47, h: .62 }, { cam: S(1), x: .51, y: .2, w: .47, h: .62 }], text: [{ type: 'fade', u: 1, s: 'SDR 100ニト', k: .3, x: .255, y: .11 }, { type: 'fade', u: 1, s: 'HDR 1000ニト', k: .3, x: .745, y: .11, col: '#ffd23a' }], cap: '同じ絵の明るさの幅' }); } },
 });

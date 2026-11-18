@@ -21,20 +21,20 @@ XF('03', {
   'クローズアップ（Close-Up / CU）': { dur: 3.4, fn: t => at(Cam({ z: -2.3, y: .88, f: lerp(60, 85, ease(seg(t, .1, .7))), dof: .6, fd: 2.3, cap: '顔でいっぱい' }), 0, .88, 0) },
   // 1.4m離れたまま200mmまでズームして目だけにする（写る高さ約14cm）
   '超クローズアップ（Extreme Close-Up / ECU）': { dur: 3.4, fn: t => at(Cam({ z: -1.4, y: .88, f: lerp(85, 200, ease(seg(t, .1, .65))), dof: .4, fd: 1.4, cap: '目だけ' }), 0, .88, 0) },
-  // ねこ→柱の飾りだけのアップ（1秒ほど）→ねこ。物だけを見せる
-  'インサート（Insert、物のアップ）': { dur: 4, fn: t => { const s = seq(t, [1.2, 1, 1.2], [0, 2, 0]); return withTl(s.i === 1 ? at(Cam({ x: 1, y: 2.6, z: -1, f: 135 }), 3.2, 3.3, 3) : at(Cam({ z: -2.6, y: .85, f: 45 }), 0, .8, 0), s, { cap: ['見ている', 'インサート（物だけ）', '続き'][s.i] }); } },
-  // 高い所から夕方の町をゆっくり横に流して見せ、それから人物へ
-  'エスタブリッシングショット（Establishing Shot、場所の紹介）': { dur: 5, fn: t => { const s = seq(t, [2.2, 1], [1, 0]); return withTl(s.i ? at(Cam({ z: -3, y: .85, f: 45, tint: '255,170,90,.12' }), 0, .8, 0) : at(Cam({ x: lerp(-1.5, 1.5, s.u), y: 7, z: -24, f: 22, tint: '255,170,90,.15' }), 0, 2, 25), s, { cap: s.i ? 'それから人物' : '場所と時刻（夕方）' }); } },
+  // ねこが足元の赤い玉を見る→玉だけのアップ（1秒ほど）→ねこ。物だけを見せる
+  'インサート（Insert、物のアップ）': { dur: 4, fn: t => { const s = seq(t, [1.2, 1, 1.2], [0, 2, 0]), P = [{ t: 'ball', x: .7, z: -.5, s: .3 }]; return withTl(s.i === 1 ? at(Cam({ x: .7, y: .35, z: -1.6, f: 70, props: P, dof: .5, fd: 1.1 }), .7, .15, -.5) : at(Cam({ z: -3.5, y: .8, f: 35, props: P, face: .55, eye: s.i ? 1.4 : 1.2 }), .3, .5, 0), s, { cap: ['見ている', 'インサート（物だけ）', '続き'][s.i] }); } },
+  // 高い所から夕焼けの町をゆっくり横に流して見せ（時刻が分かる空の色）、それから人物へ
+  'エスタブリッシングショット（Establishing Shot、場所の紹介）': { dur: 5, fn: t => { const s = seq(t, [2.2, 1], [1, 0]), SK = { sky: ['#2a2f6b', '#f08a5a', '#6a5a7a'], sun: [15, 6] }; return withTl(s.i ? at(Cam(Object.assign({ z: -3, y: .85, f: 45, tint: '255,170,90,.08' }, SK)), 0, .8, 0) : at(Cam(Object.assign({ x: lerp(-1.5, 1.5, s.u), y: 7, z: -24, f: 22, props: [{ t: 'cloud', x: -12, y: 9, z: 60, s: 6, col: '#f4b38a', a: .8 }, { t: 'cloud', x: 14, y: 11, z: 75, s: 7, col: '#e99a86', a: .7 }] }, SK)), 0, 2, 25), s, { cap: s.i ? 'それから人物' : '場所と時刻（夕方）' }); } },
   // 2人と場所が全部入る引きの画が土台。寄りを挟んでもまた引きへ戻る
   'マスターショット（Master Shot）': { dur: 5, fn: t => { const s = seq(t, [1.6, 1, 1.6], [0, 1, 0]); return withTl(s.i === 1 ? camA() : camM({ z: -7.5, f: 26 }), s, { cap: ['マスター（全員と場所）', '寄りを挟む', '迷ったら引きへ'][s.i] }); } },
   // 2人いる場面から、相手を入れない1人だけの画へ
   'シングル（Single）': { dur: 4, fn: t => { const s = seq(t, [1, 1.4], [0, 1]); return withTl(s.i ? camA({ f: 50 }) : camM(), s, { cap: s.i ? 'シングル（1人だけ）' : '2人いる' }); } },
   // 相手（青）の肩が画面の右端に1割ほどぼけて入ってくる。主役は左の3分の1
   'ダーティシングル（Dirty Single）【足した技法】': { dur: 3.4, fn: t => { const u = ease(seg(t, .1, .6)), c = Cam(Object.assign({ x: 1.7, y: .95, z: -3.5, f: 40, dof: .9, fd: 4.55 }, TALK)); c.yaw = lerp(-.62, -.525, u); c.pitch = -.033; c.cap = u > .9 ? '相手が端に少しだけ' : ''; return c; } },
-  // 横並びの2人のすき間がせばまる（近いほど仲が近い）→前後に置く形
-  'ツーショット（Two Shot）': { dur: 5, fn: t => { const i = cutOf(t, 2), u = ease(seg(t, .08, .42)); return at(Cam(i ? { z: -6.5, y: 1, f: 35, ax: -.6, az: -1.5, cats: [[.9, 2.5]], cap: '前後に置く' } : { z: -6.5, y: 1, f: 35, ax: lerp(-1.6, -.45, u), cats: [[lerp(1.6, .45, u), 0]], cap: '近いほど仲が近い' }), 0, .7, 0); } },
-  // 3人の置き方：横一列（平等）→三角形（前の頂点の人が中心）
-  'スリーショット（Three Shot）': { dur: 5, fn: t => { const i = cutOf(t, 2); return at(Cam(Object.assign({ z: -6.5, y: 1.4, f: 35 }, i ? { az: -1.3, cats: [[-1.3, 1.3], [1.3, 1.3]], cap: '三角＝頂点が中心' } : { cats: [[-1.4, 0], [1.4, 0]], cap: '横一列＝平等' })), 0, .6, 0); } },
+  // 2人の置き方3つ：横並び（すき間がせばまる＝仲が近づく）→向かい合い→前後に置く
+  'ツーショット（Two Shot）': { dur: 6, fn: t => { const i = cutOf(t, 3), u = ease(seg(t, .05, .28)); return at(Cam([{ z: -6.5, y: 1, f: 35, ax: lerp(-1.6, -.45, u), cats: [[lerp(1.6, .45, u), 0]], cap: '横並び：近いほど仲良し' }, { z: -6.5, y: 1, f: 35, ax: -.9, face: .8, mouth: yap(t), cats: [[.9, 0, -.8]], cap: '向かい合い' }, { z: -6.5, y: 1, f: 35, ax: -.6, az: -1.5, face: .5, cats: [[.9, 2.5, -.4]], cap: '前後に置く' }][i]), 0, .7, 0); } },
+  // 3人の置き方：横一列でみな正面（平等）→三角形で左右の2人が前の頂点の人を見る（中心）
+  'スリーショット（Three Shot）': { dur: 5, fn: t => { const i = cutOf(t, 2); return at(Cam(Object.assign({ z: -6.5, y: 1.4, f: 35 }, i ? { az: -1.3, cats: [[-1.3, 1.3, .55], [1.3, 1.3, -.55]], cap: '三角＝頂点が中心' } : { cats: [[-1.4, 0], [1.4, 0]], cap: '横一列＝平等' })), 0, .6, 0); } },
   '肩ごし（Over The Shoulder / OTS）': { ref: 'ots' },
   '切り返し（Shot / Reverse Shot）': { ref: 'reverse' },
   '主観ショット（Point of View / POV）': { ref: 'pov' },
@@ -69,10 +69,10 @@ XF('03', {
   '前景・中景・背景の層（Foreground / Middleground / Background）': { dur: 5, fn: t => { const s = seq(t, [1, 1.6], [2, 0]); return withTl(s.i ? at(Cam({ x: lerp(.6, -.4, ease(s.u)), z: -6, y: .85, f: 40, cats: [[-.7, -3.8]], dof: .5, fd: 6 }), 0, .75, 0) : Cam({ z: -6, y: .8, f: 40, plain: '#cdc5b3', still: true }), s, { cap: s.i ? '手前・真ん中・奥' : '層が1つ＝紙みたい' }); } },
   // 上へ向いていき、空が画面の大部分に。ねこは右下の隅に小さく残る
   'ネガティブスペース（Negative Space、余白）': { dur: 4, fn: t => { const u = ease(seg(t, .1, .75)); return Cam({ z: -9, y: .3, f: 24, ax: 2.2, yaw: -.18, pitch: lerp(0, .38, u), cap: u > .9 ? '空が大部分' : '' }); } },
-  // 右へ進むねこを左の3分の1に置いて追う（進む先が空く）。目は上の線
-  'ヘッドルームとリードルーム（Headroom / Lead Room）': { dur: 3.6, fn: t => { const ax = lerp(-2, 2, t); return Cam({ x: ax, z: -5, y: .7, f: 35, ax, ay: .12 * jump((t * 5) % 1), yaw: X03.yaw(1 / 3, 35), pitch: -.06, grid: 'thirds', cap: '進む先を空ける' }); } },
-  // 同じく右へ進むのに右端へ寄せる（進む先が狭く、背中側が広い）
-  'ショートサイディング（Short-Siding）【足した技法】': { dur: 4, fn: t => { const ax = lerp(-2, 2, t); return Cam({ x: ax, z: -5, y: .7, f: 35, ax, ay: .12 * jump((t * 5) % 1), yaw: X03.yaw(.84, 35), pitch: -.06, vig: .35, cap: '進む先が狭い' }); } },
+  // 右を向いて右へ進むねこを左の3分の1に置いて追う（向いている先が空く）。目は上の線
+  'ヘッドルームとリードルーム（Headroom / Lead Room）': { dur: 3.6, fn: t => { const ax = lerp(-2, 2, t); return Cam({ x: ax, z: -5, y: .7, f: 35, ax, face: 1, ay: .12 * jump((t * 5) % 1), yaw: X03.yaw(1 / 3, 35), pitch: -.06, grid: 'thirds', cap: '向いている先を空ける' }); } },
+  // 同じく右を向いて右へ進むのに右端へ寄せる（顔の先が狭く、背中側が広い）
+  'ショートサイディング（Short-Siding）【足した技法】': { dur: 4, fn: t => { const ax = lerp(-2, 2, t); return Cam({ x: ax, z: -5, y: .7, f: 35, ax, face: 1, ay: .12 * jump((t * 5) % 1), yaw: X03.yaw(.84, 35), pitch: -.06, vig: .35, cap: '顔の先が狭い' }); } },
   // 三分割の線（33%）から黄金比の位置（38%）へ、少し中央寄りに動く
   '黄金比（Golden Ratio）': { dur: 4, fn: t => Cam({ z: -4.2, y: .95, f: 35, yaw: lerp(X03.yaw(1 / 3, 35), X03.yaw(.382, 35), ease(seg(t, .4, .6))), grid: 'thirds', cap: t < .5 ? '三分割 33%' : '黄金比 38%（少し中へ）' }) },
   // 手前1.5mの青いねこと8m奥のねこ、両方くっきり。奥で出来事（跳ぶ）
@@ -86,8 +86,8 @@ XF('03', {
   '四分割の使い分け（クアドラント / Quadrant Framing）【足した技法】': { dur: 4, fn: t => at(Cam({ z: lerp(-6.5, -6, ease(t)), y: 2.6, f: 35, ax: -1.5, az: 4, cats: [[1.3, -1.5]], grid: 'center', cap: '別々のマスにいる' }), 0, .4, 1) },
   // 見上げられた方が強く、見下ろされた方が弱い。後半で上下が入れかわる（逆転）
   '力関係（上下）': { dur: 6, fn: t => { const s = seq(t, [1, 1, 1, 1], [0, 1, 0, 1]), low = s.i === 0 || s.i === 3, A = s.i % 2 === 0, c = Cam(Object.assign({ x: A ? 1 : -1, y: low ? .2 : 2.4, z: -2.4, f: 35 }, TALK)); return withTl(at(c, A ? -1.2 : 1.2, low ? .9 : .5, 0), s, { cap: ['A 見上げ＝強い', 'B 見下ろし＝弱い', 'A 見下ろし（逆転）', 'B 見上げ（逆転）'][s.i] }); } },
-  // 青いねこの群れから離れて1人。引いて上がるほど離れているのが分かる
-  '孤立（余白）': { dur: 5, fn: t => { const u = ease(seg(t, .05, .8)); return at(Cam({ z: lerp(-5, -11, u), y: lerp(1, 2.2, u), f: 30, ax: 1.8, cats: [[-1.8, 3], [-1.2, 3.6], [-2.2, 4.3], [-1.5, 4.9], [-.9, 4.1], [-2, 5.6]], tint: '40,50,90,.15', cap: u > .8 ? 'みんなと離れて1人' : '' }), 0, .5, 2); } },
+  // 輪になって話す青いねこの群れから離れて、1人だけ背を向ける。引いて上がるほど離れているのが分かる
+  '孤立（余白）': { dur: 5, fn: t => { const u = ease(seg(t, .05, .8)); return at(Cam({ z: lerp(-5, -11, u), y: lerp(1, 2.2, u), f: 30, ax: 1.8, face: 'b', cats: [[-1.8, 3, .3, yap(t)], [-1.2, 3.6, -.6], [-2.2, 4.3, .6], [-1.5, 4.9, 0], [-.9, 4.1, -.7], [-2, 5.6, .4]], tint: '40,50,90,.15', cap: u > .8 ? 'みんなと離れて1人' : '' }), 0, .5, 2); } },
   // 水平でゆるい画から、傾き・望遠で詰める・黒帯でせまくする・ふちを暗く、を重ねる
   '緊張（傾き・狭さ）': { dur: 4.4, fn: t => { const u = ease(seg(t, .1, .8)); return aimHead(Cam({ z: lerp(-4.5, -3, u), f: lerp(35, 85, u), y: .85, roll: .28 * u, aspect: u > 0 ? lerp(16 / 9 + .002, 2.39, u) : 0, vig: .6 * u, cap: u < .5 ? 'ゆるい・水平' : '傾き＋狭さ' })); } },
   // 手前でねこが跳ねて目を引く間に、奥の右隅へ小さな青いねこが歩いて入ってくる
