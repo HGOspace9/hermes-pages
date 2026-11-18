@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="theme-color" content="#14161a">
+<title>映像技法ずかん</title>
+<style>
+:root{--bg:#14161a;--panel:#1e2127;--panel2:#262a31;--line:#343942;--text:#eceae4;--muted:#9da3ad;--amber:#f2b33d;--teal:#4fb3a5;--cat:#ee8a3a;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.75 "Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+button:focus-visible,input:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+header{position:sticky;top:0;z-index:5;background:rgba(20,22,26,.96);border-bottom:1px solid var(--line)}
+.bar{max-width:1180px;margin:0 auto;padding:10px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+h1{font-size:19px;margin:0;font-weight:700;letter-spacing:.04em}
+h1 small{display:block;font-size:11px;font-weight:400;color:var(--muted);letter-spacing:.12em}
+.tabs{display:flex;background:var(--panel);border-radius:999px;padding:3px;margin-left:auto}
+.tabs button{padding:5px 18px;border-radius:999px;font-size:14px;color:var(--muted);user-select:none}
+.tabs button[aria-selected=true]{background:var(--amber);color:#1b1608;font-weight:700}
+.prog{font-size:13px;color:var(--muted);min-width:96px;text-align:right;font-variant-numeric:tabular-nums}
+.prog b{color:var(--text);font-size:16px}
+main{max-width:1180px;margin:0 auto;padding:22px 16px 80px}
+.intro{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:end;margin-bottom:18px}
+.intro h2{font-size:26px;margin:0 0 4px;text-wrap:balance}
+.intro p{margin:0;color:var(--muted);font-size:14px;max-width:46em}
+.tools{display:flex;gap:8px;align-items:center}
+.tools input{background:var(--panel);border:1px solid var(--line);border-radius:8px;color:var(--text);font:inherit;font-size:14px;padding:7px 12px;width:190px}
+.ghost{border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:13px;background:var(--panel);user-select:none}
+.ghost:hover{border-color:var(--muted)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:0 0 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;text-align:left;display:block;width:100%;transition:transform .15s,border-color .15s}
+.card:hover{transform:translateY(-3px);border-color:var(--amber)}
+.card canvas,.view canvas.scene{display:block;width:100%;aspect-ratio:16/9;background:#000}
+.card .body{padding:10px 13px 13px}
+.card h3{margin:0;font-size:16px;line-height:1.4;display:flex;gap:6px;align-items:baseline}
+.card p{margin:3px 0 8px;font-size:13px;color:var(--muted);line-height:1.55}
+.done{margin-left:auto;font-size:11px;color:#1b1608;background:var(--teal);border-radius:4px;padding:0 6px;font-weight:700;white-space:nowrap}
+.chips{display:flex;gap:5px;flex-wrap:wrap}
+.chip{font-size:11px;border-radius:4px;padding:1px 7px;background:var(--panel2);color:var(--muted);border:1px solid var(--line)}
+.chip.on{color:var(--amber);border-color:#6d5524}
+.top{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:8px}
+.fnav{display:flex;gap:6px;flex-wrap:wrap}
+.fnav button{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:4px 13px;font-size:13px;user-select:none}
+.fnav button:hover{border-color:var(--amber)}
+.fnav button b{color:var(--amber);margin-right:5px;font-variant-numeric:tabular-nums}
+.field{scroll-margin-top:76px;padding-top:26px}
+.field h2{font-size:24px;margin:0 0 2px;text-wrap:balance}
+.field h2 b{color:var(--amber);margin-right:12px;font-variant-numeric:tabular-nums}
+.field>p{margin:0 0 14px;color:var(--muted);font-size:14px;max-width:52em}
+details.all{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:0 14px}
+details.all summary{cursor:pointer;padding:10px 0;font-size:14px;color:var(--amber);user-select:none}
+.nlist{display:flex;flex-wrap:wrap;gap:6px;padding:0 0 14px}
+.nlist h4{flex-basis:100%;margin:10px 0 0;font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.06em}
+.nbtn{border:1px solid var(--line);background:var(--panel2);border-radius:6px;padding:3px 10px;font-size:13px;text-align:left}
+.nbtn.has::before{content:"▶ ";color:var(--amber);font-size:10px}
+.nbtn:hover{border-color:var(--amber)}
+.pg{display:flex;align-items:center;gap:10px;margin:2px 0 8px;font-size:12px;color:var(--muted)}
+.pg div{width:160px;height:5px;background:var(--panel2);border-radius:3px;overflow:hidden}
+.pg i{display:block;height:100%;background:var(--teal);width:0}
+.qbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.qbar select{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font:inherit;font-size:14px}
+.seg{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{padding:6px 14px;font-size:14px;color:var(--muted);user-select:none}
+.seg button[aria-pressed=true]{background:var(--amber);color:#1b1608;font-weight:700}
+.qcount{font-size:13px;color:var(--muted);margin:0 0 10px}.qcount b{color:var(--text)}
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pick{border:2px solid var(--line);border-radius:10px;overflow:hidden;padding:0;display:block}
+.pick canvas{display:block;width:100%;aspect-ratio:16/9}
+.pick:hover{border-color:var(--amber)}.pick.ok{border-color:var(--teal)}.pick.ng{border-color:#b85c4a}
+html.lock,html.lock body{overflow:hidden}
+dialog{overscroll-behavior:contain;overflow-y:auto}
+.crumb{display:flex;gap:12px;align-items:center;margin-bottom:12px;font-size:14px;color:var(--muted)}
+.hh{font-size:26px;margin:4px 0 2px}.hp{margin:0 0 16px;color:var(--muted);font-size:14px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;text-align:left;display:block;transition:transform .15s,border-color .15s}
+.tile:hover{transform:translateY(-3px);border-color:var(--amber)}
+.tile canvas{display:block;width:100%;aspect-ratio:16/9;background:#000}
+.tile .body{padding:9px 12px 10px}
+.tile h3{margin:0;font-size:15px;line-height:1.4}.tile h3 b{color:var(--amber);margin-right:8px}
+.tile p{margin:1px 0 4px;font-size:12px;color:var(--muted)}
+.tile .pg{margin:0}.tile .pg div{width:auto;flex:1}
+.fnav{flex-wrap:nowrap;overflow-x:auto;max-width:100%;padding-bottom:4px;scrollbar-width:thin}
+.fnav button{white-space:nowrap}.fnav button[aria-current=true]{border-color:var(--amber);color:var(--amber)}
+.top{flex-wrap:wrap}.top .tools{margin-left:auto}
+.pager{display:flex;justify-content:space-between;gap:10px;margin-top:26px}
+.field{padding-top:8px}
+.note{margin-top:26px;font-size:13px;color:var(--muted)}
+dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:14px;padding:0;width:min(1040px,96vw);max-height:94vh}
+dialog::backdrop{background:rgba(0,0,0,.72)}
+.dhead{display:flex;gap:10px;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);z-index:2}
+.dhead h2{margin:0;font-size:20px;line-height:1.35}
+.dhead span{font-size:12px;color:var(--muted);display:block;font-weight:400}
+.dhead .x{margin-left:auto;font-size:22px;width:36px;height:36px;border-radius:8px}
+.dhead .x:hover{background:var(--panel2)}
+.dbody{padding:16px 18px 20px}
+.views{display:grid;gap:14px;grid-template-columns:1fr}
+.views.two{grid-template-columns:1fr 1fr}
+.view{background:#191c21;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.view .cap{font-size:13px;padding:6px 10px;font-weight:700;display:flex;justify-content:space-between}
+.view .cap em{font-style:normal;color:var(--muted);font-weight:400;font-size:12px}
+.under{display:grid;grid-template-columns:110px 1fr;gap:10px;padding:10px;align-items:center}
+.under canvas{width:110px;height:150px;border-radius:6px;display:block}
+.under.nomap{grid-template-columns:1fr}
+.knobs{display:grid;gap:8px;font-size:12px}
+.knob label{display:flex;justify-content:space-between;color:var(--muted)}
+.knob label b{color:var(--text);font-variant-numeric:tabular-nums}
+.knob.move label span{color:var(--amber)}
+.track{height:6px;background:var(--panel2);border-radius:3px;position:relative;margin-top:3px}
+.track i{position:absolute;top:-3px;width:12px;height:12px;border-radius:50%;background:var(--muted);margin-left:-6px}
+.knob.move .track i{background:var(--amber)}
+.ctrl{display:flex;gap:8px;align-items:center;margin:12px 0 4px;flex-wrap:wrap}
+.ctrl input[type=range]{flex:1;min-width:140px;accent-color:var(--amber)}
+.ghost[aria-pressed=true]{border-color:var(--amber);color:var(--amber)}
+.txt{display:grid;grid-template-columns:1fr 1fr;gap:4px 26px;margin-top:10px}
+.txt section h3{font-size:12px;color:var(--amber);margin:12px 0 0;letter-spacing:.1em}
+.txt section p{margin:2px 0 0;font-size:15px}
+.txt .wide{grid-column:1/-1}
+.dfoot{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap}
+.primary{background:var(--amber);color:#1b1608;font-weight:700;border-radius:8px;padding:8px 16px;user-select:none}
+.dfoot .sp{flex:1}
+#quiz{max-width:760px;margin:0 auto}
+#quiz h2{font-size:22px;margin:0 0 4px}
+#quiz .q{color:var(--muted);font-size:14px;margin:0 0 12px}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.choices button{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;text-align:left;font-size:15px;user-select:none}
+.choices button:hover:not(:disabled){border-color:var(--amber)}
+.choices button.ok{border-color:var(--teal);background:#1d3531}
+.choices button.ng{border-color:#b85c4a;background:#3a211d}
+.fb{min-height:5.5em;margin-top:14px;font-size:15px;background:var(--panel);border-radius:10px;padding:12px 14px;border:1px solid var(--line)}
+.fb b{color:var(--amber)}
+.qfoot{display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:13px;color:var(--muted)}
+[hidden]{display:none!important}
+@media(max-width:720px){.fnav{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;max-width:100%}.fnav button{white-space:nowrap}.tools{width:100%}.tools input{flex:1;width:auto}.field h2{font-size:20px}.dbody{padding:12px}.under{grid-template-columns:84px 1fr}.under canvas{width:84px;height:120px}.bar{gap:8px}h1{font-size:17px}.intro{grid-template-columns:1fr}.views.two,.txt,.choices{grid-template-columns:1fr}.tabs{margin-left:0}.prog{margin-left:auto}dialog{width:100vw;max-width:100vw;max-height:100vh;border-radius:0}}
+@media(prefers-reduced-motion:reduce){.card{transition:none}}
+</style>
+</head>
+<body>
+<header><div class="bar">
+  <h1>映像技法ずかん<small>FILM TECHNIQUE FIELD GUIDE</small></h1>
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tab-book" aria-selected="true">図鑑</button>
+    <button role="tab" id="tab-quiz" aria-selected="false">クイズ</button>
+  </div>
+  <div class="prog">覚えた <b id="pn">0</b> / <span id="pt">0</span></div>
+</div></header>
+<main>
+  <div id="book">
+    <div class="crumb" id="crumb" hidden><button class="primary" id="back">← 分野の一覧</button><span id="crumbt"></span></div>
+    <div class="top">
+      <nav class="fnav" id="fnav" aria-label="分野"></nav>
+      <div class="tools">
+        <input id="search" type="search" placeholder="ことばでさがす（例：孤独）" aria-label="ことばでさがす">
+        <button class="ghost" id="motion" aria-pressed="false">動きを止める</button>
+      </div>
+    </div>
+    <div id="home"><h2 class="hh">分野をえらぶ</h2><p class="hp">映画・動画・アニメの技法を17の分野に分けました。分野を押すと、その分野だけのページが開きます。</p><div class="tiles" id="tiles"></div></div>
+    <div id="sections"></div>
+    <div class="pager" id="pager" hidden><button class="ghost" id="pprev"></button><button class="ghost" id="pnext"></button></div>
+    <p class="note">動く図つき126個＋文だけの項目638個（17分野）。作品の例の [知識] は Claude の知識で、確かめていないものです。</p>
+  </div>
+  <div id="quiz" hidden>
+    <div class="qbar">
+      <select id="qfield" aria-label="分野をえらぶ"></select>
+      <div id="qmodes" class="seg"><button data-m="name" aria-pressed="true">絵 → 名前</button><button data-m="pic" aria-pressed="false">名前 → 絵</button></div>
+    </div>
+    <p class="qcount" id="qcount"></p>
+    <h2 id="qq">この動きの名前は？</h2>
+    <div class="view" id="qview"><canvas class="scene" id="qcv"></canvas></div>
+    <div class="cgrid" id="qgrid" hidden></div>
+    <div class="choices" id="qch"></div>
+    <div class="fb" id="qfb">答えを選ぶと、見分け方が出ます。</div>
+    <div class="qfoot"><span id="qstat"></span><button class="primary" id="qnext" hidden>次の問題</button></div>
+    <p class="note">正解すると、次に出るまでの間が 10分 → 1日 → 3日 → 1週間 → 3週間 とのびます。まちがえると最初からです。記録はこのブラウザの中だけに残ります。</p>
+  </div>
+</main>
+<dialog id="dlg" aria-labelledby="dtitle">
+  <div class="dhead"><h2 id="dtitle"></h2><button class="x" id="dclose" aria-label="閉じる">×</button></div>
+  <div class="dbody">
+    <div class="views" id="views"></div>
+    <div class="ctrl">
+      <button class="ghost" id="play">⏸ 止める</button>
+      <button class="ghost" id="slow" aria-pressed="false">ゆっくり</button>
+      <input type="range" id="scrub" min="0" max="1000" value="0" aria-label="コマを動かす">
+      <button class="ghost" id="cmp" aria-pressed="false"></button>
+    </div>
+    <div class="txt" id="txt"></div>
+    <div class="dfoot">
+      <button class="ghost" id="prev">‹ 前へ</button><button class="ghost" id="next">次へ ›</button>
+      <span class="sp"></span><button class="primary" id="mark"></button>
+    </div>
+  </div>
+</dialog>
+<script src="engine.js?v=5"></script>
+<script src="engine2.js?v=5"></script>
+<script src="engine3.js?v=5"></script>
+<script src="data/zoom.js?v=5"></script>
+<script src="data/camera.js?v=5"></script>
+<script src="data/comp.js?v=5"></script>
+<script src="data/lens.js?v=5"></script>
+<script src="data/time.js?v=5"></script>
+<script src="data/light.js?v=5"></script>
+<script src="data/color.js?v=5"></script>
+<script src="data/edit.js?v=5"></script>
+<script src="data/trans.js?v=5"></script>
+<script src="data/sfx.js?v=5"></script>
+<script src="data/text.js?v=5"></script>
+<script src="data/anime.js?v=5"></script>
+<script src="data/story.js?v=5"></script>
+<script src="data/notes.js?v=5"></script>
+<script>/* 追加の図と画面の組み立ては、古い控えを使わないよう毎回読み直す */
+for (let i = 1; i <= 17; i++) document.write('<script src="data/x' + String(i).padStart(2, "0") + '.js?' + Date.now() + '"><\/script>');
+document.write('<script src="app.js?' + Date.now() + '"><\/script>');
+</script>
+</body>
+</html>
