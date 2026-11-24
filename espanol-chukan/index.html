@@ -182,7 +182,7 @@ const SIX=["a","de","en","al","del","（何も入らない）"];
 ["Quiero ___ ver películas.","（何も入らない）","querer ＋ 動詞の原形。間に何も入らない。"],
 ["Yo quiero hacer ___ un curso de cocina.","（何も入らない）","hacer un curso。前置詞はいらない。"],
 ["Quiero ___ aprender español.","（何も入らない）","querer ＋ 原形。ir a ＋ 原形 と混ぜない。"]
-].forEach(([q,ans,x])=>Q.push({id:Q.length,s:"mae",k:"c",q,h:"",a:[ans,...SIX.filter(o=>o.toLowerCase()!==ans.toLowerCase())],x}));
+].forEach(([q,ans,x])=>Q.push({id:Q.length,s:"mae",k:"c",q,h:"",a:[ans,...SIX.filter(o=>o.toLowerCase()!==ans.toLowerCase()).map(o=>/^[A-Z]/.test(ans)&&!o.startsWith("（")?o[0].toUpperCase()+o.slice(1):o)],x}));
 
 // 日本語訳（キー＝問題文。同じ問題文があるものは「問題文|ヒント」）
 const JA={
@@ -293,6 +293,72 @@ const JA={
 "Quiero ___ aprender español.":"私はスペイン語を学びたいです。"
 };
 function ja(q){return JA[q.q+"|"+q.h]||JA[q.q]||""}
+
+// 3択でまちがえたとき：「あなたの答えだと、こういう意味になってしまう」
+const WR={
+"Quiero ir ___ la playa.":{"de":"「海**から**行きたい」になってしまう（出発点の意味）。","al":"al は a＋el のくっついた形。playa は la なので、くっつかずに a la のまま。"},
+"¡Yo quiero ir ___ teatro!":{"a":"後ろに el teatro の el が隠れている。a＋el は必ず al にくっつける決まり。","de":"「劇場**から**行きたい」になってしまう。"},
+"Yo quiero ir ___ compras.":{"a las":"「その買い物たち**へ**」のような変な文に。買い物に行くは決まり文句 ir de compras。","a":"「買い物**へ**」と直訳したくなるが✕。ir de compras で1つの決まり文句。"},
+"¿Quieres ir ___ bailar esta noche?":{"de":"「踊り**から**行く？」になってしまう。","（何も入らない）":"ir（行く）の後ろに動詞を続けるときは、必ず a が要る（ir a bailar）。"},
+"Yo quiero hacer ___ un curso de cocina.":{"a":"「料理講座**へ**する」になってしまう。hacer の後ろはそのまま名詞。","de":"「料理講座**から**する」になってしまう。"},
+"Yo no quiero salir ___ noche.":{"a":"「夜**へ**出かける」になってしまう。夜に＝de noche。","al":"al は a＋el。noche は la なので al にもならない。"},
+"Madrid ___ la capital de España.":{"está":"「マドリードは首都という**場所にいる**」という意味に。está は「どこにあるか」専用。","hay":"hay は「〜がある」で、前に主語（Madrid）を置けない。文が壊れる。"},
+"Sevilla ___ en el sur de España.":{"es":"「セビリアは南**です**」＝セビリアが南そのもの、という意味に。場所は está。","hay":"hay は前に主語（Sevilla）を置けない。文が壊れる。"},
+"Las islas Galápagos ___ en Ecuador.":{"son":"「ガラパゴス諸島はエクアドル**という存在だ**」という意味に。場所は están。","hay":"hay は前に主語を置けない。「ガラパゴス諸島、エクアドルに〜がある」と壊れる。"},
+"En México ___ muchos volcanes activos.":{"están":"están は el/la が付く「決まったもの」の場所用。muchos volcanes（たくさんの火山）は不特定なので hay。","son":"「メキシコでは、たくさんの活火山**です**」という意味不明な文に。"},
+"En España no ___ petróleo.":{"está":"「石油が**いない**」になる。不特定のもの（石油）があるかないかは hay。","es":"「スペインでは石油**ではない**」という意味に。"},
+"Las playas de Cuba ___ muy bonitas.":{"están":"「（今だけ）きれいな**状態だ**」という意味に。もともとの性質を言うときは son。","hay":"hay は前に主語を置けない。文が壊れる。"},
+"Japón ___ una población de 123 millones.":{"hay":"hay は前に主語（Japón）を置けない。En Japón hay… ならOK。","es":"「日本**は**1億2300万人の人口**です**」＝日本＝人口、という変な文に。"},
+"En invierno no nieva, pero ___ frío.":{"hay":"「寒さ**がある**」になってしまう。天気の暑い・寒いは hace。","está":"está frío は「（物が）冷たい」の意味。天気の寒さは hace frío。"},
+"En verano el clima es bueno y no ___ mucho.":{"llover":"llover は原形（辞書の形）。「雨が降る**こと**」で、活用されていない。","lluvia":"lluvia は名詞の「雨」。動詞がない文になってしまう。"},
+"Arthi, ¿___ lenguas hablas?":{"cuántos":"cuántos は男性用。lengua（言語）は女性名詞なので cuántas。","cuán":"cuán は「どれほど」。数を聞くことはできない。"},
+"¿___ hermanos tienes?":{"Cuántas":"cuántas は女性用。hermano は男性名詞なので cuántos。","Cuánto":"cuánto は「いくら（量）」。数えられるものの数は cuántos。"},
+"___ película de Pedro Almodóvar es buena.":{"Este":"este は男性用の「この」。película は女性名詞なので esta。","Esto":"esto は「これ」。後ろに名詞を置けない。"},
+"___ libro es muy interesante.":{"Esta":"esta は女性用の「この」。libro は男性名詞なので este。","Esto":"esto は「これ」。後ろに名詞を置けない。"},
+"Hokkaido es ___ bonito.":{"mucho":"「たくさんきれい」になってしまう。形容詞（bonito）の前は muy。","mucha":"mucha は女性名詞に付く「たくさんの」。形容詞の前には置けない。"},
+"En Tokio no nieva ___.":{"muy":"muy は形容詞の前専用。動詞（nieva）を強めるのは mucho。","mucha":"mucha は女性名詞に付く「たくさんの」。動詞の後ろには使えない。"},
+"¡Hablas tres lenguas! ¡Eres ___!":{"plurilingual":"これは英語の言葉。スペイン語では plurilingüe。","plurilenguas":"「複数の言語たち」という名詞。人のことを言えない。"},
+"curso は？":{"女性 (f)":"-o で終わるので男性：el curso。"},
+"clase は？":{"男性 (m)":"-e で終わる名詞は男女どちらもある。clase は女性：la clase。"},
+"día は？":{"女性 (f)":"-a で終わるのに男性：el día。よく出る引っかけ。"},
+"coche は？":{"女性 (f)":"coche は男性：el coche。"},
+"mapa は？":{"女性 (f)":"-a で終わるのに男性：el mapa。"},
+// ⑥ a / de / en
+"Soy ___ Japón.":{"a":"「私は日本**へ**です」という意味不明な文に。","en":"「私は日本**の中で**です」。出身の意味にならない（出身は de）。"},
+"¿___ dónde eres?":{"A":"「どこ**へ**ですか？」になってしまう。","En":"「どこ**で**ですか？」になってしまう。出身は de。"},
+"Un amigo ___ Corea del Sur.":{"a":"「韓国**への**友だち」になってしまう。","en":"「韓国**にいる**友だち」＝今いる場所の意味に。出身なら de。"},
+"Vivo ___ Tokio.":{"a":"「東京**へ**住む」になってしまう。","de":"「東京**から**住む」になってしまう。住む場所は en。"},
+"Trabajo ___ una agencia de viajes.":{"a":"「旅行代理店**へ**働く」になってしまう。","de":"「旅行代理店**から**働く」になってしまう。働く場所は en。"},
+"Estoy ___ la universidad.":{"a":"「大学**へ**いる」になってしまう。いる場所は en。","de":"「大学**から**いる」になってしまう。"},
+"Venezuela está ___ América Latina.":{"a":"「ラテンアメリカ**へ**ある」になってしまう。","de":"「ラテンアメリカ**から**ある」になってしまう。ある場所は en。"},
+"El Cairo está ___ el norte de Egipto.":{"a":"「北**へ**ある」になってしまう（しかも a el は al にする決まり）。","de":"「北**から**ある」になってしまう（しかも de el は del にする決まり）。","al":"「北**へ**ある」になってしまう。ある場所は en。","del":"「北**から**ある」になってしまう。ある場所は en。"},
+"Ceno ___ casa.":{"a":"「家**へ**夕食を食べる」になってしまう。","de":"「家**から**夕食を食べる」になってしまう。家で＝en casa。"},
+"Voy ___ la universidad.":{"de":"「大学**から**行く」＝出発点の意味になってしまう。","en":"「大学**で**行く」になってしまう。行き先は a。"},
+"Quiero ir ___ Madrid.":{"de":"「マドリード**から**行きたい」＝出発点の意味になってしまう。","en":"「マドリード**で**行きたい」になってしまう。行き先は a。"},
+"Quiero ir ___ cine.":{"a":"後ろに el cine の el が隠れている。a＋el は必ず al にくっつける。","de":"「映画館**から**行きたい」になってしまう。","en":"「映画館**で**行きたい」になってしまう。","del":"「映画館**から**行きたい」になってしまう（del＝de＋el）。"},
+"Vuelvo ___ casa a las 6.":{"de":"「家**から**帰る」＝家を出ていく逆の意味に。","en":"「家**で**帰る」になってしまう。帰る先は a。"},
+"¿Quieres ir ___ bailar?":{"de":"「踊り**から**行く？」になってしまう。","en":"「踊り**で**行く？」になってしまう。ir a ＋ 動詞 で「〜しに行く」。"},
+"Me levanto ___ las 6.":{"de":"「6時**から**起きる」になってしまう。","en":"「6時**の中で**起きる」になってしまう。「〜時に」は a las。"},
+"¿___ qué hora sales de casa?":{"De":"「何時**から**家を出る？」になってしまう。","En":"「何時**の中で**…」になってしまう。「何時に」は ¿A qué hora?"},
+"Salgo ___ casa a las 7:30.":{"a":"「家**へ**出る」＝家に向かう、逆の意味に。","en":"「家**で**出る」になってしまう。出る場所（出発点）は de。"},
+"Salgo ___ trabajo a las 5.":{"de":"後ろに el trabajo の el が隠れている。de＋el は必ず del にくっつける。","a":"「仕事**へ**出る」＝出勤の意味に。","en":"「仕事**で**出る」になってしまう。","al":"「仕事**へ**出かける」＝出勤の意味になってしまう。ここは仕事が終わって出る。"},
+"Trabajo hasta las 4 ___ la tarde.":{"a":"「午後**へ**4時まで」になってしまう。","en":"「午後**の中で**4時」になってしまう。午後の〜時＝de la tarde。"},
+"Voy ___ compras.":{"a":"「買い物**へ**」と直訳したくなるが✕。ir de compras は決まり文句。","en":"「買い物**の中で**行く」になってしまう。"},
+"Es el libro ___ María.":{"a":"「マリア**への**本」＝プレゼント先のような意味に。","en":"「マリア**の中の**本」になってしまう。持ち主は de。"},
+"Es la casa ___ profesor.":{"de":"後ろに el profesor の el が隠れている。de＋el は必ず del にくっつける。","a":"「先生**への**家」になってしまう。","en":"「先生**の中の**家」になってしまう。","al":"「先生**への**家」になってしまう（al＝a＋el）。"},
+"Soy profesora ___ español.":{"a":"「スペイン語**への**先生」になってしまう。","en":"「スペイン語**で（話す）**先生」に寄ってしまう。何の先生かは de。"},
+"Hago un curso ___ cocina.":{"a":"「料理**への**講座」になってしまう。","en":"「料理**の中の**講座」になってしまう。何の講座かは de。"},
+"Buenos Aires es la capital ___ Argentina.":{"a":"「アルゼンチン**への**首都」になってしまう。","en":"「アルゼンチン**の中の**首都」。意味は近いが「〜の首都」は de。"},
+"Vuelvo a casa ___ autobús.":{"a":"「バス**へ**帰る」＝バスが目的地の意味に。","de":"「バス**から**帰る」になってしまう。乗り物で＝en。"},
+"___ verano hace calor.":{"A":"「夏**へ**暑い」になってしまう。","De":"「夏**から**暑い」になってしまう。季節に＝en。"},
+"¿Cómo se dice «gato» ___ inglés?":{"a":"「英語**へ**」になってしまう。","de":"「英語**から**」になってしまう。〜語で＝en。"},
+"Las islas Galápagos están ___ Ecuador.":{"a":"「エクアドル**へ**ある」になってしまう。","de":"「エクアドル**から**ある」になってしまう。ある場所は en。"},
+"Quiero ___ ver películas.":{"a":"Quiero a ver は✕。a が要るのは ir a ver（見に**行く**）のとき。quiero の後ろはそのまま動詞。","de":"「〜**から**見たい」になってしまう。","en":"「見ること**の中で**」になってしまう。"},
+"Yo quiero hacer ___ un curso de cocina.":{"a":"「料理講座**へ**する」になってしまう。","de":"「料理講座**から**する」になってしまう。","en":"「料理講座**の中で**する」になってしまう。"},
+"Quiero ___ aprender español.":{"a":"Quiero a aprender は✕。quiero の後ろはそのまま動詞。","de":"「〜**から**学びたい」になってしまう。","en":"「学ぶこと**の中で**」になってしまう。"}
+};
+const WR_GEN={"al":"al は a＋el（〜へ＋el の名詞）。後ろに el の名詞があるときだけ使う。ここではくっつく el がない。","del":"del は de＋el（〜から／〜の＋el の名詞）。後ろに el の名詞があるときだけ使う。ここではくっつく el がない。","（何も入らない）":"何も入れないと「へ・から・で」の役目がなくなり、文がつながらない。"};
+function wrongWhy(q,opt){const m=WR[q.q]||{};const t=m[opt]||WR_GEN[opt]||WR_GEN[opt.toLowerCase()]||"";return t.replace(/\*\*(.+?)\*\*/g,"<b>$1</b>")}
 
 const POINTS=`
 <h2>1. es / está / hay / son</h2><ul>
@@ -431,7 +497,8 @@ function check(giveup){if(st.answered)return;const q=st.list[st.i];
 
 function pick(j){if(st.answered)return;const q=st.list[st.i];st.answered=true;const ok=j===0;logAns(q.a[j],ok?2:0);record(ok);
  document.querySelectorAll(".choices button").forEach(b=>{const k=+b.dataset.j;if(k===0)b.classList.add("ok");else if(k===j)b.classList.add("ng");b.disabled=true});
- result(ok)}
+ const why=ok?"":wrongWhy(q,q.a[j]);
+ result(ok,why?`<div class="ex">🙅 あなたの「<b>${q.a[j]}</b>」だと → ${why}</div>`:"")}
 
 function next(){st.i++;show()}
 
