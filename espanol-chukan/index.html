@@ -55,7 +55,8 @@ const SEC=[
  {id:"sentaku",name:"② 3択",d:"a/al/de、es/está/hay、天気、este/esta、muy/mucho"},
  {id:"katsuyo",name:"③ 動詞の活用",d:"主語に合わせて活用（本番は2点×10問）"},
  {id:"tenki",name:"④ 天気と季節",d:"hace calor / nieva / está nublado…"},
- {id:"iro",name:"⑤ 色・男女・単数",d:"名詞に合わせて色を変える、el/la、単数の形"}
+ {id:"iro",name:"⑤ 色・男女・単数",d:"名詞に合わせて色を変える、el/la、単数の形"},
+ {id:"mae",name:"⑥ a / de / en の置き場所",d:"苦手対策。〜へ(a)・〜から/〜の(de)・〜で/〜に(en)・何も入らない"}
 ];
 const Q=[
 // ① 会話
@@ -146,6 +147,42 @@ const Q=[
 ["iro","t","las casas → 単数","",["la casa"],"las → la。"],
 ["iro","t","unos coches → 単数","",["un coche"],"unos → un（uno ではない）。"]
 ].map((r,i)=>({id:i,s:r[0],k:r[1],q:r[2],h:r[3],a:r[4],x:r[5]}));
+// ⑥ a / de / en：毎回6つの中から選ぶ（正解が先頭、表示はまぜる）
+const SIX=["a","de","en","al","del","（何も入らない）"];
+[
+["Soy ___ Japón.","de","出身は de：「〜から来た」。Soy de Japón."],
+["¿___ dónde eres?","De","出身を聞くときも de：¿De dónde eres?"],
+["Un amigo ___ Corea del Sur.","de","出身・どこの人 → de。"],
+["Vivo ___ Tokio.","en","住んでいる場所（その中にいる）→ en。"],
+["Trabajo ___ una agencia de viajes.","en","働いている場所 → en。"],
+["Estoy ___ la universidad.","en","estar ＋ いる場所 → en。"],
+["Venezuela está ___ América Latina.","en","〜にある（場所）→ en。"],
+["El Cairo está ___ el norte de Egipto.","en","〜にある → en el norte。"],
+["Ceno ___ casa.","en","家で（場所）→ en casa。"],
+["Voy ___ la universidad.","a","ir（行く）の行き先 → a。「〜へ」。"],
+["Quiero ir ___ Madrid.","a","行き先 → a Madrid。"],
+["Quiero ir ___ cine.","al","行き先が el cine → a＋el ＝ al。"],
+["Vuelvo ___ casa a las 6.","a","帰る先（〜へ）→ a casa。※家で＝en casa、家へ＝a casa。"],
+["¿Quieres ir ___ bailar?","a","ir a ＋ 動詞の原形 ＝ 〜しに行く。"],
+["Me levanto ___ las 6.","a","「〜時に」は a las ＋ 数字。"],
+["¿___ qué hora sales de casa?","A","「何時に？」は ¿A qué hora…?"],
+["Salgo ___ casa a las 7:30.","de","salir de ＝ 〜から出る（出発点）→ de。"],
+["Salgo ___ trabajo a las 5.","del","出発点が el trabajo → de＋el ＝ del。"],
+["Trabajo hasta las 4 ___ la tarde.","de","「午後の4時」＝ las 4 de la tarde（時間帯は de）。"],
+["Voy ___ compras.","de","ir de compras（買い物に行く）は決まった形。"],
+["Es el libro ___ María.","de","「〜の」（持ち主）→ de。"],
+["Es la casa ___ profesor.","del","「先生の」→ de＋el profesor ＝ del。"],
+["Soy profesora ___ español.","de","「何の先生」→ profesora de español。"],
+["Hago un curso ___ cocina.","de","「何の講座」→ curso de cocina。"],
+["Buenos Aires es la capital ___ Argentina.","de","「〜の首都」→ de。"],
+["Vuelvo a casa ___ autobús.","en","乗り物で → en autobús / en tren / en coche。"],
+["___ verano hace calor.","En","季節に → en verano / en invierno。"],
+["¿Cómo se dice «gato» ___ inglés?","en","「〜語で」→ en inglés / en español。"],
+["Las islas Galápagos están ___ Ecuador.","en","〜にある → en。"],
+["Quiero ___ ver películas.","（何も入らない）","querer ＋ 動詞の原形。間に何も入らない。"],
+["Yo quiero hacer ___ un curso de cocina.","（何も入らない）","hacer un curso。前置詞はいらない。"],
+["Quiero ___ aprender español.","（何も入らない）","querer ＋ 原形。ir a ＋ 原形 と混ぜない。"]
+].forEach(([q,ans,x])=>Q.push({id:Q.length,s:"mae",k:"c",q,h:"",a:[ans,...SIX.filter(o=>o.toLowerCase()!==ans.toLowerCase())],x}));
 
 const POINTS=`
 <h2>1. es / está / hay / son</h2><ul>
@@ -183,6 +220,13 @@ const POINTS=`
 <li>este libro／esta película</li>
 <li>muy ＋ 形容詞（muy bonito）／動詞 ＋ mucho（no llueve mucho）</li>
 <li>色は名詞に合わせる：blancos・negras・roja／verde と azul は男女同じ、複数は verdes・azules・grises</li></ul>
+<h2>★ a / de / en の置き場所（苦手対策）</h2><ul>
+<li><b>a ＝「〜へ」「〜時に」</b>：ir a Madrid／vuelvo a casa／ir a ＋ 原形／a las 6／¿A qué hora…?</li>
+<li><b>de ＝「〜から」「〜の」</b>：soy de Japón／salgo de casa／el libro de María／profesora de español／las 4 de la tarde／ir de compras</li>
+<li><b>en ＝「〜で」「〜に（いる・ある）」</b>：vivo en Tokio／estoy en casa／en autobús／en verano／en español</li>
+<li><b>くっつく</b>：a＋el → <b>al</b>（al cine）／de＋el → <b>del</b>（del trabajo）。la・los・las はくっつかない</li>
+<li><b>何も入らない</b>：quiero ＋ 原形（quiero ver）／hacer un curso</li></ul>
+<div class="warn">見分け方：動く先なら a、出発点・持ち主なら de、じっとそこにいる場所なら en。<br>a casa（家へ帰る）／de casa（家から出る）／en casa（家で過ごす）</div>
 <h2>9. 季節・単数</h2><ul>
 <li>la primavera／el verano／el otoño／el invierno</li>
 <li>los libros → el libro／unas revistas → una revista</li></ul>`;
@@ -208,7 +252,7 @@ function home(){
  h+=`<button class="tile main" onclick="start('all')"><b>📝 全部やる（本番の練習）</b><div class="d">5つの大問を順番に。${Q.length}問</div></button>`;
  if(w.length)h+=`<button class="tile main" onclick="start('wrong')"><b>🔁 まちがえた問題だけ（${w.length}問）</b><div class="d">正解すると消えていきます</div></button>`;
  for(const s of SEC){const n=Q.filter(q=>q.s===s.id).length;const nw=Q.filter(q=>q.s===s.id&&w.includes(q.id)).length;
-  h+=`<button class="tile" onclick="start('${s.id}')"><b>${s.name}</b>（${n}問${nw?`・まだ ${nw}`:""}）<div class="d">${s.d}</div></button>`}
+  h+=`<button class="tile${s.id==="mae"?" main":""}" onclick="start('${s.id}')"><b>${s.name}</b>（${n}問${nw?`・まだ ${nw}`:""}）<div class="d">${s.d}</div></button>`}
  h+=`<button class="tile" onclick="points()"><b>📖 要点まとめ（9つ）</b><div class="d">解く前に1回読む</div></button>`;
  if(getLog().length)h+=`<button class="tile" onclick="copyReport()"><b>📋 結果をコピー</b><div class="d">Claudeに貼ると、得意・苦手を分析してもらえます</div></button>`;
  h+=`</div>`;
