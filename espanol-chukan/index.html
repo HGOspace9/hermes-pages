@@ -471,7 +471,7 @@ function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor
 function home(){
  const w=getWrong();const known=getKnown();
  let h=`<h1>スペイン語 中間テスト対策</h1><div class="sub">Intensivo 1・範囲 U0〜U4</div><div class="tiles">`;
- h+=`<button class="tile big" onclick="vocabHome()"><b>📚 教科書の単語</b><div class="d">U0〜U4の単語 ${VOCAB.length}語。ユニット → グループを選んでカードで覚える</div><div class="bar"><i style="width:${Math.round(VOCAB.filter(v=>known.includes(vk(v))).length/VOCAB.length*100)}%"></i></div></button>`;
+ h+=`<button class="tile big" onclick="vocabHome()"><b>📚 教科書の単語</b><div class="d">U0〜U4の単語 ${VOCAB.length}語。スペイン語を見て、日本語を5つから選ぶ</div><div class="bar"><i style="width:${Math.round(VOCAB.filter(v=>known.includes(vk(v))).length/VOCAB.length*100)}%"></i></div></button>`;
  h+=`<button class="tile big" onclick="practiceHome()"><b>✏️ 練習問題</b><div class="d">Claude が作った問題 ${Q.filter(q=>!isKako(q)).length}問。会話・3択・活用・天気・色・a/de/en</div></button>`;
  h+=`<button class="tile big" onclick="kakoHome()"><b>📝 中間テスト過去問</b><div class="d">先輩の春学期の答案から。中間テスト（80点分）と小テストU2・U3</div></button>`;
  if(w.length)h+=`<button class="tile main" onclick="start('wrong')"><b>🔁 まちがえた問題だけ（${w.length}問）</b><div class="d">練習問題・過去問のまちがいをまとめて。正解すると消えます</div></button>`;
@@ -513,16 +513,28 @@ let cs={};
 function cardList(key){const [t,u,i]=key.split(":");const l=VOCAB.filter(v=>v[5]===u);if(t==="u")return shuffle(l);const g=[...new Set(l.map(v=>v[4]))][+i];return l.filter(v=>v[4]===g)}
 function cards(key,onlyNot){let l=cardList(key);if(onlyNot){const k=getKnown();l=l.filter(v=>!k.includes(vk(v)))}
  cs={key,list:l,i:0,ok:0,ng:[]};card()}
+// 5択：スペイン語を見て、日本語を選ぶ。まちがいの4つは同じグループ→同じユニット→全体から
+function choices5(v){const used=new Set([v[3]]);const out=[];
+ const pools=[VOCAB.filter(x=>x[4]===v[4]),VOCAB.filter(x=>x[5]===v[5]),VOCAB];
+ for(const p of pools){for(const x of shuffle(p)){if(out.length>=4)break;if(used.has(x[3]))continue;used.add(x[3]);out.push(x[3])}if(out.length>=4)break}
+ return shuffle([v[3],...out])}
 function card(){const v=cs.list[cs.i];const u=cs.key.split(":")[1];
  if(!v)return cardEnd();
+ cs.opts=choices5(v);cs.done=false;
  $("#app").innerHTML=`<div class="top"><button class="btn ghost" onclick="vocabUnit('${u}')">← もどる</button><span class="prog">${cs.i+1} / ${cs.list.length}　○ ${cs.ok}</span></div>
- <div class="card fc" onclick="flip()"><span class="tag">${v[4].replace(/^U\d /,"")}</span>
- <div class="fja">${v[3]}</div><div class="hint">${v[1]}</div>
- <div id="back" class="hide"><div class="fes">${v[0]} <button class="say" data-t="${v[0].replace(/"/g,"&quot;")}" onclick="event.stopPropagation();say(this.dataset.t)">🔊</button></div>${v[2]?`<div class="hint">${v[2]}</div>`:""}</div>
- <div id="tap" class="hint" style="margin-top:14px">タップして答えを見る</div></div>
- <div class="row hide" id="mk"><button class="btn ngb" onclick="mark(false)">✕ まだ</button><button class="btn okb" onclick="mark(true)">○ 覚えた</button></div>`;scrollTo(0,0)}
-function flip(){const b=$("#back");if(!b||!b.classList.contains("hide"))return;b.classList.remove("hide");$("#tap").remove();$("#mk").classList.remove("hide");say(cs.list[cs.i][0].split(" / ")[0])}
-function mark(ok){const v=cs.list[cs.i];let k=getKnown();if(ok){cs.ok++;if(!k.includes(vk(v)))k.push(vk(v))}else{cs.ng.push(v);k=k.filter(x=>x!==vk(v))}setKnown(k);cs.i++;card()}
+ <div class="card"><span class="tag">${v[4].replace(/^U\d /,"")}</span>
+ <div class="fes">${v[0]} <button class="say" data-t="${v[0].replace(/"/g,"&quot;")}" onclick="say(this.dataset.t)">🔊</button></div>
+ <div class="hint">${v[1]}</div>
+ <div class="choices">${cs.opts.map((o,j)=>`<button data-j="${j}" onclick="vpick(${j})">${o}</button>`).join("")}</div>
+ <div id="vres"></div></div>`;scrollTo(0,0);say(v[0].split(" / ")[0])}
+function vpick(j){if(cs.done)return;cs.done=true;const v=cs.list[cs.i];const ok=cs.opts[j]===v[3];
+ document.querySelectorAll(".choices button").forEach(b=>{const k=+b.dataset.j;if(cs.opts[k]===v[3])b.classList.add("ok");else if(k===j)b.classList.add("ng");b.disabled=true});
+ let k=getKnown();if(ok){cs.ok++;if(!k.includes(vk(v)))k.push(vk(v))}else{cs.ng.push(v);k=k.filter(x=>x!==vk(v))}setKnown(k);
+ const wrongV=ok?null:VOCAB.find(x=>x[3]===cs.opts[j]);
+ $("#vres").innerHTML=`<div class="res ${ok?"ok":"ng"}"><div class="big">${ok?"○ 正解":"✕ 正解は："+v[3]}</div>
+ <div class="ex"><b>${v[0]}</b> ＝ ${v[3]}${v[2]?`（${v[2]}）`:""}</div>
+ ${wrongV?`<div class="ex">🙅 あなたが選んだ「${cs.opts[j]}」は <b>${wrongV[0]}</b></div>`:""}</div>
+ <div class="row"><button class="btn" id="vnx" onclick="cs.i++;card()">次へ →</button></div>`;const b=$("#vnx");if(b)b.focus()}
 function cardEnd(){const u=cs.key.split(":")[1];const n=cs.list.length;
  $("#app").innerHTML=`<div class="top"><button class="btn ghost" onclick="vocabUnit('${u}')">← もどる</button></div><div class="card"><h1>${cs.ok} / ${n} 覚えた</h1>
  ${cs.ng.length?`<p class="sub">まだの単語</p><ul class="wrong">${cs.ng.map(v=>`<li><b>${v[0]}</b> — ${v[3]}</li>`).join("")}</ul>`:"<p>全部覚えました 🎉</p>"}
