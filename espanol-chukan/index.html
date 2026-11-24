@@ -44,6 +44,10 @@ input[type=text]{width:100%;font:inherit;font-size:18px;padding:12px;border:1px 
 .pt .warn{background:var(--soft);border-radius:8px;padding:8px 10px;font-size:14px;margin-top:6px}
 .wrong li{margin:6px 0}
 .hide{display:none}
+.seru{margin-top:10px;padding:10px;border-radius:10px;background:var(--card);border:1px solid var(--line);font-size:14px}
+.seru table{border-collapse:collapse;margin:6px 0;width:100%}
+.seru th,.seru td{border:1px solid var(--line);padding:4px 6px;text-align:left}
+.seru td:not(:first-child),.seru th{font-weight:700;color:var(--acc)}
 </style>
 </head>
 <body>
@@ -292,6 +296,21 @@ const JA={
 "Quiero ___ ver películas.":"私は映画を見たいです。",
 "Quiero ___ aprender español.":"私はスペイン語を学びたいです。"
 };
+// es / está / hay / son の追加練習（②3択に入る）
+const EXTRA_WR={};
+[
+["En Madrid ___ muchos museos.",["hay","están","son"],"「En 場所, ___ ＋ muchos〜」→ 初めて紹介する「〜がある」なので hay。","マドリードにはたくさんの美術館があります。",{"están":"están は決まったものの場所用。muchos museos（たくさんの美術館）は初めて紹介するもの → hay。","son":"「マドリードでは、たくさんの美術館**です**」という変な文に。"}],
+["El Museo del Prado ___ en Madrid.",["está","hay","es"],"名前が決まったもの（プラド美術館）＋ en 場所 → está。","プラド美術館はマドリードにあります。",{"hay":"hay は前に主語（El Museo del Prado）を置けない。決まったものの場所は está。","es":"「プラド美術館はマドリード**です**」＝美術館＝マドリード、という意味に。"}],
+["Los tacos ___ platos típicos de México.",["son","están","hay"],"「A は B です」＋ 複数（los tacos）→ son。後ろに en がない。","タコスはメキシコの代表的な料理です。",{"están":"「タコスはメキシコ料理という**場所にある**」という変な文に。","hay":"hay は前に主語（Los tacos）を置けない。"}],
+["En la clase ___ veinte estudiantes.",["hay","son","están"],"「En 場所, ___ ＋ 数」→ 何人いるかを言う「〜がいる」は hay。","クラスには20人の学生がいます。",{"son":"「クラスでは、20人の学生**です**」という変な文に。","están":"están は決まったもの（los estudiantes など）の場所用。veinte estudiantes は初めて紹介 → hay。"}],
+["Mis amigos ___ en la cafetería.",["están","hay","son"],"決まった人（私の友だち）＋ en 場所 → están（複数）。","私の友だちはカフェテリアにいます。",{"hay":"hay は前に主語（Mis amigos）を置けない。決まった人の居場所は están。","son":"「私の友だちはカフェテリア**です**」＝友だち＝カフェテリア、という意味に。"}],
+["Tokio ___ una ciudad muy grande.",["es","está","hay"],"「A は B です」（東京は大きな都市）→ es。後ろに en がない。","東京はとても大きな都市です。",{"está":"「東京は大きな都市という**場所にある**」という変な文に。","hay":"hay は前に主語（Tokio）を置けない。"}],
+["¿Dónde ___ la universidad?",["está","es","hay"],"決まったもの（その大学）がどこにあるか → está。","大学はどこにありますか？",{"es":"¿Dónde es…? は「どこで行われる？」（行事など）に使う形。建物の場所は está。","hay":"hay は la（その）が付いた決まったものには使わない。"}],
+["En mi ciudad ___ un parque bonito.",["hay","está","es"],"「En 場所, ___ ＋ un〜」→ 初めて紹介する「〜がある」なので hay。","私の町にはきれいな公園があります。",{"está":"está は決まったもの（el parque）の場所用。un parque（ある公園）は初めて紹介 → hay。","es":"「私の町では、きれいな公園**です**」という変な文に。"}],
+["Barcelona y Valencia ___ ciudades de España.",["son","están","hay"],"「A は B です」＋ 2つ（Barcelona y Valencia）→ son。","バルセロナとバレンシアはスペインの都市です。",{"están":"「スペインの都市という**場所にある**」という変な文に。場所を言うなら están en España。","hay":"hay は前に主語を置けない。"}],
+["El parque ___ cerca de mi casa.",["está","hay","es"],"決まったもの（その公園）がどこにあるか（cerca de＝〜の近く）→ está。","その公園は私の家の近くにあります。",{"hay":"hay は前に主語（El parque）を置けない。","es":"「その公園は家の近く**です**」＝公園の性質のような意味に。場所は está。"}]
+].forEach(([q,a,x,j,w])=>{Q.push({id:Q.length,s:"sentaku",k:"c",q,h:"",a,x});JA[q]=j;EXTRA_WR[q]=w});
+
 function ja(q){return JA[q.q+"|"+q.h]||JA[q.q]||""}
 
 // 3択でまちがえたとき：「あなたの答えだと、こういう意味になってしまう」
@@ -358,6 +377,19 @@ const WR={
 "Quiero ___ aprender español.":{"a":"Quiero a aprender は✕。quiero の後ろはそのまま動詞。","de":"「〜**から**学びたい」になってしまう。","en":"「学ぶこと**の中で**」になってしまう。"}
 };
 const WR_GEN={"al":"al は a＋el（〜へ＋el の名詞）。後ろに el の名詞があるときだけ使う。ここではくっつく el がない。","del":"del は de＋el（〜から／〜の＋el の名詞）。後ろに el の名詞があるときだけ使う。ここではくっつく el がない。","（何も入らない）":"何も入れないと「へ・から・で」の役目がなくなり、文がつながらない。"};
+// es / está / hay / son の問題で、答えのたびに出す見分け方
+const SERU=["es","está","hay","son","están","tiene"];
+function isSeru(q){return q.k==="c"&&q.a.some(o=>SERU.includes(o.toLowerCase()))&&q.s==="sentaku"&&q.a[0]!=="hace"}
+const SERU_HTML=`<div class="seru"><b>🧭 es / está / hay の見分け方</b>
+<table><tr><th></th><th>1つ</th><th>2つ以上</th></tr>
+<tr><td>A は B です</td><td>es</td><td>son</td></tr>
+<tr><td>決まったものがどこにある</td><td>está</td><td>están</td></tr>
+<tr><td>〜がある（初めて紹介）</td><td>hay</td><td>hay</td></tr></table>
+<div>① 主語 ＋ ___ ＋ <b>en 場所</b> → está / están</div>
+<div>② <b>En 場所,</b> ___ ＋ もの（muchos・un・何も付かない）→ hay</div>
+<div>③ 主語 ＋ ___ ＋ 名詞・形容詞（en がない）→ es / son</div></div>`;
+
+Object.assign(WR,EXTRA_WR);
 function wrongWhy(q,opt){const m=WR[q.q]||{};const t=m[opt]||WR_GEN[opt]||WR_GEN[opt.toLowerCase()]||"";return t.replace(/\*\*(.+?)\*\*/g,"<b>$1</b>")}
 
 const POINTS=`
@@ -366,6 +398,8 @@ const POINTS=`
 <li><b>está・están</b> ＝ 決まったものの場所：Venezuela <b>está</b> en América Latina</li>
 <li><b>hay</b> ＝「〜がある」：<b>Hay</b> muchos volcanes／No <b>hay</b> petróleo</li>
 <li>人口は <b>tiene</b>：Japón tiene una población de…</li></ul>
+<div class="warn">⚠ son は「〜がある」ではなく「〜です」（es の複数）。「〜がある」は hay。<br>
+同じビーチで3通り：Las playas de Cuba <b>son</b> bonitas（きれい<b>です</b>）／Las playas <b>están</b> en el norte（北に<b>ある</b>）／En Cuba <b>hay</b> playas bonitas（きれいなビーチが<b>ある</b>）</div>
 <h2>2. 天気</h2><ul>
 <li>hace calor／hace frío／hace sol／hace viento</li>
 <li><b>llueve</b>（雨）・<b>nieva</b>（雪）・<b>está nublado</b>（曇り）</li></ul>
@@ -439,7 +473,8 @@ function points(){$("#app").innerHTML=`<div class="top"><button class="btn ghost
 
 function start(mode){
  let l;const w=getWrong();
- if(mode==="all")l=Q.slice();
+ const so=q=>SEC.findIndex(s=>s.id===q.s);
+ if(mode==="all")l=Q.slice().sort((x,y)=>so(x)-so(y)||x.id-y.id);
  else if(mode==="wrong")l=shuffle(Q.filter(q=>w.includes(q.id)));
  else l=Q.filter(q=>q.s===mode);
  st={list:l,i:0,right:0,wrongNow:[],answered:false,mode};show()}
@@ -487,7 +522,7 @@ function result(ok,extra){const q=st.list[st.i];const f=full(q);
  $("#res").innerHTML=`<div class="res ${ok?"ok":"ng"}"><div class="big">${ok?"○ 正解":"✕ 正解は："+q.a[0]}</div>${extra||""}
  ${f?`<div class="ex">${f} <button class="say" data-t="${f.replace(/"/g,"&quot;")}" onclick="say(this.dataset.t)">🔊</button></div>`:""}
  ${ja(q)?`<div class="ex">🇯🇵 <b>訳：</b>${ja(q)}</div>`:""}
- <div class="ex">💡 ${q.x}</div></div><div class="row"><button class="btn" id="nx" onclick="next()">次へ →</button></div>`;
+ <div class="ex">💡 ${q.x}</div>${isSeru(q)?SERU_HTML:""}</div><div class="row"><button class="btn" id="nx" onclick="next()">次へ →</button></div>`;
  if(f)say(f);const b=$("#nx");if(b)b.focus()}
 
 function check(giveup){if(st.answered)return;const q=st.list[st.i];
