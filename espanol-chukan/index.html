@@ -209,7 +209,9 @@ function home(){
  if(w.length)h+=`<button class="tile main" onclick="start('wrong')"><b>🔁 まちがえた問題だけ（${w.length}問）</b><div class="d">正解すると消えていきます</div></button>`;
  for(const s of SEC){const n=Q.filter(q=>q.s===s.id).length;const nw=Q.filter(q=>q.s===s.id&&w.includes(q.id)).length;
   h+=`<button class="tile" onclick="start('${s.id}')"><b>${s.name}</b>（${n}問${nw?`・まだ ${nw}`:""}）<div class="d">${s.d}</div></button>`}
- h+=`<button class="tile" onclick="points()"><b>📖 要点まとめ（9つ）</b><div class="d">解く前に1回読む</div></button></div>`;
+ h+=`<button class="tile" onclick="points()"><b>📖 要点まとめ（9つ）</b><div class="d">解く前に1回読む</div></button>`;
+ if(getLog().length)h+=`<button class="tile" onclick="copyReport()"><b>📋 結果をコピー</b><div class="d">Claudeに貼ると、得意・苦手を分析してもらえます</div></button>`;
+ h+=`</div>`;
  if(w.length)h+=`<div class="row"><button class="btn ghost" onclick="if(confirm('まちがえた記録を消しますか？')){setWrong([]);home()}">記録をリセット</button></div>`;
  $("#app").innerHTML=h;scrollTo(0,0)}
 
@@ -237,6 +239,26 @@ function show(){
 
 function ins(c){const i=$("#in");const p=i.selectionStart??i.value.length;i.value=i.value.slice(0,p)+c+i.value.slice(p);i.focus();i.setSelectionRange(p+1,p+1)}
 
+const LG="chukan_log_v1";
+function getLog(){try{return JSON.parse(localStorage.getItem(LG)||"[]")}catch(e){return[]}}
+function logAns(input,g){const q=st.list[st.i];const l=getLog();l.push({id:q.id,in:input,g,t:Date.now()});try{localStorage.setItem(LG,JSON.stringify(l))}catch(e){}}
+function report(){const l=getLog();if(!l.length)return "まだ1問も解いていません";
+ const last={},tries={};for(const r of l){last[r.id]=r;tries[r.id]=(tries[r.id]||0)+1}
+ let s="【スペイン語 中間テスト対策 結果】\n";
+ for(const sec of SEC){const qs=Q.filter(q=>q.s===sec.id&&last[q.id]);if(!qs.length)continue;
+  const ok=qs.filter(q=>last[q.id].g>0).length;s+=`${sec.name}: ${ok}/${qs.length}（全${Q.filter(q=>q.s===sec.id).length}問中 ${qs.length}問解いた）\n`}
+ const first={};for(const r of l)if(!(r.id in first))first[r.id]=r;
+ const miss=Object.values(first).filter(r=>r.g===0);
+ s+=`\n■ 1回目にまちがえた問題（${miss.length}問）\n`;
+ for(const r of miss){const q=Q[r.id];s+=`#${q.id} ${q.q} ${q.h||""} → 書いた答え「${r.in||"(わからない)"}」/ 正解「${q.a[0]}」${last[q.id].g>0?" ※あとで正解":""}\n`}
+ const acc=Object.values(first).filter(r=>r.g===1);
+ if(acc.length){s+=`\n■ アクセント記号だけ違った（${acc.length}問）\n`;for(const r of acc)s+=`#${r.id}「${r.in}」→「${Q[r.id].a[0]}」\n`}
+ return s}
+function copyReport(){const s=report();
+ const done=()=>alert("コピーしました。Claudeとの会話に貼り付けてください。");
+ if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(s).then(done,()=>showReport(s));else showReport(s)}
+function showReport(s){$("#app").innerHTML=`<div class="top"><button class="btn ghost" onclick="home()">← ホーム</button></div><div class="card"><p class="sub">下の文を全部選んでコピーし、Claudeに貼り付けてください。</p><textarea style="width:100%;height:60vh;font:13px/1.5 monospace;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px">${s.replace(/</g,"&lt;")}</textarea></div>`}
+
 function record(ok){const q=st.list[st.i];let w=getWrong();
  if(ok){st.right++;w=w.filter(x=>x!==q.id)}else{st.wrongNow.push(q.id);if(!w.includes(q.id))w.push(q.id)}
  setWrong(w)}
@@ -248,11 +270,11 @@ function result(ok,extra){const q=st.list[st.i];const f=full(q);
  if(f)say(f);const b=$("#nx");if(b)b.focus()}
 
 function check(giveup){if(st.answered)return;const q=st.list[st.i];
- const g=giveup?0:grade($("#in").value,q.a);st.answered=true;record(g>0);
+ const g=giveup?0:grade($("#in").value,q.a);st.answered=true;logAns(giveup?"":$("#in").value.trim(),g);record(g>0);
  $("#in").disabled=true;const go=$("#go");if(go)go.parentElement.remove();
  result(g>0,g===1?`<div class="ex">⚠ アクセント記号に注意：<b>${q.a[0]}</b></div>`:"")}
 
-function pick(j){if(st.answered)return;const q=st.list[st.i];st.answered=true;const ok=j===0;record(ok);
+function pick(j){if(st.answered)return;const q=st.list[st.i];st.answered=true;const ok=j===0;logAns(q.a[j],ok?2:0);record(ok);
  document.querySelectorAll(".choices button").forEach(b=>{const k=+b.dataset.j;if(k===0)b.classList.add("ok");else if(k===j)b.classList.add("ng");b.disabled=true});
  result(ok)}
 
@@ -264,7 +286,8 @@ function end(){const n=st.list.length;const pct=n?Math.round(st.right/n*100):0;
  <div class="bar"><i style="width:${pct}%"></i></div>`;
  if(wl.length){h+=`<p class="sub">まちがえた問題（ホームの「まちがえた問題だけ」で復習できます）</p><ul class="wrong">${wl.map(q=>`<li>${q.q.replace("___","<b>"+q.a[0]+"</b>")}<br><span class="hint">${q.x}</span></li>`).join("")}</ul>`}
  else h+=`<p>全問正解です 🎉</p>`;
- h+=`<div class="row">${wl.length?`<button class="btn" onclick="start('wrong')">まちがえた問題だけ</button>`:""}<button class="btn ghost" onclick="home()">ホーム</button></div></div>`;
+ h+=`<div class="row">${wl.length?`<button class="btn" onclick="start('wrong')">まちがえた問題だけ</button>`:""}<button class="btn ghost" onclick="home()">ホーム</button></div>
+ <div class="row"><button class="btn ghost" onclick="copyReport()">📋 結果をコピー（Claudeに貼って分析）</button></div></div>`;
  $("#app").innerHTML=h;scrollTo(0,0)}
 
 home();
