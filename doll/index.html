@@ -451,7 +451,7 @@ function tick(now){
 }
 requestAnimationFrame(tick);
 /* test hooks */
-window.__doll_lastPre=()=>lastPrePen;window.__doll={bake,showFrame,get FR_DEF(){return FR_DEF},setOff,defAt,NF,ZANSHIN,maxPen,contacts,parts,joints,W,setMode,resetPose,cam,pose,SLASH,RAISE,KAMAE,swordBody,
+window.__doll_lastPre=()=>lastPrePen;window.__doll={ctl,bake,showFrame,get FR_DEF(){return FR_DEF},setOff,defAt,NF,ZANSHIN,maxPen,contacts,parts,joints,W,setMode,resetPose,cam,pose,SLASH,RAISE,KAMAE,swordBody,
   scr(n){const v=parts[n].mesh.position.clone().project(cam);return [Math.round((v.x+1)/2*innerWidth),Math.round((1-v.y)/2*innerHeight)]},
   pull(name,dx,dy,dz,steps=120){const p=parts[name];const c=new CANNON.PointToPointConstraint(p.b,V(0,0,0),mouseBody,V(0,0,0),60);
     mouseBody.position.set(p.b.position.x+dx,p.b.position.y+dy,p.b.position.z+dz);W.addConstraint(c);

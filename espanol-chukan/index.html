@@ -60,6 +60,7 @@ input[type=text]{width:100%;font:inherit;font-size:18px;padding:12px;border:1px 
 <div class="wrap" id="app"></div>
 <script src="words.js"></script>
 <script src="kako.js"></script>
+<script src="katachi.js"></script>
 <script>
 // 種類: t=書く, c=選ぶ。a=正解（書く問題はいくつでも可）, x=解説
 const SEC=[
@@ -473,10 +474,11 @@ function home(){
  let h=`<h1>スペイン語 中間テスト対策</h1><div class="sub">Intensivo 1・範囲 U0〜U4</div><div class="tiles">`;
  h+=`<button class="tile big" onclick="vocabHome()"><b>📚 教科書の単語</b><div class="d">U0〜U4の単語 ${VOCAB.length}語。スペイン語を見て、日本語を5つから選ぶ</div><div class="bar"><i style="width:${Math.round(VOCAB.filter(v=>known.includes(vk(v))).length/VOCAB.length*100)}%"></i></div></button>`;
  h+=`<button class="tile big" onclick="practiceHome()"><b>✏️ 練習問題</b><div class="d">Claude が作った問題 ${Q.filter(q=>!isKako(q)).length}問。会話・3択・活用・天気・色・a/de/en</div></button>`;
+ h+=`<button class="tile big" onclick="kataHome()"><b>⚡ 形を変える（複数形・女性形）</b><div class="d">chico → chicas、alemán → alemanes をパッと出す練習。正解ならすぐ次へ</div></button>`;
  h+=`<button class="tile big" onclick="kakoHome()"><b>📝 中間テスト過去問</b><div class="d">先輩の春学期の答案から。中間テスト（80点分）と小テストU2・U3</div></button>`;
  if(w.length)h+=`<button class="tile main" onclick="start('wrong')"><b>🔁 まちがえた問題だけ（${w.length}問）</b><div class="d">練習問題・過去問のまちがいをまとめて。正解すると消えます</div></button>`;
  h+=`<button class="tile" onclick="points()"><b>📖 要点まとめ</b><div class="d">es/está/hay・a/de/en・活用など</div></button>`;
- if(getLog().length)h+=`<button class="tile" onclick="copyReport()"><b>📋 結果をコピー</b><div class="d">Claudeに貼ると、得意・苦手を分析してもらえます</div></button>`;
+ if(getLog().length||kGetLog().length)h+=`<button class="tile" onclick="copyReport()"><b>📋 結果をコピー</b><div class="d">Claudeに貼ると、得意・苦手を分析してもらえます</div></button>`;
  h+=`</div>`;
  if(w.length)h+=`<div class="row"><button class="btn ghost" onclick="if(confirm('まちがえた記録を消しますか？')){setWrong([]);home()}">記録をリセット</button></div>`;
  $("#app").innerHTML=h;scrollTo(0,0)}
@@ -568,7 +570,7 @@ function ins(c){const i=$("#in");const p=i.selectionStart??i.value.length;i.valu
 const LG="chukan_log_v1";
 function getLog(){try{return JSON.parse(localStorage.getItem(LG)||"[]")}catch(e){return[]}}
 function logAns(input,g){const q=st.list[st.i];const l=getLog();l.push({id:q.id,in:input,g,t:Date.now()});try{localStorage.setItem(LG,JSON.stringify(l))}catch(e){}}
-function report(){const l=getLog();if(!l.length)return "まだ1問も解いていません";
+function report(){const l=getLog();const kr=kReport();if(!l.length)return kr?"【スペイン語 中間テスト対策 結果】\n"+kr:"まだ1問も解いていません";
  const last={},tries={};for(const r of l){last[r.id]=r;tries[r.id]=(tries[r.id]||0)+1}
  let s="【スペイン語 中間テスト対策 結果】\n";
  for(const sec of SEC){const qs=Q.filter(q=>q.s===sec.id&&last[q.id]);if(!qs.length)continue;
@@ -579,7 +581,7 @@ function report(){const l=getLog();if(!l.length)return "まだ1問も解いて�
  for(const r of miss){const q=Q[r.id];s+=`#${q.id} ${q.q} ${q.h||""} → 書いた答え「${r.in||"(わからない)"}」/ 正解「${q.a[0]}」${last[q.id].g>0?" ※あとで正解":""}\n`}
  const acc=Object.values(first).filter(r=>r.g===1);
  if(acc.length){s+=`\n■ アクセント記号だけ違った（${acc.length}問）\n`;for(const r of acc)s+=`#${r.id}「${r.in}」→「${Q[r.id].a[0]}」\n`}
- return s}
+ return s+kr}
 function copyReport(){const s=report();
  const done=()=>alert("コピーしました。Claudeとの会話に貼り付けてください。");
  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(s).then(done,()=>showReport(s));else showReport(s)}
