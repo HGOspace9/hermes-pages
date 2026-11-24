@@ -44,6 +44,12 @@ input[type=text]{width:100%;font:inherit;font-size:18px;padding:12px;border:1px 
 .pt .warn{background:var(--soft);border-radius:8px;padding:8px 10px;font-size:14px;margin-top:6px}
 .wrong li{margin:6px 0}
 .hide{display:none}
+.tile.big{padding:18px 16px}.tile.big b{font-size:19px}
+.ctx{color:var(--sub);font-size:14px;margin-top:8px;border-left:3px solid var(--line);padding-left:8px}
+.fc{text-align:center;cursor:pointer;min-height:220px}
+.fja{font-size:24px;font-weight:700;margin:22px 0 4px}
+.fes{font-size:26px;font-weight:700;color:var(--acc);margin-top:16px}
+.btn.okb{background:var(--ok);flex:1}.btn.ngb{background:var(--ng);flex:1}
 .seru{margin-top:10px;padding:10px;border-radius:10px;background:var(--card);border:1px solid var(--line);font-size:14px}
 .seru table{border-collapse:collapse;margin:6px 0;width:100%}
 .seru th,.seru td{border:1px solid var(--line);padding:4px 6px;text-align:left}
@@ -52,6 +58,8 @@ input[type=text]{width:100%;font:inherit;font-size:18px;padding:12px;border:1px 
 </head>
 <body>
 <div class="wrap" id="app"></div>
+<script src="words.js"></script>
+<script src="kako.js"></script>
 <script>
 // 種類: t=書く, c=選ぶ。a=正解（書く問題はいくつでも可）, x=解説
 const SEC=[
@@ -311,7 +319,7 @@ const EXTRA_WR={};
 ["El parque ___ cerca de mi casa.",["está","hay","es"],"決まったもの（その公園）がどこにあるか（cerca de＝〜の近く）→ está。","その公園は私の家の近くにあります。",{"hay":"hay は前に主語（El parque）を置けない。","es":"「その公園は家の近く**です**」＝公園の性質のような意味に。場所は está。"}]
 ].forEach(([q,a,x,j,w])=>{Q.push({id:Q.length,s:"sentaku",k:"c",q,h:"",a,x});JA[q]=j;EXTRA_WR[q]=w});
 
-function ja(q){return JA[q.q+"|"+q.h]||JA[q.q]||""}
+function ja(q){return JA["#"+q.id]||JA[q.q+"|"+q.h]||JA[q.q]||""}
 
 // 3択でまちがえたとき：「あなたの答えだと、こういう意味になってしまう」
 const WR={
@@ -379,7 +387,7 @@ const WR={
 const WR_GEN={"al":"al は a＋el（〜へ＋el の名詞）。後ろに el の名詞があるときだけ使う。ここではくっつく el がない。","del":"del は de＋el（〜から／〜の＋el の名詞）。後ろに el の名詞があるときだけ使う。ここではくっつく el がない。","（何も入らない）":"何も入れないと「へ・から・で」の役目がなくなり、文がつながらない。"};
 // es / está / hay / son の問題で、答えのたびに出す見分け方
 const SERU=["es","está","hay","son","están","tiene"];
-function isSeru(q){return q.k==="c"&&q.a.some(o=>SERU.includes(o.toLowerCase()))&&q.s==="sentaku"&&q.a[0]!=="hace"}
+function isSeru(q){return q.seru||q.k==="c"&&q.a.some(o=>SERU.includes(o.toLowerCase()))&&(q.s==="sentaku"||q.s==="k_mid")&&q.a[0]!=="hace"}
 const SERU_HTML=`<div class="seru"><b>🧭 es / está / hay の見分け方</b>
 <table><tr><th></th><th>1つ</th><th>2つ以上</th></tr>
 <tr><td>A は B です</td><td>es</td><td>son</td></tr>
@@ -390,7 +398,11 @@ const SERU_HTML=`<div class="seru"><b>🧭 es / está / hay の見分け方</b>
 <div>③ 主語 ＋ ___ ＋ 名詞・形容詞（en がない）→ es / son</div></div>`;
 
 Object.assign(WR,EXTRA_WR);
-function wrongWhy(q,opt){const m=WR[q.q]||{};const t=m[opt]||WR_GEN[opt]||WR_GEN[opt.toLowerCase()]||"";return t.replace(/\*\*(.+?)\*\*/g,"<b>$1</b>")}
+// 過去問を取りこむ（訳・まちがい説明は問題番号ごと）
+SEC.push(...KAKO_SEC);
+for(const r of KAKO){const id=Q.length;Q.push({id,s:r[0],k:r[1],ctx:r[2],q:r[3],h:r[4],a:r[5],x:r[6],pt:r[9],seru:r[8]==="SERU"});JA["#"+id]=r[7];if(r[8]&&r[8]!=="SERU")WR["#"+id]=r[8]}
+const SERU_WHY={"es":"es は「A は B です」（1つ）。「〜がある」や場所の意味にはならない。","son":"son は「A は B です」（2つ以上）。「〜がある」ではない。","está":"está は決まったもの1つが「どこにあるか」専用。","están":"están は決まったもの2つ以上が「どこにあるか」専用。","hay":"hay は「〜がある」と新しく紹介する形。前に主語を置けない。","tiene":"tiene は「〜を持っている」。人口などを言うときに使う。"};
+function wrongWhy(q,opt){const m=WR["#"+q.id]||WR[q.q]||{};const t=m[opt]||(q.seru?SERU_WHY[opt]:"")||WR_GEN[opt]||WR_GEN[opt.toLowerCase()]||"";return t.replace(/\*\*(.+?)\*\*/g,"<b>$1</b>")}
 
 const POINTS=`
 <h2>1. es / está / hay / son</h2><ul>
@@ -453,28 +465,75 @@ function grade(input,answers){const n=norm(input);if(!n)return 0;
  for(const a of answers){if(n===norm(a))return 2}
  for(const a of answers){if(plain(n)===plain(norm(a)))return 1}return 0}
 function say(t){try{const u=new SpeechSynthesisUtterance(t);u.lang="es-ES";u.rate=.85;speechSynthesis.cancel();speechSynthesis.speak(u)}catch(e){}}
-function full(q){if(!q.q.includes("___"))return "";const a=q.a[0].startsWith("（")?"":q.a[0];return q.q.replace("___",a).replace(/^[^A-Za-z¿¡]+/,"").replace(/\s+/g," ")}
+function full(q){if(!q.q.includes("___"))return "";const a=/^[（×]/.test(q.a[0])?"":q.a[0];return q.q.replace("___",a).replace(/^[^A-Za-z¿¡]+/,"").replace(/^[A-ZÁÉÍÓÚ][A-ZÁÉÍÓÚ\- ]+:\s*/,"").replace(/　[A-Z\-]+:/g," ").replace(/\s+/g," ").trim().replace(/^([¿¡]?)(\p{Ll})/u,(m,p,c)=>p+c.toUpperCase())}
 function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 
 function home(){
- const w=getWrong();
- let h=`<h1>スペイン語 中間テスト対策</h1><div class="sub">Intensivo 1・範囲 U1〜U4（春学期の中間テストと同じ形）・全${Q.length}問</div><div class="tiles">`;
- h+=`<button class="tile main" onclick="start('all')"><b>📝 全部やる（本番の練習）</b><div class="d">5つの大問を順番に。${Q.length}問</div></button>`;
- if(w.length)h+=`<button class="tile main" onclick="start('wrong')"><b>🔁 まちがえた問題だけ（${w.length}問）</b><div class="d">正解すると消えていきます</div></button>`;
- for(const s of SEC){const n=Q.filter(q=>q.s===s.id).length;const nw=Q.filter(q=>q.s===s.id&&w.includes(q.id)).length;
-  h+=`<button class="tile${s.id==="mae"?" main":""}" onclick="start('${s.id}')"><b>${s.name}</b>（${n}問${nw?`・まだ ${nw}`:""}）<div class="d">${s.d}</div></button>`}
- h+=`<button class="tile" onclick="points()"><b>📖 要点まとめ（9つ）</b><div class="d">解く前に1回読む</div></button>`;
+ const w=getWrong();const known=getKnown();
+ let h=`<h1>スペイン語 中間テスト対策</h1><div class="sub">Intensivo 1・範囲 U0〜U4</div><div class="tiles">`;
+ h+=`<button class="tile big" onclick="vocabHome()"><b>📚 教科書の単語</b><div class="d">U0〜U4の単語 ${VOCAB.length}語。ユニット → グループを選んでカードで覚える</div><div class="bar"><i style="width:${Math.round(VOCAB.filter(v=>known.includes(vk(v))).length/VOCAB.length*100)}%"></i></div></button>`;
+ h+=`<button class="tile big" onclick="practiceHome()"><b>✏️ 練習問題</b><div class="d">Claude が作った問題 ${Q.filter(q=>!isKako(q)).length}問。会話・3択・活用・天気・色・a/de/en</div></button>`;
+ h+=`<button class="tile big" onclick="kakoHome()"><b>📝 中間テスト過去問</b><div class="d">先輩の春学期の答案から。中間テスト（80点分）と小テストU2・U3</div></button>`;
+ if(w.length)h+=`<button class="tile main" onclick="start('wrong')"><b>🔁 まちがえた問題だけ（${w.length}問）</b><div class="d">練習問題・過去問のまちがいをまとめて。正解すると消えます</div></button>`;
+ h+=`<button class="tile" onclick="points()"><b>📖 要点まとめ</b><div class="d">es/está/hay・a/de/en・活用など</div></button>`;
  if(getLog().length)h+=`<button class="tile" onclick="copyReport()"><b>📋 結果をコピー</b><div class="d">Claudeに貼ると、得意・苦手を分析してもらえます</div></button>`;
  h+=`</div>`;
  if(w.length)h+=`<div class="row"><button class="btn ghost" onclick="if(confirm('まちがえた記録を消しますか？')){setWrong([]);home()}">記録をリセット</button></div>`;
  $("#app").innerHTML=h;scrollTo(0,0)}
+const isKako=q=>(SEC.find(s=>s.id===q.s)||{}).kako;
+function secTiles(list){const w=getWrong();return list.map(s=>{const n=Q.filter(q=>q.s===s.id).length;const nw=Q.filter(q=>q.s===s.id&&w.includes(q.id)).length;
+  return `<button class="tile${s.id==="mae"?" main":""}" onclick="start('${s.id}')"><b>${s.name}</b>（${n}問${nw?`・まだ ${nw}`:""}）<div class="d">${s.d}</div></button>`}).join("")}
+function practiceHome(){const n=Q.filter(q=>!isKako(q)).length;
+ $("#app").innerHTML=`<div class="top"><button class="btn ghost" onclick="home()">← ホーム</button></div><h1>✏️ 練習問題</h1><div class="tiles">
+ <button class="tile main" onclick="start('all')"><b>全部やる</b><div class="d">6つの大問を順番に。${n}問</div></button>${secTiles(SEC.filter(s=>!s.kako))}</div>`;scrollTo(0,0)}
+function kakoHome(){
+ $("#app").innerHTML=`<div class="top"><button class="btn ghost" onclick="home()">← ホーム</button></div><h1>📝 中間テスト過去問</h1><div class="sub">先輩の春学期（Intensivo 1）の答案の写真から作りました。最後に点数が出ます。</div><div class="tiles">${secTiles(SEC.filter(s=>s.kako))}</div>`;scrollTo(0,0)}
+function back(){const q=st.list[0];if(st.mode==="wrong")return home();if(q&&isKako(q))return kakoHome();practiceHome()}
+
+// ===== 教科書の単語 =====
+const UNITS=[["U0","U0 はじめの一歩","あいさつ・教室のもの"],["U1","U1 自己紹介","数字・職業・職場・国籍・質問"],["U2","U2 したいこと","文化・余暇・言語・活用"],["U3","U3 世界の国","天気・国のデータ・方角・地理"],["U4","U4 服と買い物","色・大きな数・服・買い物・活用"]];
+const LV="chukan_vocab_v1";
+const vk=v=>v[0]+"|"+v[4];
+function getKnown(){try{return JSON.parse(localStorage.getItem(LV)||"[]")}catch(e){return[]}}
+function setKnown(a){try{localStorage.setItem(LV,JSON.stringify(a))}catch(e){}}
+function pctKnown(list){const k=getKnown();return list.length?Math.round(list.filter(v=>k.includes(vk(v))).length/list.length*100):0}
+function vocabHome(){
+ let h=`<div class="top"><button class="btn ghost" onclick="home()">← ホーム</button></div><h1>📚 教科書の単語</h1><div class="sub">Aula Internacional Plus 1 の Léxico と文法のページから。ユニットを選んでください。</div><div class="tiles">`;
+ for(const [u,name,d] of UNITS){const l=VOCAB.filter(v=>v[5]===u);const p=pctKnown(l);
+  h+=`<button class="tile" onclick="vocabUnit('${u}')"><b>${name}</b>（${l.length}語・覚えた ${p}%）<div class="d">${d}</div><div class="bar"><i style="width:${p}%"></i></div></button>`}
+ $("#app").innerHTML=h+`</div>`;scrollTo(0,0)}
+function vocabUnit(u){const name=UNITS.find(x=>x[0]===u)[1];const l=VOCAB.filter(v=>v[5]===u);
+ const groups=[...new Set(l.map(v=>v[4]))];
+ let h=`<div class="top"><button class="btn ghost" onclick="vocabHome()">← 単語</button></div><h1>${name}</h1><div class="tiles">
+ <button class="tile main" onclick="cards('u:${u}')"><b>このユニット全部</b>（${l.length}語）<div class="d">まぜて出します</div></button>`;
+ groups.forEach((g,i)=>{const gl=l.filter(v=>v[4]===g);const p=pctKnown(gl);
+  h+=`<button class="tile" onclick="cards('g:${u}:${i}')"><b>${g.replace(/^U\d /,"")}</b>（${gl.length}語・覚えた ${p}%）<div class="d">${gl.slice(0,4).map(v=>v[0]).join("・")}…</div><div class="bar"><i style="width:${p}%"></i></div></button>`});
+ $("#app").innerHTML=h+`</div>`;scrollTo(0,0)}
+let cs={};
+function cardList(key){const [t,u,i]=key.split(":");const l=VOCAB.filter(v=>v[5]===u);if(t==="u")return shuffle(l);const g=[...new Set(l.map(v=>v[4]))][+i];return l.filter(v=>v[4]===g)}
+function cards(key,onlyNot){let l=cardList(key);if(onlyNot){const k=getKnown();l=l.filter(v=>!k.includes(vk(v)))}
+ cs={key,list:l,i:0,ok:0,ng:[]};card()}
+function card(){const v=cs.list[cs.i];const u=cs.key.split(":")[1];
+ if(!v)return cardEnd();
+ $("#app").innerHTML=`<div class="top"><button class="btn ghost" onclick="vocabUnit('${u}')">← もどる</button><span class="prog">${cs.i+1} / ${cs.list.length}　○ ${cs.ok}</span></div>
+ <div class="card fc" onclick="flip()"><span class="tag">${v[4].replace(/^U\d /,"")}</span>
+ <div class="fja">${v[3]}</div><div class="hint">${v[1]}</div>
+ <div id="back" class="hide"><div class="fes">${v[0]} <button class="say" data-t="${v[0].replace(/"/g,"&quot;")}" onclick="event.stopPropagation();say(this.dataset.t)">🔊</button></div>${v[2]?`<div class="hint">${v[2]}</div>`:""}</div>
+ <div id="tap" class="hint" style="margin-top:14px">タップして答えを見る</div></div>
+ <div class="row hide" id="mk"><button class="btn ngb" onclick="mark(false)">✕ まだ</button><button class="btn okb" onclick="mark(true)">○ 覚えた</button></div>`;scrollTo(0,0)}
+function flip(){const b=$("#back");if(!b||!b.classList.contains("hide"))return;b.classList.remove("hide");$("#tap").remove();$("#mk").classList.remove("hide");say(cs.list[cs.i][0].split(" / ")[0])}
+function mark(ok){const v=cs.list[cs.i];let k=getKnown();if(ok){cs.ok++;if(!k.includes(vk(v)))k.push(vk(v))}else{cs.ng.push(v);k=k.filter(x=>x!==vk(v))}setKnown(k);cs.i++;card()}
+function cardEnd(){const u=cs.key.split(":")[1];const n=cs.list.length;
+ $("#app").innerHTML=`<div class="top"><button class="btn ghost" onclick="vocabUnit('${u}')">← もどる</button></div><div class="card"><h1>${cs.ok} / ${n} 覚えた</h1>
+ ${cs.ng.length?`<p class="sub">まだの単語</p><ul class="wrong">${cs.ng.map(v=>`<li><b>${v[0]}</b> — ${v[3]}</li>`).join("")}</ul>`:"<p>全部覚えました 🎉</p>"}
+ <div class="row">${cs.ng.length?`<button class="btn" onclick="cards('${cs.key}',true)">まだの単語だけ</button>`:""}<button class="btn ghost" onclick="cards('${cs.key}')">もう一度ぜんぶ</button></div></div>`;scrollTo(0,0)}
 
 function points(){$("#app").innerHTML=`<div class="top"><button class="btn ghost" onclick="home()">← ホーム</button></div><div class="card pt">${POINTS}</div><div class="row"><button class="btn" onclick="start('all')">問題を解く</button></div>`;scrollTo(0,0)}
 
 function start(mode){
  let l;const w=getWrong();
  const so=q=>SEC.findIndex(s=>s.id===q.s);
- if(mode==="all")l=Q.slice().sort((x,y)=>so(x)-so(y)||x.id-y.id);
+ if(mode==="all")l=Q.filter(q=>!isKako(q)).sort((x,y)=>so(x)-so(y)||x.id-y.id);
  else if(mode==="wrong")l=shuffle(Q.filter(q=>w.includes(q.id)));
  else l=Q.filter(q=>q.s===mode);
  st={list:l,i:0,right:0,wrongNow:[],answered:false,mode};show()}
@@ -482,8 +541,8 @@ function start(mode){
 function show(){
  const q=st.list[st.i];if(!q)return end();
  st.answered=false;const sec=SEC.find(s=>s.id===q.s);
- let h=`<div class="top"><button class="btn ghost" onclick="home()">← ホーム</button><span class="prog">${st.i+1} / ${st.list.length}　○ ${st.right}</span></div>
- <div class="card"><span class="tag">${sec.name}</span><div class="q">${q.q.replace("___","<u>　　　　</u>")}</div>${q.h?`<div class="hint">${q.h}</div>`:""}`;
+ let h=`<div class="top"><button class="btn ghost" onclick="back()">← もどる</button><span class="prog">${st.i+1} / ${st.list.length}　○ ${st.right}</span></div>
+ <div class="card"><span class="tag">${sec.name}</span>${q.ctx?`<div class="ctx">${q.ctx}</div>`:""}<div class="q">${q.q.replace("___","<u>　　　　</u>")}</div>${q.h?`<div class="hint">${q.h}</div>`:""}`;
  if(q.k==="t"){h+=`<div style="margin-top:10px"><input type="text" id="in" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="スペイン語で書く" onkeydown="if(event.key==='Enter'){st.answered?next():check()}"></div>
   <div class="keys">${["á","é","í","ó","ú","ñ","ü","¿","¡"].map(c=>`<button onclick="ins('${c}')">${c}</button>`).join("")}</div>
   <div class="row"><button class="btn" id="go" onclick="check()">答え合わせ</button><button class="btn ghost" onclick="check(true)">わからない</button></div>`}
@@ -539,7 +598,8 @@ function next(){st.i++;show()}
 
 function end(){const n=st.list.length;const pct=n?Math.round(st.right/n*100):0;
  const wl=st.wrongNow.map(id=>Q[id]);
- let h=`<div class="top"><button class="btn ghost" onclick="home()">← ホーム</button></div><div class="card"><h1>${st.right} / ${n}（${pct}%）</h1>
+ const hasPt=n&&st.list.every(q=>q.pt);const tot=hasPt?st.list.reduce((a,q)=>a+q.pt,0):0;const got=hasPt?st.list.filter(q=>!st.wrongNow.includes(q.id)).reduce((a,q)=>a+q.pt,0):0;
+ let h=`<div class="top"><button class="btn ghost" onclick="back()">← もどる</button></div><div class="card">${hasPt?`<h1>${got} / ${tot} 点</h1><div class="sub">${st.right} / ${n} 問正解</div>`:`<h1>${st.right} / ${n}（${pct}%）</h1>`}
  <div class="bar"><i style="width:${pct}%"></i></div>`;
  if(wl.length){h+=`<p class="sub">まちがえた問題（ホームの「まちがえた問題だけ」で復習できます）</p><ul class="wrong">${wl.map(q=>`<li>${q.q.replace("___","<b>"+q.a[0]+"</b>")}<br><span class="hint">${q.x}</span></li>`).join("")}</ul>`}
  else h+=`<p>全問正解です 🎉</p>`;
