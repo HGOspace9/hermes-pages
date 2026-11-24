@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>スペイン語 中間テスト対策</title>
+<style>
+:root{--bg:#f6f4ef;--card:#fff;--ink:#1d2430;--sub:#5b6472;--line:#e2ddd3;--acc:#c2410c;--ok:#15803d;--ng:#b91c1c;--soft:#fdf1e8}
+@media (prefers-color-scheme:dark){:root{--bg:#16181d;--card:#20232a;--ink:#eceae5;--sub:#a3a9b3;--line:#343842;--acc:#fb923c;--ok:#4ade80;--ng:#f87171;--soft:#2a2420}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,"Hiragino Sans",sans-serif}
+.wrap{max-width:640px;margin:0 auto;padding:16px 16px 80px}
+h1{font-size:22px;margin:8px 0 2px}
+.sub{color:var(--sub);font-size:14px}
+.tiles{display:grid;gap:10px;margin-top:16px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;cursor:pointer;text-align:left;color:var(--ink);font:inherit;width:100%}
+.tile b{font-size:17px}.tile .d{color:var(--sub);font-size:13px}
+.tile.main{border:2px solid var(--acc)}
+.bar{height:6px;background:var(--line);border-radius:3px;margin-top:8px;overflow:hidden}.bar i{display:block;height:100%;background:var(--ok)}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.btn{background:var(--acc);color:#fff;border:0;border-radius:10px;padding:12px 18px;font:inherit;font-weight:600;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-top:14px}
+.tag{display:inline-block;font-size:12px;color:var(--acc);background:var(--soft);border-radius:6px;padding:2px 8px}
+.q{font-size:19px;margin:10px 0}
+.hint{color:var(--sub);font-size:14px}
+input[type=text]{width:100%;font:inherit;font-size:18px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+.keys{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.keys button{min-width:40px;padding:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;font:inherit}
+.choices{display:grid;gap:8px;margin-top:8px}
+.choices button{padding:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;font:inherit;font-size:17px;text-align:left;cursor:pointer}
+.choices button.ok{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 15%,transparent)}
+.choices button.ng{border-color:var(--ng);background:color-mix(in srgb,var(--ng) 15%,transparent)}
+.res{margin-top:12px;padding:12px;border-radius:10px}
+.res.ok{background:color-mix(in srgb,var(--ok) 14%,transparent)}
+.res.ng{background:color-mix(in srgb,var(--ng) 14%,transparent)}
+.res .big{font-weight:700;font-size:17px}
+.ex{margin-top:6px;font-size:15px}
+.row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.say{border:0;background:none;font-size:20px;cursor:pointer;padding:0 4px}
+.prog{color:var(--sub);font-size:14px}
+.pt h2{font-size:17px;margin:18px 0 6px;color:var(--acc)}
+.pt ul{margin:4px 0;padding-left:20px}.pt li{margin:3px 0}
+.pt .warn{background:var(--soft);border-radius:8px;padding:8px 10px;font-size:14px;margin-top:6px}
+.wrong li{margin:6px 0}
+.hide{display:none}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+// 種類: t=書く, c=選ぶ。a=正解（書く問題はいくつでも可）, x=解説
+const SEC=[
+ {id:"kaiwa",name:"① 会話の穴うめ",d:"名前・出身・仕事・年齢・理由（por/para/porque）"},
+ {id:"sentaku",name:"② 3択",d:"a/al/de、es/está/hay、天気、este/esta、muy/mucho"},
+ {id:"katsuyo",name:"③ 動詞の活用",d:"主語に合わせて活用（本番は2点×10問）"},
+ {id:"tenki",name:"④ 天気と季節",d:"hace calor / nieva / está nublado…"},
+ {id:"iro",name:"⑤ 色・男女・単数",d:"名詞に合わせて色を変える、el/la、単数の形"}
+];
+const Q=[
+// ① 会話
+["kaiwa","t","Hola, ___ Ana. ¿Y tú?","（llamarse, yo）",["me llamo"],"「私の名前は」= me llamo。llamarse は me/te/se が前に付く。"],
+["kaiwa","t","¿Cómo ___?","（llamarse, tú）",["te llamas"],"tú なら te llamas。"],
+["kaiwa","t","¿De ___ sois vosotras?","（どこ）",["dónde"],"¿De dónde…? = どこの出身？ dónde にアクセント記号。"],
+["kaiwa","t","___ japonesas, de Sendai.","（ser, nosotras）",["somos"],"ser: soy, eres, es, somos, sois, son"],
+["kaiwa","t","Yo ___ la profesora de euskera.","（ser, yo）",["soy"],"ser の yo は soy。"],
+["kaiwa","t","¿De dónde ___ (tú)?","（ser, tú）",["eres"],"tú は eres。"],
+["kaiwa","t","¿___, Yang? — Soy empresario.","（仕事は何？ 3語）",["a qué te dedicas"],"仕事を聞く決まり文句: ¿A qué te dedicas?"],
+["kaiwa","t","¿___? — Tengo treinta y dos años.","（何歳？ 3語）",["cuántos años tienes"],"年は tener で言う: ¿Cuántos años tienes? — Tengo 20 años."],
+["kaiwa","t","¿Por qué estudias español? — ___ mi trabajo.","（理由・名詞の前）",["por"],"por ＋ 名詞 = 〜のために（理由）。"],
+["kaiwa","t","Estudio español ___ quiero estudiar en América del Sur.","（理由・文の前）",["porque"],"porque ＋ 文（主語と動詞がある）。"],
+["kaiwa","t","Aprendo español ___ hablar con mis compañeras latinas.","（目的・動詞の原形の前）",["para"],"para ＋ 動詞の原形 = 〜するために。先輩が porque と書いて✕だった所。"],
+["kaiwa","t","Estudio euskera ___ soy profesora de una escuela primaria.","（後ろに soy ＝文）",["porque"],"後ろが soy profesora（文）なので porque。先輩が por と書いて✕。"],
+["kaiwa","t","Yo quiero ___ las películas de Almodóvar.","（見る・原形）",["ver"],"querer ＋ 動詞の原形。見る = ver。"],
+["kaiwa","t","Yo quiero ___ a cocinar platos vascos.","（学ぶ・原形）",["aprender"],"aprender a ＋ 原形 = 〜を習う。"],
+// ② 3択
+["sentaku","c","Quiero ir ___ la playa.","",["a","de","al"],"a の後ろが la playa なのでそのまま a。"],
+["sentaku","c","¡Yo quiero ir ___ teatro!","",["al","a","de"],"a ＋ el teatro → al teatro（くっつく）。"],
+["sentaku","c","Yo quiero ir ___ compras.","",["de","a las","a"],"ir de compras = 買い物に行く（決まった言い方）。"],
+["sentaku","c","¿Quieres ir ___ bailar esta noche?","",["a","de","（何も入らない）"],"ir a ＋ 原形 = 〜しに行く。先輩が「a de」と書いて✕。"],
+["sentaku","c","Yo quiero hacer ___ un curso de cocina.","",["（何も入らない）","a","de"],"hacer un curso = 講座を受ける。前置詞はいらない。"],
+["sentaku","c","Yo no quiero salir ___ noche.","",["de","a","al"],"salir de noche = 夜に出かける。"],
+["sentaku","c","Madrid ___ la capital de España.","",["es","está","hay"],"「〜は…です」（何か）は es。"],
+["sentaku","c","Sevilla ___ en el sur de España.","",["está","es","hay"],"決まった場所の位置は estar。"],
+["sentaku","c","Las islas Galápagos ___ en Ecuador.","",["están","son","hay"],"複数のものの位置 → están。"],
+["sentaku","c","En México ___ muchos volcanes activos.","",["hay","están","son"],"「〜がある」（el/la が付かない）は hay。"],
+["sentaku","c","En España no ___ petróleo.","",["hay","está","es"],"「ない」も no hay。"],
+["sentaku","c","Las playas de Cuba ___ muy bonitas.","",["son","están","hay"],"どんなものか（性質）＋複数 → son。"],
+["sentaku","c","Japón ___ una población de 123 millones.","",["tiene","hay","es"],"人口は tener: tiene una población de…"],
+["sentaku","c","En invierno no nieva, pero ___ frío.","",["hace","hay","está"],"寒い・暑いは hace frío / hace calor。"],
+["sentaku","c","En verano el clima es bueno y no ___ mucho.","",["llueve","llover","lluvia"],"雨が降る = llueve（llover は原形、lluvia は名詞）。"],
+["sentaku","c","Arthi, ¿___ lenguas hablas?","",["cuántas","cuántos","cuán"],"lengua は女性名詞なので cuántas。"],
+["sentaku","c","¿___ hermanos tienes?","",["Cuántos","Cuántas","Cuánto"],"hermano は男性・複数 → cuántos。"],
+["sentaku","c","___ película de Pedro Almodóvar es buena.","",["Esta","Este","Esto"],"película は女性 → esta。"],
+["sentaku","c","___ libro es muy interesante.","",["Este","Esta","Esto"],"libro は男性 → este。"],
+["sentaku","c","Hokkaido es ___ bonito.","",["muy","mucho","mucha"],"形容詞（bonito）の前は muy。"],
+["sentaku","c","En Tokio no nieva ___.","",["mucho","muy","mucha"],"動詞（nieva）を強めるのは mucho。"],
+["sentaku","c","¡Hablas tres lenguas! ¡Eres ___!","",["plurilingüe","plurilingual","plurilenguas"],"何か国語も話す人 = plurilingüe。"],
+// ③ 活用
+["katsuyo","t","Mike y yo ___ 20 años, ¿y tú?","（tener, nosotros）",["tenemos"],"tener: tengo, tienes, tiene, tenemos, tenéis, tienen"],
+["katsuyo","t","¿Qué ___ hacer ustedes en el curso?","（querer, ustedes）",["quieren"],"querer は e→ie: quiero, quieres, quiere, queremos, queréis, quieren"],
+["katsuyo","t","Los estudiantes ___ bien en español.","（comprender）",["comprenden"],"-er 動詞の ellos は -en。"],
+["katsuyo","t","¿Dónde ___ (tú)?","（trabajar, tú）",["trabajas"],"-ar 動詞の tú は -as。"],
+["katsuyo","t","Él ___ muchos libros.","（leer）",["lee"],"-er 動詞の él は -e: lee。"],
+["katsuyo","t","¿___ ustedes en el aeropuerto?","（estar, ustedes／大文字で始める）",["están"],"estar: estoy, estás, está, estamos, estáis, están"],
+["katsuyo","t","¿Cuánto ___ estos pantalones?","（costar）",["cuestan"],"costar は o→ue。pantalones は複数なので cuestan。"],
+["katsuyo","t","¿Cuánto ___ esta camiseta?","（costar）",["cuesta"],"camiseta は1つ → cuesta。"],
+["katsuyo","t","La profesora ___ María.","（llamarse）",["se llama"],"ella/él は se llama。"],
+["katsuyo","t","Nosotros ___ en Barcelona.","（vivir, nosotros）",["vivimos"],"-ir 動詞の nosotros は -imos（-er は -emos）。"],
+["katsuyo","t","Ellas ___ un diccionario de español.","（tener, ellas）",["tienen"],"tener の ellas は tienen。"],
+["katsuyo","t","Yo ___ un hermano.","（tener, yo）",["tengo"],"tener の yo は tengo（-go になる）。"],
+["katsuyo","t","Yo ___ ir a España.","（querer, yo）",["quiero"],"querer の yo は quiero。"],
+["katsuyo","t","Ella ___ inglés y francés.","（hablar, ella）",["habla"],"-ar 動詞の ella は -a。"],
+["katsuyo","t","Tú ___ el libro.","（comprender, tú）",["comprendes"],"-er 動詞の tú は -es。"],
+["katsuyo","t","Ellas ___ japonés.","（aprender, ellas）",["aprenden"],"-er 動詞の ellas は -en。"],
+["katsuyo","t","Yo ___ en la universidad.","（estar, yo）",["estoy"],"estar の yo は estoy。"],
+["katsuyo","t","Vosotros ___ estudiantes.","（ser, vosotros）",["sois"],"ser の vosotros は sois。"],
+["katsuyo","t","Yo ___ una novela.","（leer, yo）",["leo"],"yo は -o: leo。"],
+["katsuyo","t","¿Tú ___ salsa?","（bailar, tú）",["bailas"],"-ar 動詞の tú は -as。"],
+// ④ 天気・季節
+["tenki","t","☀️ En Sídney, ___.","（暑い）",["hace calor","hace sol"],"暑い = hace calor（晴れ = hace sol）。"],
+["tenki","t","🌡️ En La Paz, ___.","（寒い）",["hace frío"],"寒い = hace frío。"],
+["tenki","t","❄️ En Montreal, ___.","（雪が降る）",["nieva"],"雪が降る = nieva。「hay nieva」は✕（先輩が間違えた所）。"],
+["tenki","t","🌧️ En Santiago de Chile, ___.","（雨が降る）",["llueve"],"雨が降る = llueve。"],
+["tenki","t","☁️ En Osaka, ___.","（曇り）",["está nublado","hay nubes"],"曇り = está nublado（または hay nubes）。「hay nublado」は✕。"],
+["tenki","t","🌬️ En Manila, ___.","（風が吹く）",["hace viento","hay viento"],"風 = hace viento（hay viento も○でした）。"],
+["tenki","t","🌸 春 =","（冠詞つきで）",["la primavera","primavera"],"la primavera（女性）。"],
+["tenki","t","☀️ 夏 =","（冠詞つきで）",["el verano","verano"],"el verano"],
+["tenki","t","🍂 秋 =","（冠詞つきで）",["el otoño","otoño"],"el otoño（ñ に注意）"],
+["tenki","t","❄️ 冬 =","（冠詞つきで）",["el invierno","invierno"],"el invierno"],
+// ⑤ 色・男女・単数
+["iro","t","Unos pantalones ___.","（白）",["blancos"],"pantalones は男性・複数 → blancos。"],
+["iro","t","Unos zapatos ___.","（青）",["azules"],"azul の複数は azules（-es）。"],
+["iro","t","Una chaqueta ___.","（緑）",["verde"],"verde は男女で同じ形。1つなので verde。"],
+["iro","t","Unas sandalias ___.","（黒）",["negras"],"sandalias は女性・複数 → negras。"],
+["iro","t","Una camiseta ___.","（赤）",["roja"],"camiseta は女性 → roja。"],
+["iro","t","Unos pantalones ___.","（灰色）",["grises"],"gris の複数は grises。"],
+["iro","t","Una falda ___.","（白）",["blanca"],"falda は女性 → blanca。"],
+["iro","c","curso は？","",["男性 (m)","女性 (f)"],"el curso"],
+["iro","c","clase は？","",["女性 (f)","男性 (m)"],"-e で終わるが la clase（女性）。"],
+["iro","c","día は？","",["男性 (m)","女性 (f)"],"-a で終わるのに el día（男性）。よく出る引っかけ。"],
+["iro","c","coche は？","",["男性 (m)","女性 (f)"],"el coche"],
+["iro","c","mapa は？","",["男性 (m)","女性 (f)"],"-a で終わるのに el mapa（男性）。"],
+["iro","t","los libros → 単数","",["el libro"],"los → el、libros → libro。"],
+["iro","t","unas revistas → 単数","",["una revista"],"unas → una。"],
+["iro","t","las casas → 単数","",["la casa"],"las → la。"],
+["iro","t","unos coches → 単数","",["un coche"],"unos → un（uno ではない）。"]
+].map((r,i)=>({id:i,s:r[0],k:r[1],q:r[2],h:r[3],a:r[4],x:r[5]}));
+
+const POINTS=`
+<h2>1. es / está / hay / son</h2><ul>
+<li><b>es・son</b> ＝ 何か・どんなか：Buenos Aires <b>es</b> la capital／Las playas <b>son</b> bonitas</li>
+<li><b>está・están</b> ＝ 決まったものの場所：Venezuela <b>está</b> en América Latina</li>
+<li><b>hay</b> ＝「〜がある」：<b>Hay</b> muchos volcanes／No <b>hay</b> petróleo</li>
+<li>人口は <b>tiene</b>：Japón tiene una población de…</li></ul>
+<h2>2. 天気</h2><ul>
+<li>hace calor／hace frío／hace sol／hace viento</li>
+<li><b>llueve</b>（雨）・<b>nieva</b>（雪）・<b>está nublado</b>（曇り）</li></ul>
+<div class="warn">✕ hay nieva　✕ hay nublado（先輩が間違えた所）</div>
+<h2>3. por / para / porque</h2><ul>
+<li><b>por ＋ 名詞</b>：por mi trabajo</li>
+<li><b>para ＋ 動詞の原形</b>：para hablar</li>
+<li><b>porque ＋ 文</b>：porque soy profesora</li></ul>
+<h2>4. a / al / de / 何もなし</h2><ul>
+<li>ir <b>a</b> bailar／ir <b>a</b> la playa／ir <b>al</b> teatro（a+el）</li>
+<li>ir <b>de</b> compras／salir <b>de</b> noche／hacer un curso（何もなし）</li></ul>
+<h2>5. 男女の引っかけ</h2><ul><li>el <b>día</b>・el <b>mapa</b>（-a なのに男性）／la <b>clase</b>（女性）／el coche</li></ul>
+<h2>6. 動詞の活用</h2><ul>
+<li>-ar：hablo, hablas, habla, hablamos, habláis, hablan</li>
+<li>-er：como, comes, come, comemos, coméis, comen</li>
+<li>-ir：vivo, vives, vive, <b>vivimos, vivís</b>, viven</li>
+<li>ser：soy, eres, es, somos, sois, son</li>
+<li>estar：estoy, estás, está, estamos, estáis, están</li>
+<li>tener：<b>tengo</b>, tienes, tiene, tenemos, tenéis, tienen</li>
+<li>querer：quiero, quieres, quiere, queremos, queréis, quieren</li>
+<li>costar：cuesta（1つ）／cuestan（複数）</li>
+<li>llamarse：me llamo, te llamas, se llama</li></ul>
+<div class="warn">主語をよく見る：¿A qué hora empie<b>za</b> tu trabajo? は主語が tu trabajo なので3人称。</div>
+<h2>7. 決まった質問</h2><ul>
+<li>¿Cómo te llamas?／¿De dónde eres?／¿A qué te dedicas?／¿Cuántos años tienes?</li>
+<li>¿Cuánt<b>as</b> lenguas…?（lengua は女性）</li></ul>
+<h2>8. este/esta・muy/mucho・色</h2><ul>
+<li>este libro／esta película</li>
+<li>muy ＋ 形容詞（muy bonito）／動詞 ＋ mucho（no llueve mucho）</li>
+<li>色は名詞に合わせる：blancos・negras・roja／verde と azul は男女同じ、複数は verdes・azules・grises</li></ul>
+<h2>9. 季節・単数</h2><ul>
+<li>la primavera／el verano／el otoño／el invierno</li>
+<li>los libros → el libro／unas revistas → una revista</li></ul>`;
+
+let st={list:[],i:0,right:0,wrongNow:[],answered:false};
+const $=s=>document.querySelector(s);
+const LS="chukan_wrong_v1";
+function getWrong(){try{return JSON.parse(localStorage.getItem(LS)||"[]")}catch(e){return[]}}
+function setWrong(a){try{localStorage.setItem(LS,JSON.stringify(a))}catch(e){}}
+const norm=s=>s.toLowerCase().replace(/[¿?¡!.,]/g,"").replace(/\s+/g," ").trim();
+const plain=s=>s.normalize("NFD").replace(/[̀-ͯ]/g,"");
+// 返り値: 2=完全に正解, 1=アクセント記号だけ違う, 0=不正解
+function grade(input,answers){const n=norm(input);if(!n)return 0;
+ for(const a of answers){if(n===norm(a))return 2}
+ for(const a of answers){if(plain(n)===plain(norm(a)))return 1}return 0}
+function say(t){try{const u=new SpeechSynthesisUtterance(t);u.lang="es-ES";u.rate=.85;speechSynthesis.cancel();speechSynthesis.speak(u)}catch(e){}}
+function full(q){if(!q.q.includes("___"))return "";const a=q.a[0].startsWith("（")?"":q.a[0];return q.q.replace("___",a).replace(/^[^A-Za-z¿¡]+/,"").replace(/\s+/g," ")}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+function home(){
+ const w=getWrong();
+ let h=`<h1>スペイン語 中間テスト対策</h1><div class="sub">Intensivo 1・範囲 U1〜U4（春学期の中間テストと同じ形）・全${Q.length}問</div><div class="tiles">`;
+ h+=`<button class="tile main" onclick="start('all')"><b>📝 全部やる（本番の練習）</b><div class="d">5つの大問を順番に。${Q.length}問</div></button>`;
+ if(w.length)h+=`<button class="tile main" onclick="start('wrong')"><b>🔁 まちがえた問題だけ（${w.length}問）</b><div class="d">正解すると消えていきます</div></button>`;
+ for(const s of SEC){const n=Q.filter(q=>q.s===s.id).length;const nw=Q.filter(q=>q.s===s.id&&w.includes(q.id)).length;
+  h+=`<button class="tile" onclick="start('${s.id}')"><b>${s.name}</b>（${n}問${nw?`・まだ ${nw}`:""}）<div class="d">${s.d}</div></button>`}
+ h+=`<button class="tile" onclick="points()"><b>📖 要点まとめ（9つ）</b><div class="d">解く前に1回読む</div></button></div>`;
+ if(w.length)h+=`<div class="row"><button class="btn ghost" onclick="if(confirm('まちがえた記録を消しますか？')){setWrong([]);home()}">記録をリセット</button></div>`;
+ $("#app").innerHTML=h;scrollTo(0,0)}
+
+function points(){$("#app").innerHTML=`<div class="top"><button class="btn ghost" onclick="home()">← ホーム</button></div><div class="card pt">${POINTS}</div><div class="row"><button class="btn" onclick="start('all')">問題を解く</button></div>`;scrollTo(0,0)}
+
+function start(mode){
+ let l;const w=getWrong();
+ if(mode==="all")l=Q.slice();
+ else if(mode==="wrong")l=shuffle(Q.filter(q=>w.includes(q.id)));
+ else l=Q.filter(q=>q.s===mode);
+ st={list:l,i:0,right:0,wrongNow:[],answered:false,mode};show()}
+
+function show(){
+ const q=st.list[st.i];if(!q)return end();
+ st.answered=false;const sec=SEC.find(s=>s.id===q.s);
+ let h=`<div class="top"><button class="btn ghost" onclick="home()">← ホーム</button><span class="prog">${st.i+1} / ${st.list.length}　○ ${st.right}</span></div>
+ <div class="card"><span class="tag">${sec.name}</span><div class="q">${q.q.replace("___","<u>　　　　</u>")}</div>${q.h?`<div class="hint">${q.h}</div>`:""}`;
+ if(q.k==="t"){h+=`<div style="margin-top:10px"><input type="text" id="in" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="スペイン語で書く" onkeydown="if(event.key==='Enter'){st.answered?next():check()}"></div>
+  <div class="keys">${["á","é","í","ó","ú","ñ","ü","¿","¡"].map(c=>`<button onclick="ins('${c}')">${c}</button>`).join("")}</div>
+  <div class="row"><button class="btn" id="go" onclick="check()">答え合わせ</button><button class="btn ghost" onclick="check(true)">わからない</button></div>`}
+ else{const opts=shuffle(q.a.map((t,j)=>({t,j})));
+  h+=`<div class="choices">${opts.map(o=>`<button data-j="${o.j}" onclick="pick(${o.j})">${o.t}</button>`).join("")}</div>`}
+ h+=`<div id="res"></div></div>`;
+ $("#app").innerHTML=h;scrollTo(0,0);const i=$("#in");if(i)i.focus()}
+
+function ins(c){const i=$("#in");const p=i.selectionStart??i.value.length;i.value=i.value.slice(0,p)+c+i.value.slice(p);i.focus();i.setSelectionRange(p+1,p+1)}
+
+function record(ok){const q=st.list[st.i];let w=getWrong();
+ if(ok){st.right++;w=w.filter(x=>x!==q.id)}else{st.wrongNow.push(q.id);if(!w.includes(q.id))w.push(q.id)}
+ setWrong(w)}
+
+function result(ok,extra){const q=st.list[st.i];const f=full(q);
+ $("#res").innerHTML=`<div class="res ${ok?"ok":"ng"}"><div class="big">${ok?"○ 正解":"✕ 正解は："+q.a[0]}</div>${extra||""}
+ ${f?`<div class="ex">${f} <button class="say" data-t="${f.replace(/"/g,"&quot;")}" onclick="say(this.dataset.t)">🔊</button></div>`:""}
+ <div class="ex">💡 ${q.x}</div></div><div class="row"><button class="btn" id="nx" onclick="next()">次へ →</button></div>`;
+ if(f)say(f);const b=$("#nx");if(b)b.focus()}
+
+function check(giveup){if(st.answered)return;const q=st.list[st.i];
+ const g=giveup?0:grade($("#in").value,q.a);st.answered=true;record(g>0);
+ $("#in").disabled=true;const go=$("#go");if(go)go.parentElement.remove();
+ result(g>0,g===1?`<div class="ex">⚠ アクセント記号に注意：<b>${q.a[0]}</b></div>`:"")}
+
+function pick(j){if(st.answered)return;const q=st.list[st.i];st.answered=true;const ok=j===0;record(ok);
+ document.querySelectorAll(".choices button").forEach(b=>{const k=+b.dataset.j;if(k===0)b.classList.add("ok");else if(k===j)b.classList.add("ng");b.disabled=true});
+ result(ok)}
+
+function next(){st.i++;show()}
+
+function end(){const n=st.list.length;const pct=n?Math.round(st.right/n*100):0;
+ const wl=st.wrongNow.map(id=>Q[id]);
+ let h=`<div class="top"><button class="btn ghost" onclick="home()">← ホーム</button></div><div class="card"><h1>${st.right} / ${n}（${pct}%）</h1>
+ <div class="bar"><i style="width:${pct}%"></i></div>`;
+ if(wl.length){h+=`<p class="sub">まちがえた問題（ホームの「まちがえた問題だけ」で復習できます）</p><ul class="wrong">${wl.map(q=>`<li>${q.q.replace("___","<b>"+q.a[0]+"</b>")}<br><span class="hint">${q.x}</span></li>`).join("")}</ul>`}
+ else h+=`<p>全問正解です 🎉</p>`;
+ h+=`<div class="row">${wl.length?`<button class="btn" onclick="start('wrong')">まちがえた問題だけ</button>`:""}<button class="btn ghost" onclick="home()">ホーム</button></div></div>`;
+ $("#app").innerHTML=h;scrollTo(0,0)}
+
+home();
+</script>
+</body>
+</html>
